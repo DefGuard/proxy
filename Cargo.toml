@@ -3,6 +3,28 @@ name = "proxy"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+# base `axum` deps
+axum = { version = "0.6", features = ["json"] }
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = "0.4"
+# logging/tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# data de/serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+# gRPC
+tonic = {version = "0.9", features = ["gzip", "tls", "tls-roots"] }
+prost = "0.11"
+# error handling
+thiserror = "1.0"
+
+[build-dependencies]
+tonic-build = { version = "0.9" }
+prost-build = { version = "0.11" }
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
