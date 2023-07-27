@@ -13,7 +13,7 @@ pub struct Config {
     )]
     pub http_port: u16,
 
-    /// Defguard core server gRPC endpoint URL
+    // Defguard core server gRPC endpoint URL
     #[arg(
         long,
         short = 'g',
@@ -21,4 +21,8 @@ pub struct Config {
         default_value = "http://localhost:50055/"
     )]
     pub grpc_url: Url,
+
+    // path to certificate `.pem` file used if connecting over HTTPS
+    #[arg(long, env = "DEFGUARD_GRPC_CA")]
+    pub grpc_ca: Option<String>,
 }

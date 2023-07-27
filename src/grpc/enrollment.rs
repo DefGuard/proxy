@@ -1,1 +1,3 @@
-tonic::include_proto!("enrollment");
+pub mod proto {
+    tonic::include_proto!("enrollment");
+}
