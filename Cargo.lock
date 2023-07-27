@@ -101,6 +101,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -118,6 +119,7 @@ dependencies = [
  "rustversion",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -206,6 +208,7 @@ dependencies = [
 name = "defguard-proxy"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "hyper",
  "prost",

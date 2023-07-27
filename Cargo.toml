@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # base `axum` deps
-axum = { version = "0.6", features = ["json"] }
+axum = { version = "0.6", features = ["json", "tracing"] }
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tower = "0.4"
@@ -21,6 +21,7 @@ tonic = {version = "0.9", features = ["gzip", "tls", "tls-roots"] }
 prost = "0.11"
 # error handling
 thiserror = "1.0"
+anyhow = "1.0"
 
 [build-dependencies]
 tonic-build = { version = "0.9" }
