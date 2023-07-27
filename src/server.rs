@@ -1,11 +1,11 @@
-use crate::handlers::enrollment;
+use crate::{config::Config, handlers::enrollment};
 use anyhow::Context;
 use axum::{extract::MatchedPath, http::Request, routing::get, Router};
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info, info_span, Level};
 
-pub async fn run_server() -> anyhow::Result<()> {
+pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // build application
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
@@ -34,7 +34,7 @@ pub async fn run_server() -> anyhow::Result<()> {
         );
 
     // run server
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), config.http_port);
     info!("Listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

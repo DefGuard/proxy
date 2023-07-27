@@ -22,6 +22,10 @@ prost = "0.11"
 # error handling
 thiserror = "1.0"
 anyhow = "1.0"
+# CLI
+clap = { version = "4.0", features = ["derive", "env"] }
+# other utils
+url = "2.4"
 
 [build-dependencies]
 tonic-build = { version = "0.9" }
