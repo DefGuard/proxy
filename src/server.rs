@@ -1,6 +1,6 @@
 use crate::{config::Config, handlers::enrollment};
 use anyhow::Context;
-use axum::{extract::MatchedPath, http::Request, routing::get, Router};
+use axum::{extract::MatchedPath, http::Request, Router};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info, info_span, Level};
@@ -8,7 +8,6 @@ use tracing::{info, info_span, Level};
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // build application
     let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
         .nest(
             "/api/v1",
             Router::new().nest("/enrollment", enrollment::router()),
