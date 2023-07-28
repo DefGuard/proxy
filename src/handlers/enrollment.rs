@@ -8,14 +8,36 @@ use crate::{
     server::AppState,
 };
 use axum::{extract::State, routing::post, Json, Router};
+use tonic::metadata::MetadataValue;
 use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
-use tracing::debug;
+use tracing::{debug, error};
+use crate::error::ApiError;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_enrollment_process))
         .route("/activate_user", post(activate_user))
         .route("/create_device", post(create_device))
+}
+
+// extract token from session cookies and add it to gRPC request header
+fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Result<(), ApiError>{
+    debug!("Adding auth header to gRPC request");
+    let key = SECRET_KEY.get().unwrap();
+    let private_cookies = cookies.private(key);
+
+    match private_cookies.get(COOKIE_NAME) {
+        Some(cookie) => {
+            let token = MetadataValue::try_from(cookie.value())?;
+            request.metadata_mut().insert("authorization", token);
+        },
+        None => {
+            error!("Enrollment session cookie not found");
+            return Err(ApiError::CookieNotFound)
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn start_enrollment_process(
@@ -49,24 +71,30 @@ pub async fn start_enrollment_process(
 
 pub async fn activate_user(
     State(state): State<AppState>,
+    cookies: Cookies,
     Json(req): Json<ActivateUserRequest>,
 ) -> ApiResult<()> {
     debug!("Activating user");
 
     let mut client = state.client.lock().await;
-    client.activate_user(req).await?;
+    let mut request = tonic::Request::new(req);
+    add_auth_header(cookies, &mut request)?;
+    client.activate_user(request).await?;
 
     Ok(())
 }
 
 pub async fn create_device(
     State(state): State<AppState>,
+    cookies: Cookies,
     Json(req): Json<NewDevice>,
 ) -> ApiResult<Json<CreateDeviceResponse>> {
     debug!("Adding new device");
 
     let mut client = state.client.lock().await;
-    let response = client.create_device(req).await?;
+    let mut request = tonic::Request::new(req);
+    add_auth_header(cookies,&mut request)?;
+    let response = client.create_device(request).await?;
 
     Ok(Json(response.into_inner()))
 }

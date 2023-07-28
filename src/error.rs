@@ -4,15 +4,19 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use tonic::Code;
+use tonic::{Code, metadata::errors::InvalidMetadataValue};
 use tracing::error;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Session cookie not found")]
+    CookieNotFound,
     #[error("Unexpected error: {0}")]
     Unexpected(String),
+    #[error(transparent)]
+    InvalidMetadata(#[from] InvalidMetadataValue)
 }
 
 impl IntoResponse for ApiError {
