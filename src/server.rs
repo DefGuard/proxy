@@ -5,15 +5,19 @@ use crate::{
 };
 use anyhow::Context;
 use axum::{extract::MatchedPath, http::Request, Router};
+use once_cell::sync::OnceCell;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
 };
 use tokio::sync::Mutex;
 use tonic::transport::Channel;
-use tower_cookies::CookieManagerLayer;
+use tower_cookies::{CookieManagerLayer, Key};
 use tower_http::trace::{self, TraceLayer};
 use tracing::{debug, info, info_span, Level};
+
+pub const COOKIE_NAME: &str = "defguard_proxy";
+pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
 
 #[derive(Clone)]
 pub struct AppState {
@@ -29,6 +33,9 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     // store port before moving config
     let http_port = config.http_port;
+
+    // generate secret key for encrypting cookies
+    SECRET_KEY.set(Key::generate()).ok();
 
     // build application
     debug!("Setting up API");
