@@ -1,7 +1,13 @@
-use crate::{handlers::ApiResult, server::AppState};
-use axum::{routing::post, Json, Router, extract::State};
+use crate::{
+    grpc::enrollment::proto::{
+        ActivateUserRequest, CreateDeviceResponse, EnrollmentStartRequest, EnrollmentStartResponse,
+        NewDevice,
+    },
+    handlers::ApiResult,
+    server::AppState,
+};
+use axum::{extract::State, routing::post, Json, Router};
 use tracing::debug;
-use crate::grpc::enrollment::proto::{EnrollmentStartRequest, EnrollmentStartResponse, ActivateUserRequest, NewDevice, CreateDeviceResponse};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -25,17 +31,19 @@ pub async fn start_enrollment_process(
 pub async fn activate_user(
     State(state): State<AppState>,
     Json(req): Json<ActivateUserRequest>,
-) -> ApiResult<()>{
+) -> ApiResult<()> {
     debug!("Activating user");
 
     let mut client = state.client.lock().await;
     client.activate_user(req).await?;
 
     Ok(())
-
 }
 
-pub async fn create_device(State(state): State<AppState>,Json(req): Json<NewDevice>,) -> ApiResult<Json<CreateDeviceResponse>> {
+pub async fn create_device(
+    State(state): State<AppState>,
+    Json(req): Json<NewDevice>,
+) -> ApiResult<Json<CreateDeviceResponse>> {
     debug!("Adding new device");
 
     let mut client = state.client.lock().await;

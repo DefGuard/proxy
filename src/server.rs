@@ -1,12 +1,17 @@
-use crate::grpc::enrollment::proto::enrollment_service_client::EnrollmentServiceClient;
-use crate::grpc::setup_client;
-use crate::{config::Config, handlers::enrollment};
+use crate::{
+    config::Config,
+    grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
+    handlers::enrollment,
+};
 use anyhow::Context;
 use axum::{extract::MatchedPath, http::Request, Router};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
 use tokio::sync::Mutex;
 use tonic::transport::Channel;
+use tower_cookies::CookieManagerLayer;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{debug, info, info_span, Level};
 
@@ -37,6 +42,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             Router::new().nest("/enrollment", enrollment::router()),
         )
         .with_state(shared_state)
+        .layer(CookieManagerLayer::new())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
