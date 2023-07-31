@@ -38,7 +38,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     SECRET_KEY.set(Key::generate()).ok();
 
     // build application
-    debug!("Setting up API");
+    debug!("Setting up API server");
     let shared_state = AppState {
         config: Arc::new(config),
         client: Arc::new(Mutex::new(client)),

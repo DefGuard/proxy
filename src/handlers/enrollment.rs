@@ -10,7 +10,7 @@ use crate::{
 use axum::{extract::State, routing::post, Json, Router};
 use tonic::metadata::MetadataValue;
 use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use crate::error::ApiError;
 
 pub fn router() -> Router<AppState> {
@@ -20,7 +20,7 @@ pub fn router() -> Router<AppState> {
         .route("/create_device", post(create_device))
 }
 
-// extract token from session cookies and add it to gRPC request header
+// extract token from session cookies and add it to gRPC request auth header
 fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Result<(), ApiError>{
     debug!("Adding auth header to gRPC request");
     let key = SECRET_KEY.get().unwrap();
@@ -45,7 +45,7 @@ pub async fn start_enrollment_process(
     cookies: Cookies,
     Json(req): Json<EnrollmentStartRequest>,
 ) -> ApiResult<Json<EnrollmentStartResponse>> {
-    debug!("Starting enrollment process");
+    info!("Starting enrollment process");
 
     // clear session cookies if already populated
     let key = SECRET_KEY.get().unwrap();
@@ -74,7 +74,7 @@ pub async fn activate_user(
     cookies: Cookies,
     Json(req): Json<ActivateUserRequest>,
 ) -> ApiResult<()> {
-    debug!("Activating user");
+    info!("Activating user");
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
@@ -89,7 +89,7 @@ pub async fn create_device(
     cookies: Cookies,
     Json(req): Json<NewDevice>,
 ) -> ApiResult<Json<CreateDeviceResponse>> {
-    debug!("Adding new device");
+    info!("Adding new device");
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
