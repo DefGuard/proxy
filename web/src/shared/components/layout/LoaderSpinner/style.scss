@@ -1,0 +1,14 @@
+.loader-spinner {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+
+  path {
+    stroke: var(--surface-main-primary);
+  }
+}

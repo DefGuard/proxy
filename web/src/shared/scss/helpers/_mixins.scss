@@ -1,0 +1,41 @@
+@use './bootstrap' as *;
+@use 'sass:map';
+
+$text-weights: (
+  'thin': 100,
+  'light': 300,
+  'regular': 400,
+  'medium': 500,
+  'semiBold': 600,
+  'bold': 700,
+  'black': 900,
+);
+
+@mixin text-weight($key, $map: $text-weights) {
+  font-weight: map.get($map, $key);
+}
+
+// Hides element but doesn't change it's display prop.
+@mixin visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+  outline: 0;
+  pointer-events: none;
+  inset: 0;
+  appearance: none;
+}
+
+@mixin text-overflow-dots {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

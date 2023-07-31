@@ -1,0 +1,13 @@
+@use '@scssutils' as *;
+
+#enrollment-device-step {
+  display: flex;
+  flex-flow: row wrap;
+  column-gap: 50px;
+
+  & > .card {
+    width: 100%;
+    max-width: 750px;
+    padding: 40px;
+  }
+}

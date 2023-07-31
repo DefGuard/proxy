@@ -1,0 +1,152 @@
+@use '../../../scss/helpers' as *;
+
+.message-box {
+  height: auto;
+  min-height: 57px;
+  width: 100%;
+  display: grid;
+  grid-template-rows: 1fr;
+  grid-template-columns: 18px 1fr 22px;
+  align-items: center;
+  justify-items: start;
+  column-gap: 20px;
+  border: 0 solid transparent;
+  border-radius: 15px;
+  box-sizing: border-box;
+  padding: 0 20px;
+
+  & > .icon-container {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+  }
+
+  & > .dismiss {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    justify-content: center;
+    border: 0 solid transparent;
+    background-color: transparent;
+    height: 30px;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+
+    svg {
+      & > g {
+        & > g {
+          fill: var(--surface-icon-primary);
+        }
+      }
+    }
+  }
+
+  .message {
+    box-sizing: border-box;
+    padding: 17px 0;
+    p,
+    span,
+    b,
+    strong {
+      @include typography(app-modal-1);
+    }
+
+    b,
+    strong {
+      font-weight: 700;
+    }
+
+    p,
+    span {
+      color: inherit;
+      max-width: 100%;
+      white-space: normal;
+    }
+  }
+
+  &.success {
+    background-color: var(--surface-positive-accent);
+
+    .message {
+      color: var(--text-positive);
+    }
+
+    & > .icon-container {
+      svg {
+        & > g {
+          & > circle {
+            fill: var(--surface-positive-primary);
+          }
+          & > g {
+            & > rect {
+              fill: var(--surface-positive-accent);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  &.warning {
+    background-color: var(--surface-important-accent);
+    .message {
+      color: var(--text-important);
+    }
+    & > .icon-container {
+      & > svg {
+        & > g {
+          & > circle {
+            fill: var(--surface-important);
+          }
+          & > rect {
+            fill: var(--surface-important-accent);
+          }
+        }
+      }
+    }
+  }
+
+  &.error {
+    background-color: var(--surface-alert-accent);
+    .message {
+      color: var(--text-alert);
+    }
+
+    & > .icon-container {
+      & > svg {
+        & > g {
+          & > circle {
+            fill: var(--surface-alert-primary);
+          }
+          & > path {
+            fill: var(--surface-alert-accent);
+          }
+        }
+      }
+    }
+  }
+
+  &.info {
+    background-color: var(--surface-info-modal);
+    .message {
+      color: var(--text-body-secondary);
+    }
+    & > .icon-container {
+      & > svg {
+        & > g {
+          & > circle {
+            fill: var(--surface-icon-primary);
+          }
+          & > rect {
+            fill: var(--surface-button);
+          }
+        }
+      }
+    }
+  }
+}

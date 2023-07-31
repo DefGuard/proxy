@@ -1,0 +1,14 @@
+@use '../../../scss/helpers' as *;
+
+.toggle {
+  display: inline-grid;
+  grid-auto-columns: 1fr;
+  grid-template-rows: 50px;
+  gap: 0;
+  opacity: 1;
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

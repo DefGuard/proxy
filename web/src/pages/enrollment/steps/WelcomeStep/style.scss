@@ -1,0 +1,29 @@
+@use '@scssutils' as *;
+
+#enrollment {
+  #enrollment-welcome-card {
+    box-sizing: border-box;
+    padding: 50px 40px;
+    width: 100%;
+    max-width: 650px;
+
+    & > h3 {
+      margin-bottom: 30px;
+    }
+
+    & > .explenation {
+      p,
+      ul,
+      ol,
+      span {
+        @include typography(app-welcome-2);
+
+        color: var(--text-body-tertiary);
+      }
+
+      strong {
+        color: var(--text-body-primary);
+      }
+    }
+  }
+}
