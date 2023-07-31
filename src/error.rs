@@ -16,7 +16,9 @@ pub enum ApiError {
     #[error("Unexpected error: {0}")]
     Unexpected(String),
     #[error(transparent)]
-    InvalidMetadata(#[from] InvalidMetadataValue)
+    InvalidMetadata(#[from] InvalidMetadataValue),
+    #[error("Bad request: {0}")]
+    BadRequest(String)
 }
 
 impl IntoResponse for ApiError {
@@ -24,6 +26,7 @@ impl IntoResponse for ApiError {
         error!("{}", self);
         let (status, error_message) = match self {
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
@@ -43,6 +46,7 @@ impl From<tonic::Status> for ApiError {
     fn from(status: tonic::Status) -> Self {
         match status.code() {
             Code::Unauthenticated => ApiError::Unauthorized,
+            Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
             _ => ApiError::Unexpected(status.to_string()),
         }
     }
