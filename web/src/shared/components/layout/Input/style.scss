@@ -49,10 +49,11 @@
     padding: 0 20px;
     border: 1px solid var(--border-primary);
     margin: 0;
+    opacity: 1;
 
     transition-timing-function: ease-in-out;
     transition-duration: 250ms;
-    transition-property: border-color, background-color;
+    transition-property: border-color, background-color, opacity;
 
     &.invalid {
       border-color: var(--border-alert);

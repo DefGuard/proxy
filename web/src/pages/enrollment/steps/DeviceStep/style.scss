@@ -1,13 +1,35 @@
 @use '@scssutils' as *;
 
 #enrollment-device-step {
+  width: 100%;
+  height: auto;
+  box-sizing: border-box;
   display: flex;
   flex-flow: row wrap;
-  column-gap: 50px;
+  gap: 50px;
+  align-items: flex-start;
+  align-content: center;
+  justify-content: center;
+  padding: 0 20px;
+
+  @include media-breakpoint-up(lg) {
+    padding: 0 25px 0 25px;
+  }
 
   & > .card {
     width: 100%;
     max-width: 750px;
     padding: 40px;
+
+    h3 {
+      @include typography(app-body-1);
+
+      margin-bottom: 23px;
+      user-select: none;
+    }
+
+    label {
+      user-select: none;
+    }
   }
 }

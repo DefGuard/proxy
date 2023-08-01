@@ -21,6 +21,10 @@ import { deviceBreakpoints } from '../../shared/constants';
 import { EnrollmentSideBar } from './components/EnrollmentSideBar/EnrollmentSideBar';
 import { EnrollmentStepControls } from './components/EnrollmentStepControls/EnrollmentStepControls';
 import { useEnrollmentStore } from './hooks/store/useEnrollmentStore';
+import { DataVerificationStep } from './steps/DataVerificationStep/DataVerificationStep';
+import { DeviceStep } from './steps/DeviceStep/DeviceStep';
+import { FinishStep } from './steps/FinishStep/FinishStep';
+import { PasswordStep } from './steps/PasswordStep/PasswordStep';
 import { WelcomeStep } from './steps/WelcomeStep/WelcomeStep';
 
 export const EnrollmentPage = () => {
@@ -74,4 +78,10 @@ export const EnrollmentPage = () => {
   );
 };
 
-const steps: ReactNode[] = [<WelcomeStep key={0} />];
+const steps: ReactNode[] = [
+  <WelcomeStep key={0} />,
+  <DataVerificationStep key={1} />,
+  <PasswordStep key={2} />,
+  <DeviceStep key={3} />,
+  <FinishStep key={4} />,
+];

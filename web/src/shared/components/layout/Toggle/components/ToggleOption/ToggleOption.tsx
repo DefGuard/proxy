@@ -1,3 +1,5 @@
+import './style.scss';
+
 import classNames from 'classnames';
 import { motion, TargetAndTransition } from 'framer-motion';
 import { useMemo, useState } from 'react';
@@ -43,6 +45,7 @@ export const ToggleOption = <T,>({
 
     if (hovered && !active) {
       res.borderColor = colors.borderSecondary;
+      res.color = colors.textBodyPrimary;
     }
 
     return res;

@@ -12,6 +12,7 @@
   margin: 0;
   border-radius: 6px;
   border: 1px solid var(--border-primary);
+  background-color: var(--surface-button);
   opacity: 1;
 
   & > .box {
@@ -30,6 +31,7 @@
 
   &.checked {
     border-color: var(--surface-main-primary);
+    background-color: var(--surface-main-primary);
 
     & > .box {
       display: block;

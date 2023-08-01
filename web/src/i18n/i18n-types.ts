@@ -212,6 +212,96 @@ type RootTranslation = {
 						}
 					}
 				}
+				deviceSetup: {
+					cards: {
+						device: {
+							/**
+							 * C​o​n​f​i​g​u​r​e​ ​y​o​u​r​ ​d​e​v​i​c​e​ ​f​o​r​ ​V​P​N
+							 */
+							title: string
+							create: {
+								/**
+								 * P​l​e​a​s​e​ ​b​e​ ​a​d​v​i​s​e​d​ ​t​h​a​t​ ​y​o​u​ ​h​a​v​e​ ​t​o​ ​d​o​w​n​l​o​a​d​ ​t​h​e​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​n​o​w​,​ ​s​i​n​c​e​ ​w​e​ ​d​o​ ​n​o​t​ ​s​t​o​r​e​ ​y​o​u​r​ ​p​r​i​v​a​t​e​ ​k​e​y​.​ ​A​f​t​e​r​ ​t​h​i​s​ ​d​i​a​l​o​g​ ​i​s​ ​c​l​o​s​e​d​,​ ​y​o​u​ ​w​i​l​l​ ​n​o​t​ ​b​e​ ​a​b​l​e​ ​t​o​ ​g​e​t​ ​y​o​u​r​ ​f​u​l​l​l​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​(​w​i​t​h​ ​p​r​i​v​a​t​e​ ​k​e​y​s​,​ ​o​n​l​y​ ​b​l​a​n​k​ ​t​e​m​p​l​a​t​e​)​.
+								 */
+								messageBox: string
+								form: {
+									fields: {
+										name: {
+											/**
+											 * D​e​v​i​c​e​ ​N​a​m​e
+											 */
+											label: string
+										}
+										'public': {
+											/**
+											 * M​y​ ​P​u​b​l​i​c​ ​K​e​y
+											 */
+											label: string
+										}
+										toggle: {
+											/**
+											 * G​e​n​e​r​a​t​e​ ​k​e​y​ ​p​a​i​r
+											 */
+											generate: string
+											/**
+											 * U​s​e​ ​m​y​ ​o​w​n​ ​p​u​b​l​i​c​ ​k​e​y
+											 */
+											own: string
+										}
+									}
+								}
+							}
+						}
+						guide: {
+							/**
+							 * Q​u​i​c​k​ ​G​u​i​d​e
+							 */
+							title: string
+							/**
+							 * T​h​i​s​ ​q​u​i​c​k​ ​g​u​i​d​e​ ​w​i​l​l​ ​h​e​l​p​ ​y​o​u​ ​w​i​t​h​ ​d​e​v​i​c​e​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​.
+							 */
+							messageBox: string
+							/**
+							 * S​t​e​p​ ​{​s​t​e​p​}​:
+							 * @param {number} step
+							 */
+							step: RequiredParams<'step'>
+							steps: {
+								wireguard: {
+									/**
+									 * D​o​w​n​l​o​a​d​ ​a​n​d​ ​i​n​s​t​a​l​l​ ​W​i​r​e​G​u​a​r​d​ ​c​l​i​e​n​t​ ​o​n​ ​y​o​u​r​ ​c​o​m​p​p​u​t​e​r​ ​o​r​ ​a​p​p​ ​o​n​ ​p​h​o​n​e​.
+									 */
+									content: string
+									/**
+									 * D​o​w​n​l​o​a​d​ ​W​i​r​e​G​u​a​r​d
+									 */
+									button: string
+								}
+								/**
+								 * D​o​w​n​l​o​a​d​ ​p​r​o​v​i​d​e​d​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​t​o​ ​y​o​u​r​ ​d​e​v​i​c​e​.
+								 */
+								downloadConfig: string
+								/**
+								 * O​p​e​n​ ​W​i​r​e​G​u​a​r​d​ ​a​n​d​ ​s​e​l​e​c​t​ ​"​A​d​d​ ​T​u​n​n​e​l​"​ ​(​I​m​p​o​r​t​ ​t​u​n​n​e​l​(​s​)​ ​f​r​o​m​ ​f​i​l​e​)​.​ ​F​i​n​d​ ​y​o​u​r​ ​
+							​D​e​f​g​u​a​r​d​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​a​n​d​ ​h​i​t​ ​"​O​K​"​.​ ​O​n​ ​p​h​o​n​e​ ​u​s​e​ ​W​i​r​e​G​u​a​r​d​ ​a​p​p​ ​“​+​”​ ​i​c​o​n​ ​a​n​d​ ​s​c​a​n​ ​Q​R​ ​c​o​d​e​.
+								 */
+								addTunnel: string
+								/**
+								 * S​e​l​e​c​t​ ​y​o​u​r​ ​t​u​n​n​e​l​ ​f​r​o​m​ ​t​h​e​ ​l​i​s​t​ ​a​n​d​ ​p​r​e​s​s​ ​"​a​c​t​i​v​a​t​e​"​.
+								 */
+								activate: string
+								/**
+								 * 
+							​*​*​G​r​e​a​t​ ​w​o​r​k​ ​-​ ​y​o​u​r​ ​D​e​f​g​u​a​r​d​ ​V​P​N​ ​i​s​ ​n​o​w​ ​a​c​t​i​v​e​!​*​*​ ​ ​
+							​
+							​I​f​ ​y​o​u​ ​w​a​n​t​ ​t​o​ ​d​i​s​e​n​g​a​g​e​ ​y​o​u​r​ ​V​P​N​ ​c​o​n​n​e​c​t​i​o​n​,​ ​s​i​m​p​l​y​ ​p​r​e​s​s​ ​"​d​e​a​c​t​i​v​a​t​e​"​.​
+						
+								 */
+								finish: string
+							}
+						}
+					}
+				}
 				finish: {
 					/**
 					 * C​o​n​f​i​g​u​r​a​t​i​o​n​ ​c​o​m​p​l​e​t​e​d​!
@@ -597,6 +687,95 @@ export type TranslationFunctions = {
 									 */
 									matching: () => LocalizedString
 								}
+							}
+						}
+					}
+				}
+				deviceSetup: {
+					cards: {
+						device: {
+							/**
+							 * Configure your device for VPN
+							 */
+							title: () => LocalizedString
+							create: {
+								/**
+								 * Please be advised that you have to download the configuration now, since we do not store your private key. After this dialog is closed, you will not be able to get your fulll configuration file (with private keys, only blank template).
+								 */
+								messageBox: () => LocalizedString
+								form: {
+									fields: {
+										name: {
+											/**
+											 * Device Name
+											 */
+											label: () => LocalizedString
+										}
+										'public': {
+											/**
+											 * My Public Key
+											 */
+											label: () => LocalizedString
+										}
+										toggle: {
+											/**
+											 * Generate key pair
+											 */
+											generate: () => LocalizedString
+											/**
+											 * Use my own public key
+											 */
+											own: () => LocalizedString
+										}
+									}
+								}
+							}
+						}
+						guide: {
+							/**
+							 * Quick Guide
+							 */
+							title: () => LocalizedString
+							/**
+							 * This quick guide will help you with device configuration.
+							 */
+							messageBox: () => LocalizedString
+							/**
+							 * Step {step}:
+							 */
+							step: (arg: { step: number }) => LocalizedString
+							steps: {
+								wireguard: {
+									/**
+									 * Download and install WireGuard client on your compputer or app on phone.
+									 */
+									content: () => LocalizedString
+									/**
+									 * Download WireGuard
+									 */
+									button: () => LocalizedString
+								}
+								/**
+								 * Download provided configuration file to your device.
+								 */
+								downloadConfig: () => LocalizedString
+								/**
+								 * Open WireGuard and select "Add Tunnel" (Import tunnel(s) from file). Find your 
+							Defguard configuration file and hit "OK". On phone use WireGuard app “+” icon and scan QR code.
+								 */
+								addTunnel: () => LocalizedString
+								/**
+								 * Select your tunnel from the list and press "activate".
+								 */
+								activate: () => LocalizedString
+								/**
+								 * 
+							**Great work - your Defguard VPN is now active!**  
+						
+							If you want to disengage your VPN connection, simply press "deactivate".
+						
+								 */
+								finish: () => LocalizedString
 							}
 						}
 					}
