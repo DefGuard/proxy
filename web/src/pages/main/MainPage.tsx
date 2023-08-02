@@ -40,11 +40,8 @@ export const MainPage = () => {
         .catch(() => {
           navigate(routes.token, { replace: true });
         });
-    } else {
-      navigate(routes.token, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   return <PageContainer id="main-page"></PageContainer>;
 };
