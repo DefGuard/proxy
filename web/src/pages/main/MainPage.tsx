@@ -1,8 +1,8 @@
 import './style.scss';
 
 import dayjs from 'dayjs';
-import { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
 import { useApi } from '../../shared/hooks/api/useApi';
@@ -17,11 +17,15 @@ export const MainPage = () => {
 
   const initEnrollment = useEnrollmentStore((state) => state.init);
 
-  const { token } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const requestPending = useRef(false);
 
   // check if navigated from link with token if not do noting
   useEffect(() => {
-    if (token && token.length) {
+    const token = searchParams.get('token');
+    if (token && token.length && !requestPending.current) {
+      requestPending.current = true;
       startEnrollment({
         token,
       })
@@ -38,10 +42,11 @@ export const MainPage = () => {
           navigate(routes.enrollment, { replace: true });
         })
         .catch(() => {
+          requestPending.current = false;
           navigate(routes.token, { replace: true });
         });
     } // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [searchParams]);
 
   return <PageContainer id="main-page"></PageContainer>;
 };
