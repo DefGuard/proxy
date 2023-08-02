@@ -16,7 +16,7 @@ pub enum GrpcError {
 }
 
 pub fn setup_client(config: &Config) -> Result<EnrollmentServiceClient<Channel>, GrpcError> {
-    debug!("Connecting to upstream gRPC server");
+    debug!("Setting up gRPC client");
     let endpoint = Endpoint::from_shared(config.grpc_url.to_string())?;
     let endpoint = endpoint.http2_keep_alive_interval(Duration::from_secs(10));
     let endpoint = endpoint.tcp_keepalive(Some(Duration::from_secs(10)));
