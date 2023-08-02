@@ -1,21 +1,31 @@
 import { pick } from 'lodash-es';
+import { Subject } from 'rxjs';
 import { create } from 'zustand';
 import { createJSONStorage, devtools, persist } from 'zustand/middleware';
 
-import { UserInfo } from '../../types';
+import {
+  AdminInfo,
+  Device,
+  DeviceConfig,
+  UserInfo,
+} from '../../../../shared/hooks/api/types';
 
 const defaultValues: StoreValues = {
   step: 0,
   stepsMax: 4,
   sessionEnd: undefined,
   userInfo: undefined,
+  nextSubject: new Subject<void>(),
 };
 
 const persistKeys: Array<keyof StoreValues> = [
   'step',
   'userInfo',
   'sessionEnd',
-  'userInfo',
+  'adminInfo',
+  'deviceState',
+  'endContent',
+  'vpnOptional',
 ];
 
 export const useEnrollmentStore = create<Store>()(
@@ -45,7 +55,7 @@ export const useEnrollmentStore = create<Store>()(
       {
         name: 'enrollment-storage',
         version: 0.1,
-        storage: createJSONStorage(() => localStorage),
+        storage: createJSONStorage(() => sessionStorage),
         partialize: (state) => pick(state, persistKeys),
       },
     ),
@@ -57,8 +67,18 @@ type Store = StoreValues & StoreMethods;
 type StoreValues = {
   step: number;
   stepsMax: number;
+  nextSubject: Subject<void>;
+  // Date
   sessionEnd?: string;
   userInfo?: UserInfo;
+  adminInfo?: AdminInfo;
+  vpnOptional?: boolean;
+  // Markdown content for final step card
+  endContent?: string;
+  deviceState?: {
+    device?: Device;
+    configs?: DeviceConfig[];
+  };
 };
 
 type StoreMethods = {

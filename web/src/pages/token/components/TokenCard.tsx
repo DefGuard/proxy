@@ -1,8 +1,11 @@
 import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import dayjs from 'dayjs';
 import { useMemo } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from 'use-breakpoint';
 import { z } from 'zod';
 
@@ -22,14 +25,22 @@ import { Card } from '../../../shared/components/layout/Card/Card';
 import { MessageBox } from '../../../shared/components/layout/MessageBox/MessageBox';
 import { MessageBoxType } from '../../../shared/components/layout/MessageBox/types';
 import { deviceBreakpoints } from '../../../shared/constants';
+import { useApi } from '../../../shared/hooks/api/useApi';
+import { routes } from '../../../shared/routes';
+import { useEnrollmentStore } from '../../enrollment/hooks/store/useEnrollmentStore';
 
 type FormFields = {
   token: string;
 };
 
 export const TokenCard = () => {
+  const navigate = useNavigate();
+  const {
+    enrollment: { start: startEnrollment },
+  } = useApi();
   const { breakpoint } = useBreakpoint(deviceBreakpoints);
   const { LL } = useI18nContext();
+  const initEnrollment = useEnrollmentStore((state) => state.init);
   const schema = useMemo(
     () =>
       z
@@ -43,7 +54,7 @@ export const TokenCard = () => {
     [LL.pages.token.card.form.errors.token],
   );
 
-  const { control, handleSubmit } = useForm<FormFields>({
+  const { control, handleSubmit, setError } = useForm<FormFields>({
     mode: 'all',
     defaultValues: {
       token: '',
@@ -51,8 +62,34 @@ export const TokenCard = () => {
     resolver: zodResolver(schema),
   });
 
+  const { isLoading, mutate } = useMutation({
+    mutationFn: startEnrollment,
+    onSuccess: (res) => {
+      const sessionEndDate = dayjs.unix(res.deadline_timestamp).toDate();
+      initEnrollment({
+        step: 0,
+        userInfo: res.user,
+        adminInfo: res.admin,
+        sessionEnd: sessionEndDate.toISOString(),
+        vpnOptional: res.vpn_setup_optional,
+        endContent: res.final_page_content,
+      });
+      navigate(routes.enrollment, { replace: true });
+    },
+    onError: (err) => {
+      setError('token', LL.form.errors.invalid(), {
+        shouldFocus: true,
+      });
+      console.error(err);
+    },
+  });
+
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
-    console.log(values);
+    if (!isLoading) {
+      mutate({
+        token: values.token,
+      });
+    }
   };
 
   return (
@@ -71,6 +108,7 @@ export const TokenCard = () => {
         />
         <div className="controls">
           <Button
+            loading={isLoading}
             size={ButtonSize.LARGE}
             styleVariant={ButtonStyleVariant.PRIMARY}
             text={LL.pages.token.card.form.controls.submit()}

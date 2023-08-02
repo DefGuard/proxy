@@ -5,34 +5,36 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import utc from 'dayjs/plugin/utc';
 import { useEffect, useState } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { localStorageDetector } from 'typesafe-i18n/detectors';
 
 import TypesafeI18n from '../../i18n/i18n-react';
 import { detectLocale } from '../../i18n/i18n-util';
 import { loadLocaleAsync } from '../../i18n/i18n-util.async';
 import { EnrollmentPage } from '../../pages/enrollment/EnrollmentPage';
+import { MainPage } from '../../pages/main/MainPage';
 import { SessionTimeoutPage } from '../../pages/sessionTimeout/SessionTimeoutPage';
 import { TokenPage } from '../../pages/token/TokenPage';
+import { routes } from '../../shared/routes';
 
 dayjs.extend(duration);
 dayjs.extend(utc);
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <Navigate to="/token" replace />,
+    path: routes.main,
+    element: <MainPage />,
   },
   {
-    path: '/token',
+    path: routes.token,
     element: <TokenPage />,
   },
   {
-    path: '/timeout',
+    path: routes.timeout,
     element: <SessionTimeoutPage />,
   },
   {
-    path: '/enrollment',
+    path: routes.enrollment,
     element: <EnrollmentPage />,
   },
 ]);

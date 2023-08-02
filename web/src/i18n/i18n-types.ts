@@ -16,6 +16,10 @@ type RootTranslation = {
 	form: {
 		errors: {
 			/**
+			 * F​i​e​l​d​ ​i​s​ ​i​n​v​a​l​i​d
+			 */
+			invalid: string
+			/**
 			 * E​n​t​e​r​ ​a​ ​v​a​l​i​d​ ​E​-​m​a​i​l
 			 */
 			email: string
@@ -220,6 +224,10 @@ type RootTranslation = {
 							 */
 							title: string
 							create: {
+								/**
+								 * C​r​e​a​t​e​ ​C​o​n​f​i​g​u​r​a​t​i​o​n
+								 */
+								submit: string
 								/**
 								 * P​l​e​a​s​e​ ​b​e​ ​a​d​v​i​s​e​d​ ​t​h​a​t​ ​y​o​u​ ​h​a​v​e​ ​t​o​ ​d​o​w​n​l​o​a​d​ ​t​h​e​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​n​o​w​,​ ​s​i​n​c​e​ ​w​e​ ​d​o​ ​n​o​t​ ​s​t​o​r​e​ ​y​o​u​r​ ​p​r​i​v​a​t​e​ ​k​e​y​.​ ​A​f​t​e​r​ ​t​h​i​s​ ​d​i​a​l​o​g​ ​i​s​ ​c​l​o​s​e​d​,​ ​y​o​u​ ​w​i​l​l​ ​n​o​t​ ​b​e​ ​a​b​l​e​ ​t​o​ ​g​e​t​ ​y​o​u​r​ ​f​u​l​l​l​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​(​w​i​t​h​ ​p​r​i​v​a​t​e​ ​k​e​y​s​,​ ​o​n​l​y​ ​b​l​a​n​k​ ​t​e​m​p​l​a​t​e​)​.
 								 */
@@ -499,6 +507,10 @@ export type TranslationFunctions = {
 	form: {
 		errors: {
 			/**
+			 * Field is invalid
+			 */
+			invalid: () => LocalizedString
+			/**
 			 * Enter a valid E-mail
 			 */
 			email: () => LocalizedString
@@ -699,6 +711,10 @@ export type TranslationFunctions = {
 							 */
 							title: () => LocalizedString
 							create: {
+								/**
+								 * Create Configuration
+								 */
+								submit: () => LocalizedString
 								/**
 								 * Please be advised that you have to download the configuration now, since we do not store your private key. After this dialog is closed, you will not be able to get your fulll configuration file (with private keys, only blank template).
 								 */

@@ -59,7 +59,7 @@ const Step = ({ index, text }: StepProps) => {
   });
 
   return (
-    <div className={cn} onClick={() => {}}>
+    <div className={cn}>
       <p>
         {index + 1}.{'  '}
         {text}

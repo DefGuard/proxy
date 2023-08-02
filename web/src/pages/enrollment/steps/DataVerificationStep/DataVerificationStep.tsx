@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { FormInput } from '../../../../shared/components/Form/FormInput/FormInput';
@@ -9,6 +10,7 @@ import { Card } from '../../../../shared/components/layout/Card/Card';
 import { MessageBox } from '../../../../shared/components/layout/MessageBox/MessageBox';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
 import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicator/EnrollmentStepIndicator';
+import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 
 type FormFields = {
   phone?: string;
@@ -16,6 +18,16 @@ type FormFields = {
 
 export const DataVerificationStep = () => {
   const { LL } = useI18nContext();
+  const submitRef = useRef<HTMLInputElement | null>(null);
+
+  const nextSubject = useEnrollmentStore((state) => state.nextSubject);
+
+  const userInfo = useEnrollmentStore((state) => state.userInfo);
+
+  const [setEnrollment, next] = useEnrollmentStore(
+    (state) => [state.setState, state.nextStep],
+    shallow,
+  );
 
   const pageLL = LL.pages.enrollment.steps.dataVerification;
 
@@ -29,15 +41,32 @@ export const DataVerificationStep = () => {
 
   const { control, handleSubmit } = useForm<FormFields>({
     defaultValues: {
-      phone: '',
+      phone: userInfo?.phone ?? '',
     },
     mode: 'all',
     resolver: zodResolver(schema),
   });
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
-    console.table(values);
+    if (userInfo) {
+      if (userInfo.phone !== values.phone) {
+        setEnrollment({
+          userInfo: { ...userInfo, phone: values.phone },
+        });
+      }
+      next();
+    }
   };
+
+  useEffect(() => {
+    const sub = nextSubject.subscribe(() => {
+      submitRef.current?.click();
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, [nextSubject]);
 
   return (
     <Card id="enrollment-data-verification-card">
@@ -65,6 +94,7 @@ export const DataVerificationStep = () => {
             controller={{ control, name: 'phone' }}
           />
         </div>
+        <input className="hidden" ref={submitRef} type="submit" />
       </form>
     </Card>
   );

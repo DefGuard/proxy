@@ -1,13 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { SubmitHandler, useController, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useI18nContext } from '../../../../../../../i18n/i18n-react';
 import { FormInput } from '../../../../../../../shared/components/Form/FormInput/FormInput';
 import { FormToggle } from '../../../../../../../shared/components/Form/FormToggle/FormToggle';
+import { Button } from '../../../../../../../shared/components/layout/Button/Button';
+import {
+  ButtonSize,
+  ButtonStyleVariant,
+} from '../../../../../../../shared/components/layout/Button/types';
 import { MessageBox } from '../../../../../../../shared/components/layout/MessageBox/MessageBox';
 import { ToggleOption } from '../../../../../../../shared/components/layout/Toggle/types';
+import { useApi } from '../../../../../../../shared/hooks/api/useApi';
+import { generateWGKeys } from '../../../../../../../shared/utils/generateWGKeys';
+import { useEnrollmentStore } from '../../../../../hooks/store/useEnrollmentStore';
 
 enum ConfigurationType {
   AUTO,
@@ -21,9 +30,17 @@ type FormFields = {
 };
 
 export const CreateDevice = () => {
+  const {
+    enrollment: { createDevice },
+  } = useApi();
+
+  const [autoKeys] = useState(generateWGKeys());
+
   const { LL } = useI18nContext();
 
   const cardLL = LL.pages.enrollment.steps.deviceSetup.cards.device;
+
+  const setEnrollment = useEnrollmentStore((state) => state.setState);
 
   const toggleOptions: ToggleOption<ConfigurationType>[] = useMemo(
     () => [
@@ -69,12 +86,43 @@ export const CreateDevice = () => {
     mode: 'all',
   });
 
+  const { isLoading, mutate } = useMutation({
+    mutationFn: createDevice,
+    onSuccess: (res) => {
+      setEnrollment({
+        deviceState: {
+          device: {
+            ...res.device,
+            privateKey: autoKeys.privateKey,
+          },
+          configs: res.configs,
+        },
+      });
+    },
+    onError: (res) => {
+      console.error(res);
+    },
+  });
+
   const {
     field: { value: configTypeValue },
   } = useController({ control, name: 'configType' });
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
-    console.table(values);
+    if (!isLoading) {
+      if (values.configType === ConfigurationType.MANUAL && values.public) {
+        mutate({
+          name: values.name,
+          pubkey: values.public,
+        });
+      }
+      if (values.configType === ConfigurationType.AUTO) {
+        mutate({
+          name: values.name,
+          pubkey: autoKeys.publicKey,
+        });
+      }
+    }
   };
 
   return (
@@ -94,6 +142,13 @@ export const CreateDevice = () => {
           label={cardLL.create.form.fields.public.label()}
           controller={{ control, name: 'public' }}
           disabled={configTypeValue === ConfigurationType.AUTO}
+        />
+        <Button
+          type="submit"
+          text={cardLL.create.submit()}
+          loading={isLoading}
+          size={ButtonSize.LARGE}
+          styleVariant={ButtonStyleVariant.PRIMARY}
         />
       </form>
     </>

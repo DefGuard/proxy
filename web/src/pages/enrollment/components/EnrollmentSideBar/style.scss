@@ -58,6 +58,7 @@
     box-sizing: border-box;
     padding: 62px 0 0 0;
     position: relative;
+    user-select: none;
 
     & > .step {
       position: relative;
@@ -66,11 +67,11 @@
       flex-flow: row;
       align-items: center;
       justify-content: flex-start;
-      cursor: pointer;
       color: var(--text-body-tertiary);
       box-sizing: border-box;
       padding: 15px 10px 10px 32px;
       min-height: 58px;
+      user-select: none;
 
       transition-property: color;
       transition-timing-function: ease-in-out;

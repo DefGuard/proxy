@@ -5,6 +5,7 @@ import type { BaseTranslation } from '../i18n-types';
 const en = {
   form: {
     errors: {
+      invalid: 'Field is invalid',
       email: 'Enter a valid E-mail',
       required: 'Field is required',
       minLength: 'Min length of {length: number}',
@@ -99,6 +100,7 @@ If you have any questions, please consult your assigned admin.All necessary info
             device: {
               title: 'Configure your device for VPN',
               create: {
+                submit: 'Create Configuration',
                 messageBox:
                   'Please be advised that you have to download the configuration now, since we do not store your private key. After this dialog is closed, you will not be able to get your fulll configuration file (with private keys, only blank template).',
                 form: {
