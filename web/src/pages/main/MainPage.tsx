@@ -21,7 +21,7 @@ export const MainPage = () => {
 
   const requestPending = useRef(false);
 
-  // check if navigated from link with token if not do noting
+  // check if navigated from link with token if not do nothing
   useEffect(() => {
     const token = searchParams.get('token');
     if (token && token.length && !requestPending.current) {
