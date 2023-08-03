@@ -61,7 +61,7 @@ export const EnrollmentPage = () => {
         const timeout = setTimeout(() => {
           reset();
           navigate(routes.timeout, { replace: true });
-        });
+        }, diff);
         return () => {
           clearTimeout(timeout);
         };

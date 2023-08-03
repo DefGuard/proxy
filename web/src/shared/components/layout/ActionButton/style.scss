@@ -1,0 +1,45 @@
+@use '../../../scss/helpers' as *;
+
+.action-button {
+  border: 0 solid transparent;
+  background-color: var(--surface-button);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-flow: row;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 1;
+
+  svg {
+    path {
+      fill: var(--surface-icon-primary);
+
+      transition-property: fill;
+      transition-duration: 250ms;
+      transition-timing-function: ease-in-out;
+    }
+  }
+
+  &.active {
+    background-color: var(--surface-main-primary);
+
+    svg {
+      path {
+        fill: var(--surface-icon-secondary);
+      }
+    }
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    background-color: var(--surface-button);
+    opacity: 0.5;
+  }
+}

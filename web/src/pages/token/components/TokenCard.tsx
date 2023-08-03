@@ -77,9 +77,15 @@ export const TokenCard = () => {
       navigate(routes.enrollment, { replace: true });
     },
     onError: (err) => {
-      setError('token', LL.form.errors.invalid(), {
-        shouldFocus: true,
-      });
+      setError(
+        'token',
+        {
+          message: LL.form.errors.invalid(),
+        },
+        {
+          shouldFocus: true,
+        },
+      );
       console.error(err);
     },
   });

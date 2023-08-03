@@ -113,7 +113,7 @@ export const Select = <T,>({
         throw Error('onChangeArray was not suplited when selected is an array');
       }
       if (selected.length) {
-        if (isComparableWithStrictEquality(value)) {
+        if (isComparableWithStrictEquality(value) && !identify) {
           const includes = selected.includes(value);
           if (includes) {
             onChangeArray(selected.filter((v) => v !== value));
@@ -121,15 +121,16 @@ export const Select = <T,>({
             onChangeArray([...selected, value]);
           }
         } else {
-          if (identify) {
-            const includes = selected
-              .map((v) => identify(v))
-              .find((v) => v === identify(value));
-            if (includes) {
-              onChangeArray(selected.filter((v) => identify(v) !== identify(value)));
-            } else {
-              onChangeArray([...selected, value]);
-            }
+          if (!identify) {
+            throw Error('Select component needs identify method for comparing Objects');
+          }
+          const includes = selected
+            .map((v) => identify(v))
+            .find((v) => v === identify(value));
+          if (includes) {
+            onChangeArray(selected.filter((v) => identify(v) !== identify(value)));
+          } else {
+            onChangeArray([...selected, value]);
           }
         }
       } else {
@@ -194,18 +195,20 @@ export const Select = <T,>({
     if (isUndefined(selected) && !Array.isArray(selected) && !multi) {
       return null;
     }
-    if (Array.isArray(selected) && selected.length && identify) {
-      let selectedOptions: SelectOption<T>[];
+    if (Array.isArray(selected) && selected.length) {
+      let selectedOptions: SelectOption<T>[] = [];
 
-      if (isComparableWithStrictEquality(selected[0])) {
+      if (isComparableWithStrictEquality(selected[0]) && !identify) {
         selectedOptions = selected.map(
           (v) => options.find((o) => o.value === v) as SelectOption<T>,
         );
       } else {
-        selectedOptions = selected.map(
-          (v) =>
-            options.find((o) => identify(o.value) === identify(v)) as SelectOption<T>,
-        );
+        if (identify) {
+          selectedOptions = selected.map(
+            (v) =>
+              options.find((o) => identify(o.value) === identify(v)) as SelectOption<T>,
+          );
+        }
       }
 
       return selectedOptions.map((option) => (
@@ -261,7 +264,7 @@ export const Select = <T,>({
       if (Array.isArray(selected)) {
         const isComparable = isComparableWithStrictEquality(o.value);
 
-        if (isComparable) {
+        if (isComparable && !identify) {
           return { ...o, selected: selected.includes(o.value) };
         } else {
           if (!identify) {

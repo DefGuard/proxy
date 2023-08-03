@@ -1,0 +1,60 @@
+@use '@scssutils' as *;
+
+#configure-device-card {
+  & > .qr-info {
+    @include typograhy(app-input);
+
+    color: var(--text-body-secondary);
+  }
+
+  #device-config-card {
+    box-sizing: border-box;
+    padding: 10px 0 0 0;
+    width: 100%;
+    height: auto;
+
+    border: 1px solid var(--border-primary) !important;
+
+    & > .top {
+      display: flex;
+      flex-flow: row wrap;
+      gap: 20px;
+      width: 100%;
+      min-height: 40px;
+      align-items: center;
+      justify-content: flex-start;
+      height: auto;
+      box-sizing: border-box;
+      padding: 0 10px;
+      border-bottom: 1px solid var(--border-primary);
+
+      & > label {
+        @include typograhy(wizard-h1);
+
+        white-space: nowrap;
+        user-select: none;
+        color: var(--text-body-tertiary);
+        display: block;
+      }
+
+      & > .actions {
+        display: flex;
+        flex-flow: row nowrap;
+        height: 40px;
+        width: auto;
+        column-gap: 10px;
+        margin-left: auto;
+      }
+    }
+
+    & > .qr {
+      box-sizing: border-box;
+      padding: 10px;
+      display: flex;
+      flex-flow: row nowrap;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+}

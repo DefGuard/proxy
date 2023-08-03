@@ -45,7 +45,12 @@ export const MainPage = () => {
           requestPending.current = false;
           navigate(routes.token, { replace: true });
         });
-    } // eslint-disable-next-line react-hooks/exhaustive-deps
+    }
+
+    if (!token && !requestPending.current) {
+      navigate(routes.token, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   return <PageContainer id="main-page"></PageContainer>;

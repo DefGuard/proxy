@@ -259,6 +259,43 @@ type RootTranslation = {
 									}
 								}
 							}
+							config: {
+								messageBox: {
+									/**
+									 * 
+								​ ​ ​ ​ ​ ​ ​ ​<​p​>​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​P​l​e​a​s​e​ ​b​e​ ​a​d​v​i​s​e​d​ ​t​h​a​t​ ​y​o​u​ ​h​a​v​e​ ​t​o​ ​d​o​w​n​l​o​a​d​ ​t​h​e​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​n​o​w​,​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​s​i​n​c​e​ ​<​s​t​r​o​n​g​>​w​e​ ​d​o​ ​n​o​t​<​/​s​t​r​o​n​g​>​ ​s​t​o​r​e​ ​y​o​u​r​ ​p​r​i​v​a​t​e​ ​k​e​y​.​ ​A​f​t​e​r​ ​t​h​i​s​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​d​i​a​l​o​g​ ​i​s​ ​c​l​o​s​e​d​,​ ​y​o​u​ ​<​s​t​r​o​n​g​>​w​i​l​l​ ​n​o​t​ ​b​e​ ​a​b​l​e​<​/​s​t​r​o​n​g​>​ ​t​o​ ​g​e​t​ ​y​o​u​r​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​f​u​l​l​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​(​w​i​t​h​ ​p​r​i​v​a​t​e​ ​k​e​y​s​,​ ​o​n​l​y​ ​b​l​a​n​k​ ​t​e​m​p​l​a​t​e​)​.​
+								​ ​ ​ ​ ​ ​ ​ ​ ​<​/​p​>​
+							
+									 */
+									auto: string
+									/**
+									 * 
+								​ ​ ​ ​ ​ ​ ​ ​ ​<​p​>​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​P​l​e​a​s​e​ ​b​e​ ​a​d​v​i​s​e​d​ ​t​h​a​t​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​p​r​o​v​i​d​e​d​ ​h​e​r​e​ ​<​s​t​r​o​n​g​>​ ​d​o​e​s​ ​n​o​t​ ​i​n​c​l​u​d​e​ ​p​r​i​v​a​t​e​ ​k​e​y​ ​a​n​d​ ​u​s​e​s​ ​p​u​b​l​i​c​ ​k​e​y​ ​t​o​ ​f​i​l​l​ ​i​t​'​s​ ​p​l​a​c​e​ ​<​/​s​t​r​o​n​g​>​ ​y​o​u​ ​w​i​l​l​ ​n​e​e​d​ ​t​o​ ​r​e​p​a​l​c​e​ ​i​t​ ​o​n​ ​y​o​u​r​ ​o​w​n​ ​f​o​r​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​t​o​ ​w​o​r​k​ ​p​r​o​p​e​r​l​y​.​
+								​ ​ ​ ​ ​ ​ ​ ​ ​<​/​p​>​
+							
+									 */
+									manual: string
+								}
+								/**
+								 * M​y​ ​D​e​v​i​c​e​ ​N​a​m​e
+								 */
+								deviceNameLabel: string
+								/**
+								 * U​s​e​ ​p​r​o​v​i​d​e​d​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​b​e​l​o​w​ ​b​y​ ​s​c​a​n​n​i​n​g​ ​Q​R​ ​C​o​d​e​ ​o​r​ ​i​m​p​o​r​t​i​n​g​ ​i​t​ ​a​s​ ​f​i​l​e​ ​o​n​ ​y​o​u​r​ ​d​e​v​i​c​e​s​ ​W​i​r​e​G​u​a​r​d​ ​a​p​p​.
+								 */
+								cardTitle: string
+								card: {
+									/**
+									 * C​o​n​f​i​g​ ​f​i​l​e​ ​f​o​r​ ​l​o​c​a​t​i​o​n
+									 */
+									selectLabel: string
+								}
+							}
 						}
 						guide: {
 							/**
@@ -744,6 +781,43 @@ export type TranslationFunctions = {
 											own: () => LocalizedString
 										}
 									}
+								}
+							}
+							config: {
+								messageBox: {
+									/**
+									 * 
+								       <p>
+								          Please be advised that you have to download the configuration now,
+								          since <strong>we do not</strong> store your private key. After this
+								          dialog is closed, you <strong>will not be able</strong> to get your
+								          full configuration file (with private keys, only blank template).
+								        </p>
+							
+									 */
+									auto: () => LocalizedString
+									/**
+									 * 
+								        <p>
+								          Please be advised that configuration provided here <strong> does not include private key and uses public key to fill it's place </strong> you will need to repalce it on your own for configuration to work properly.
+								        </p>
+							
+									 */
+									manual: () => LocalizedString
+								}
+								/**
+								 * My Device Name
+								 */
+								deviceNameLabel: () => LocalizedString
+								/**
+								 * Use provided configuration file below by scanning QR Code or importing it as file on your devices WireGuard app.
+								 */
+								cardTitle: () => LocalizedString
+								card: {
+									/**
+									 * Config file for location
+									 */
+									selectLabel: () => LocalizedString
 								}
 							}
 						}

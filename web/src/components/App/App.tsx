@@ -3,6 +3,7 @@ import 'dayjs/locale/en';
 
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
 import { useEffect, useState } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
@@ -19,6 +20,7 @@ import { routes } from '../../shared/routes';
 
 dayjs.extend(duration);
 dayjs.extend(utc);
+dayjs.extend(relativeTime);
 
 const router = createBrowserRouter([
   {
