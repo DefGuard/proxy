@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import utc from 'dayjs/plugin/utc';
 import { useEffect, useState } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { localStorageDetector } from 'typesafe-i18n/detectors';
 
 import TypesafeI18n from '../../i18n/i18n-react';
@@ -36,6 +36,10 @@ const router = createBrowserRouter([
   {
     path: routes.enrollment,
     element: <EnrollmentPage />,
+  },
+  {
+    path: '/*',
+    element: <Navigate to="/" replace />,
   },
 ]);
 
