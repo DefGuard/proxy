@@ -5,12 +5,10 @@ use crate::{
 };
 use anyhow::Context;
 use axum::{
-    extract::MatchedPath,
     handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
     Router,
 };
-use hyper::Body;
 use once_cell::sync::OnceCell;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -23,7 +21,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
-use tracing::{debug, info, info_span, Level, Span};
+use tracing::{debug, info, info_span, Level};
 
 pub const COOKIE_NAME: &str = "defguard_proxy";
 pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
