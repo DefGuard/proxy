@@ -1,15 +1,19 @@
+use crate::handlers::ApiResult;
 use crate::{
     config::Config,
     grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
     handlers::enrollment,
 };
 use anyhow::Context;
+use axum::routing::get;
 use axum::{
     handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
-    Router,
+    Json, Router,
 };
+use clap::crate_version;
 use once_cell::sync::OnceCell;
+use serde::Serialize;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
@@ -34,6 +38,16 @@ pub struct AppState {
 
 async fn handle_404() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not found")
+}
+
+#[derive(Serialize)]
+struct AppInfo {
+    version: String,
+}
+
+async fn app_info() -> ApiResult<Json<AppInfo>> {
+    let version = crate_version!().to_string();
+    Ok(Json(AppInfo { version }))
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
@@ -62,7 +76,9 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     let app = Router::new()
         .nest(
             "/api/v1",
-            Router::new().nest("/enrollment", enrollment::router()),
+            Router::new()
+                .nest("/enrollment", enrollment::router())
+                .route("/info", get(app_info)),
         )
         .nest_service("/svg", serve_images)
         .fallback_service(serve_web_dir)
