@@ -15,14 +15,13 @@ export const WelcomeStep = () => {
   const sessionEnd = useEnrollmentStore((state) => state.sessionEnd);
 
   const markdown = useMemo(() => {
-    let timeEnd: string;
+    let timeEnd = 'not set';
     if (sessionEnd) {
       const now = dayjs();
       const endDay = dayjs(sessionEnd);
       const diff = endDay.diff(now, 'minute');
       timeEnd = dayjs.duration(diff, 'minutes').locale(locale).humanize();
     }
-    timeEnd = 'not set';
 
     return LL.pages.enrollment.steps.welcome.explanation({ time: timeEnd });
   }, [LL.pages.enrollment.steps.welcome, sessionEnd, locale]);
