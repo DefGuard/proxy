@@ -75,7 +75,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                         "http_request",
                         method = ?request.method(),
                         path = ?request.uri(),
-                        some_other_field = tracing::field::Empty,
                     )
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
