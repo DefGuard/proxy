@@ -1,3 +1,4 @@
+use crate::error::ApiError;
 use crate::server::{COOKIE_NAME, SECRET_KEY};
 use crate::{
     grpc::enrollment::proto::{
@@ -11,7 +12,6 @@ use axum::{extract::State, routing::post, Json, Router};
 use tonic::metadata::MetadataValue;
 use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
 use tracing::{debug, error, info};
-use crate::error::ApiError;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -21,7 +21,7 @@ pub fn router() -> Router<AppState> {
 }
 
 // extract token from session cookies and add it to gRPC request auth header
-fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Result<(), ApiError>{
+fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Result<(), ApiError> {
     debug!("Adding auth header to gRPC request");
     let key = SECRET_KEY.get().unwrap();
     let private_cookies = cookies.private(key);
@@ -30,10 +30,10 @@ fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Resu
         Some(cookie) => {
             let token = MetadataValue::try_from(cookie.value())?;
             request.metadata_mut().insert("authorization", token);
-        },
+        }
         None => {
             error!("Enrollment session cookie not found");
-            return Err(ApiError::CookieNotFound)
+            return Err(ApiError::CookieNotFound);
         }
     }
 
@@ -93,7 +93,7 @@ pub async fn create_device(
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies,&mut request)?;
+    add_auth_header(cookies, &mut request)?;
     let response = client.create_device(request).await?;
 
     Ok(Json(response.into_inner()))
