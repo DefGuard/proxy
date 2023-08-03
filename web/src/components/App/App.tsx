@@ -4,6 +4,7 @@ import 'dayjs/locale/en';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import utc from 'dayjs/plugin/utc';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { useEffect, useState } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { localStorageDetector } from 'typesafe-i18n/detectors';
@@ -19,6 +20,7 @@ import { routes } from '../../shared/routes';
 
 dayjs.extend(duration);
 dayjs.extend(utc);
+dayjs.extend(relativeTime);
 
 const router = createBrowserRouter([
   {
