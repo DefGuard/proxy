@@ -181,8 +181,6 @@
     display: flex;
     flex-flow: column;
     & > .select-option {
-      @include regular-text;
-
       text-align: left;
       padding: 5px 12px;
       display: block;

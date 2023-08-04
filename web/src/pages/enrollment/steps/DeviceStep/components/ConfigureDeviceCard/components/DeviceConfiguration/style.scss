@@ -2,7 +2,7 @@
 
 #configure-device-card {
   & > .qr-info {
-    @include typograhy(app-input);
+    @include typography(app-input);
 
     color: var(--text-body-secondary);
   }
@@ -29,7 +29,7 @@
       border-bottom: 1px solid var(--border-primary);
 
       & > label {
-        @include typograhy(wizard-h1);
+        @include typography(wizard-h1);
 
         white-space: nowrap;
         user-select: none;

@@ -1,9 +1,14 @@
 @use '../../../scss/helpers' as *;
 
 .tag {
-  display: block;
+  display: flex;
+  flex-flow: row nowrap;
+  column-gap: 10px;
   box-sizing: border-box;
-  height: 30px;
+  padding: 0 5px 0 10px;
+  align-items: center;
+  justify-content: flex-start;
+  height: 32px;
   border-radius: 10px;
   position: relative;
   border: 1px solid var(--border-primary);
@@ -48,15 +53,11 @@
     }
   }
 
-  & > span {
-    @include regular-text;
+  & > span,
+  & > p {
+    display: block;
 
-    height: 100%;
-    display: flex;
-    flex-flow: row nowrap;
-    margin-left: 10px;
-    align-items: center;
-    align-content: center;
-    margin-right: 10px;
+    @include typography(app-input);
+    color: var(--text-body-primary);
   }
 }
