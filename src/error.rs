@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use tonic::{Code, metadata::errors::InvalidMetadataValue};
+use tonic::{metadata::errors::InvalidMetadataValue, Code};
 use tracing::error;
 
 #[derive(thiserror::Error, Debug)]
@@ -18,7 +18,7 @@ pub enum ApiError {
     #[error(transparent)]
     InvalidMetadata(#[from] InvalidMetadataValue),
     #[error("Bad request: {0}")]
-    BadRequest(String)
+    BadRequest(String),
 }
 
 impl IntoResponse for ApiError {

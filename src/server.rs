@@ -1,11 +1,19 @@
+use crate::handlers::ApiResult;
 use crate::{
     config::Config,
     grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
     handlers::enrollment,
 };
 use anyhow::Context;
-use axum::{extract::MatchedPath, http::Request, Router};
+use axum::routing::get;
+use axum::{
+    handler::HandlerWithoutStateExt,
+    http::{Request, StatusCode},
+    Json, Router,
+};
+use clap::crate_version;
 use once_cell::sync::OnceCell;
+use serde::Serialize;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
@@ -13,7 +21,10 @@ use std::{
 use tokio::sync::Mutex;
 use tonic::transport::Channel;
 use tower_cookies::{CookieManagerLayer, Key};
-use tower_http::trace::{self, TraceLayer};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::{self, TraceLayer},
+};
 use tracing::{debug, info, info_span, Level};
 
 pub const COOKIE_NAME: &str = "defguard_proxy";
@@ -23,6 +34,20 @@ pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
 pub struct AppState {
     pub config: Arc<Config>,
     pub client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+}
+
+async fn handle_404() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not found")
+}
+
+#[derive(Serialize)]
+struct AppInfo {
+    version: String,
+}
+
+async fn app_info() -> ApiResult<Json<AppInfo>> {
+    let version = crate_version!().to_string();
+    Ok(Json(AppInfo { version }))
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
@@ -43,31 +68,32 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         config: Arc::new(config),
         client: Arc::new(Mutex::new(client)),
     };
+    // serving static frontend files
+    let serve_web_dir =
+        ServeDir::new("web/dist").not_found_service(ServeFile::new("web/dist/index.html"));
+    let serve_images =
+        ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
     let app = Router::new()
         .nest(
             "/api/v1",
-            Router::new().nest("/enrollment", enrollment::router()),
+            Router::new()
+                .nest("/enrollment", enrollment::router())
+                .route("/info", get(app_info)),
         )
+        .nest_service("/svg", serve_images)
+        .fallback_service(serve_web_dir)
         .with_state(shared_state)
         .layer(CookieManagerLayer::new())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
-                    // Log the matched route's path (with placeholders not filled in).
-                    // Use request.uri() or OriginalUri if you want the real path.
-                    let matched_path = request
-                        .extensions()
-                        .get::<MatchedPath>()
-                        .map(MatchedPath::as_str);
-
                     info_span!(
                         "http_request",
                         method = ?request.method(),
-                        matched_path,
-                        some_other_field = tracing::field::Empty,
+                        path = ?request.uri(),
                     )
                 })
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
 
     // run server
