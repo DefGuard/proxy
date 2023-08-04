@@ -276,7 +276,17 @@ export const Select = <T,>({
           };
         }
       } else {
-        return { ...o, selected: compare(o.value, selected) };
+        if (isComparableWithStrictEquality(o.value)) {
+          return { ...o, selected: compare(o.value, selected) };
+        } else {
+          if (!identify) {
+            throw Error(
+              'Select needs to be suplied with identify method when values are objects',
+            );
+          }
+
+          return { ...o, selected: identify(o.value) === identify(selected) };
+        }
       }
     });
   }, [identifiers, identify, options, searchFilter, searchValue, searchable, selected]);
