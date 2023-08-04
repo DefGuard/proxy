@@ -21,14 +21,6 @@ export const WelcomeStep = () => {
     (state) => [state.nextSubject, state.nextStep],
     shallow,
   );
-  const markdown = useMemo(() => {
-    let timeEnd = 'not set';
-    if (sessionEnd) {
-      const now = dayjs();
-      const endDay = dayjs(sessionEnd);
-      const diff = endDay.diff(now, 'minute');
-      timeEnd = dayjs.duration(diff, 'minutes').locale(locale).humanize();
-    }
 
   const updateTimeLeft = useCallback(
     (endDate: string) => {
