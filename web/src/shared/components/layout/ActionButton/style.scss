@@ -27,12 +27,34 @@
     }
   }
 
+  &.variant-qrcode {
+    & > svg {
+      & > path {
+        &:nth-of-type(1) {
+          fill: none;
+          stroke: var(--surface-icon-primary);
+        }
+      }
+    }
+  }
+
   &.active {
     background-color: var(--surface-main-primary);
 
     svg {
       path {
         fill: var(--surface-icon-secondary);
+      }
+    }
+
+    &.variant-qrcode {
+      & > svg {
+        & > path {
+          &:nth-of-type(1) {
+            fill: none;
+            stroke: var(--surface-icon-secondary);
+          }
+        }
       }
     }
   }

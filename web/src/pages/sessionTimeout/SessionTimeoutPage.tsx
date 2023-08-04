@@ -1,5 +1,6 @@
 import './style.scss';
 
+import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from 'use-breakpoint';
 
 import { LogoContainer } from '../../components/LogoContainer/LogoContainer';
@@ -17,10 +18,13 @@ import {
 import { Card } from '../../shared/components/layout/Card/Card';
 import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
 import { deviceBreakpoints } from '../../shared/constants';
+import { routes } from '../../shared/routes';
 
 export const SessionTimeoutPage = () => {
   const { breakpoint } = useBreakpoint(deviceBreakpoints);
   const { LL } = useI18nContext();
+  const navigate = useNavigate();
+
   return (
     <PageContainer id="session-timeout">
       <LogoContainer />
@@ -39,6 +43,7 @@ export const SessionTimeoutPage = () => {
             />
           }
           text={LL.pages.sessionTimeout.controls.back()}
+          onClick={() => navigate(routes.token, { replace: true })}
         />
         <Button
           size={ButtonSize.LARGE}

@@ -2,6 +2,8 @@ import classNames from 'classnames';
 import { HTMLMotionProps, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 
+import { useTheme } from '../../../hooks/theme/useTheme';
+
 type Props = HTMLMotionProps<'button'> & {
   label?: string;
   selected?: boolean;
@@ -16,7 +18,10 @@ export const SelectOptionRow = ({
   createOption,
   ...rest
 }: Props) => {
+  const { colors } = useTheme();
+
   const [hovered, setHovered] = useState(false);
+
   const cn = useMemo(
     () =>
       classNames('select-option', className, {
@@ -29,22 +34,27 @@ export const SelectOptionRow = ({
 
   const getAnimate = useMemo(() => {
     const res = {
-      backgroundColor: ColorsRGB.White,
-      color: ColorsRGB.GrayDark,
+      color: colors.textBodySecondary,
     };
-    if (hovered) {
-      res.backgroundColor = ColorsRGB.BgLight;
-    }
+
     if (createOption) {
-      res.color = ColorsRGB.Primary;
+      res.color = colors.surfaceMainPrimary;
       return res;
     }
-    if (selected) {
-      res.backgroundColor = ColorsRGB.BgLight;
-      res.color = ColorsRGB.TextMain;
+
+    if (hovered || selected) {
+      res.color = colors.textBodyPrimary;
     }
+
     return res;
-  }, [createOption, hovered, selected]);
+  }, [
+    colors.surfaceMainPrimary,
+    colors.textBodyPrimary,
+    colors.textBodySecondary,
+    createOption,
+    hovered,
+    selected,
+  ]);
 
   return (
     <motion.button

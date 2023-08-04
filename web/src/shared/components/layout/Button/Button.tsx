@@ -2,7 +2,7 @@ import './style.scss';
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash-es';
-import React, { ButtonHTMLAttributes, useMemo, useState } from 'react';
+import React, { ButtonHTMLAttributes, useEffect, useMemo, useState } from 'react';
 
 import { LoaderSpinner } from '../LoaderSpinner/LoaderSpinner';
 import { ButtonSize, ButtonStyleVariant } from './types';
@@ -76,6 +76,11 @@ export const Button = ({
     }
     return res;
   }, [icon, loading, rightIcon, size, text]);
+
+  // reset hover state when disabled is changed bcs it can get stuck at hovered until mouse dont hover the element again
+  useEffect(() => {
+    setHovered(false);
+  }, [disabled, loading]);
 
   return (
     <button

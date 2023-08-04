@@ -6,7 +6,11 @@ import { useMemo } from 'react';
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 
-export const TimeLeft = () => {
+type Props = {
+  disableLabel?: boolean;
+};
+
+export const TimeLeft = ({ disableLabel }: Props) => {
   const { LL, locale } = useI18nContext();
   const sessionEnd = useEnrollmentStore((state) => state.sessionEnd);
 
@@ -19,6 +23,10 @@ export const TimeLeft = () => {
     }
     return 'not set';
   }, [locale, sessionEnd]);
+
+  if (disableLabel) {
+    return <span className="time-left solo">{dateDisplay}</span>;
+  }
 
   return (
     <div className="time-left">

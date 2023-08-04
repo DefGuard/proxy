@@ -114,6 +114,7 @@ export const TokenCard = () => {
         />
         <div className="controls">
           <Button
+            type="submit"
             loading={isLoading}
             size={ButtonSize.LARGE}
             styleVariant={ButtonStyleVariant.PRIMARY}

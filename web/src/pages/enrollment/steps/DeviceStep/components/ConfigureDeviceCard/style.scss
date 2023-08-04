@@ -11,5 +11,9 @@
     .toggle {
       margin-bottom: 25px;
     }
+
+    & > .btn {
+      width: 100%;
+    }
   }
 }

@@ -1,3 +1,5 @@
+import './style.scss';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
@@ -76,18 +78,18 @@ export const DataVerificationStep = () => {
       <form onSubmit={handleSubmit(handleValidSubmit)}>
         <div className="row">
           <div className="item">
-            <label>{pageLL.form.fields.firstName.label()}</label>
-            <p>PLACEHOLDER</p>
+            <label>{pageLL.form.fields.firstName.label()}:</label>
+            <p>{userInfo?.first_name}</p>
           </div>
           <div className="item">
-            <label>{pageLL.form.fields.lastName.label()}</label>
-            <p>PLACEHOLDER</p>
+            <label>{pageLL.form.fields.lastName.label()}:</label>
+            <p>{userInfo?.last_name}</p>
           </div>
         </div>
         <div className="row">
           <div className="item">
-            <label>{pageLL.form.fields.email.label()}</label>
-            <p>PLACEHOLDER</p>
+            <label>{pageLL.form.fields.email.label()}:</label>
+            <p>{userInfo?.email}</p>
           </div>
           <FormInput
             label={pageLL.form.fields.phone.label()}
