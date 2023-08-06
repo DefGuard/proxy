@@ -17,9 +17,11 @@ export const FinishStep = () => {
     <Card id="enrollment-finish-card">
       <EnrollmentStepIndicator />
       <h3>{LL.pages.enrollment.steps.finish.title()}</h3>
-      {endContent && endContent.length > 0 && (
-        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{endContent}</ReactMarkdown>
-      )}
+      <div className="content">
+        {endContent && endContent.length > 0 && (
+          <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{endContent}</ReactMarkdown>
+        )}
+      </div>
     </Card>
   );
 };

@@ -30,12 +30,14 @@ export const MainPage = () => {
         token,
       })
         .then((res) => {
-          const sessionEndDate = dayjs.unix(res.deadline_timestamp).toDate();
+          const sessionEnd = dayjs.unix(res.deadline_timestamp).utc().local().format();
+          const sessionStart = dayjs().local().format();
           initEnrollment({
             step: 0,
             userInfo: res.user,
             adminInfo: res.admin,
-            sessionEnd: sessionEndDate.toISOString(),
+            sessionStart,
+            sessionEnd,
             vpnOptional: res.vpn_setup_optional,
             endContent: res.final_page_content,
           });

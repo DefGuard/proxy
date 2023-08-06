@@ -44,11 +44,16 @@ export const ActionButton = ({
 
   const cn = useMemo(
     () =>
-      classNames('action-button', className, {
-        disabled,
-        variant: `variant-${variant.valueOf()}`,
-      }),
-    [className, disabled, variant],
+      classNames(
+        'action-button',
+        className,
+        {
+          disabled,
+          active,
+        },
+        `variant-${variant.valueOf()}`,
+      ),
+    [className, disabled, variant, active],
   );
 
   const [hovered, setHovered] = useState(false);

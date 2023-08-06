@@ -101,11 +101,13 @@ export const PasswordStep = () => {
           floatingErrors={{
             title: LL.form.errors.password.floatingTitle(),
           }}
+          autoComplete="new-password"
         />
         <FormInput
           label={pageLL.form.fields.repeat.label()}
           controller={{ control, name: 'repeat' }}
           type="password"
+          autoComplete="new-password"
         />
         <input className="hidden" type="submit" ref={submitRef} />
       </form>

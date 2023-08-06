@@ -1,9 +1,13 @@
-import '../../shared/scss/index.scss';
 import 'dayjs/locale/en';
+import '../../shared/scss/index.scss';
 
 import dayjs from 'dayjs';
+import customParseData from 'dayjs/plugin/customParseFormat';
 import duration from 'dayjs/plugin/duration';
+import localeData from 'dayjs/plugin/localeData';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import timezone from 'dayjs/plugin/timezone';
+import updateLocale from 'dayjs/plugin/updateLocale';
 import utc from 'dayjs/plugin/utc';
 import { useEffect, useState } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
@@ -20,7 +24,11 @@ import { routes } from '../../shared/routes';
 
 dayjs.extend(duration);
 dayjs.extend(utc);
+dayjs.extend(customParseData);
 dayjs.extend(relativeTime);
+dayjs.extend(localeData);
+dayjs.extend(updateLocale);
+dayjs.extend(timezone);
 
 const router = createBrowserRouter([
   {

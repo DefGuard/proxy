@@ -13,6 +13,28 @@ export type Translation = RootTranslation
 export type Translations = RootTranslation
 
 type RootTranslation = {
+	time: {
+		seconds: {
+			/**
+			 * s​e​c​o​n​d
+			 */
+			singular: string
+			/**
+			 * s​e​c​o​n​d​s
+			 */
+			prular: string
+		}
+		minutes: {
+			/**
+			 * m​i​n​u​t​e
+			 */
+			singular: string
+			/**
+			 * m​i​n​u​t​e​s
+			 */
+			prular: string
+		}
+	}
 	form: {
 		errors: {
 			/**
@@ -144,7 +166,7 @@ type RootTranslation = {
 				​2​.​ ​C​r​e​a​t​e​ ​y​o​u​r​ ​p​a​s​s​w​o​r​d​
 				​3​.​ ​C​o​n​f​i​g​u​r​a​t​e​ ​V​P​N​ ​d​e​v​i​c​e​
 				​
-				​Y​o​u​ ​h​a​v​e​ ​a​ ​t​i​m​e​ ​l​i​m​i​t​ ​o​f​ ​*​*​{​t​i​m​e​}​*​*​ ​t​o​ ​c​o​m​p​l​e​t​e​ ​t​h​i​s​ ​p​r​o​c​e​s​s​.​
+				​Y​o​u​ ​h​a​v​e​ ​a​ ​t​i​m​e​ ​l​i​m​i​t​ ​o​f​ ​*​*​{​t​i​m​e​}​ ​m​i​n​u​t​e​s​*​*​ ​t​o​ ​c​o​m​p​l​e​t​e​ ​t​h​i​s​ ​p​r​o​c​e​s​s​.​
 				​I​f​ ​y​o​u​ ​h​a​v​e​ ​a​n​y​ ​q​u​e​s​t​i​o​n​s​,​ ​p​l​e​a​s​e​ ​c​o​n​s​u​l​t​ ​y​o​u​r​ ​a​s​s​i​g​n​e​d​ ​a​d​m​i​n​.​A​l​l​ ​n​e​c​e​s​s​a​r​y​ ​i​n​f​o​r​m​a​t​i​o​n​ ​c​a​n​ ​a​l​s​o​ ​b​e​ ​f​o​u​n​d​ ​a​t​ ​t​h​e​ ​b​o​t​t​o​m​ ​o​f​ ​t​h​e​ ​s​i​d​e​b​a​r​.
 					 * @param {string} time
 					 */
@@ -541,6 +563,28 @@ type RootTranslation = {
 }
 
 export type TranslationFunctions = {
+	time: {
+		seconds: {
+			/**
+			 * second
+			 */
+			singular: () => LocalizedString
+			/**
+			 * seconds
+			 */
+			prular: () => LocalizedString
+		}
+		minutes: {
+			/**
+			 * minute
+			 */
+			singular: () => LocalizedString
+			/**
+			 * minutes
+			 */
+			prular: () => LocalizedString
+		}
+	}
 	form: {
 		errors: {
 			/**
@@ -669,7 +713,7 @@ export type TranslationFunctions = {
 				2. Create your password
 				3. Configurate VPN device
 			
-				You have a time limit of **{time}** to complete this process.
+				You have a time limit of **{time} minutes** to complete this process.
 				If you have any questions, please consult your assigned admin.All necessary information can also be found at the bottom of the sidebar.
 					 */
 					explanation: (arg: { time: string }) => LocalizedString

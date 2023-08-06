@@ -19,7 +19,12 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "plugins": [
+      {
+        "name": "typescript-eslint-language-service"
+      }
+    ]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "build"],

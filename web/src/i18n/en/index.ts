@@ -3,6 +3,16 @@
 import type { BaseTranslation } from '../i18n-types';
 
 const en = {
+  time: {
+    seconds: {
+      singular: 'second',
+      prular: 'seconds',
+    },
+    minutes: {
+      singular: 'minute',
+      prular: 'minutes',
+    },
+  },
   form: {
     errors: {
       invalid: 'Field is invalid',
@@ -55,7 +65,7 @@ In order to gain access to the company infrastructure, we require you to complet
 2. Create your password
 3. Configurate VPN device
 
-You have a time limit of **{time: string}** to complete this process.
+You have a time limit of **{time: string} minutes** to complete this process.
 If you have any questions, please consult your assigned admin.All necessary information can also be found at the bottom of the sidebar.`,
         },
         dataVerification: {

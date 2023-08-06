@@ -1,9 +1,10 @@
 import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { isUndefined } from 'lodash-es';
 import { useEffect, useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { z, ZodIssueCode } from 'zod';
 import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
@@ -13,6 +14,8 @@ import { MessageBox } from '../../../../shared/components/layout/MessageBox/Mess
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
 import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicator/EnrollmentStepIndicator';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
+
+const phonePattern = /^\+?[0-9]+( [0-9]+)?$/;
 
 type FormFields = {
   phone?: string;
@@ -35,10 +38,22 @@ export const DataVerificationStep = () => {
 
   const schema = useMemo(
     () =>
-      z.object({
-        phone: z.string().trim().optional(),
-      }),
-    [],
+      z
+        .object({
+          phone: z.string().trim().optional(),
+        })
+        .superRefine((obj, ctx) => {
+          if (!isUndefined(obj?.phone) && obj.phone.length) {
+            if (!phonePattern.test(obj.phone)) {
+              ctx.addIssue({
+                code: ZodIssueCode.custom,
+                message: LL.form.errors.invalid(),
+                path: ['phone'],
+              });
+            }
+          }
+        }),
+    [LL.form.errors],
   );
 
   const { control, handleSubmit } = useForm<FormFields>({

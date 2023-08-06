@@ -1,5 +1,6 @@
 import './style.scss';
 
+import parse from 'html-react-parser';
 import { isUndefined } from 'lodash-es';
 import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'react-qr-code';
@@ -42,6 +43,18 @@ export const DeviceConfiguration = () => {
     [deviceState?.configs],
   );
 
+  const preparedConfig = useMemo(() => {
+    if (deviceState?.device?.privateKey) {
+      return selected?.config.replace('YOUR_PRIVATE_KEY', deviceState.device.privateKey);
+    }
+
+    if (deviceState?.device?.pubkey) {
+      return selected?.config.replace('YOUR_PRIVATE_KEY', deviceState.device.pubkey);
+    }
+
+    return selected?.config;
+  }, [selected, deviceState?.device?.privateKey, deviceState?.device?.pubkey]);
+
   useEffect(() => {
     if (deviceState?.configs && deviceState.configs.length) {
       setSelected(deviceState.configs[0]);
@@ -51,7 +64,7 @@ export const DeviceConfiguration = () => {
   return (
     <>
       <MessageBox
-        message={autoMode ? cardLL.messageBox.auto() : cardLL.messageBox.manual()}
+        message={parse(autoMode ? cardLL.messageBox.auto() : cardLL.messageBox.manual())}
       />
       <Input
         value={deviceState?.device?.name}
@@ -63,7 +76,11 @@ export const DeviceConfiguration = () => {
           return;
         }}
       />
-      <p className="qr-info">{cardLL.cardTitle()}</p>
+
+      <div className="qr-info">
+        <p>{cardLL.cardTitle()}</p>
+      </div>
+
       <Card id="device-config-card">
         <div className="top">
           <SvgIconHamburger />
@@ -81,9 +98,15 @@ export const DeviceConfiguration = () => {
               disabled={isUndefined(selected) || !window.isSecureContext}
               onClick={() => {
                 if (selected && window.isSecureContext) {
-                  navigator.clipboard
-                    .writeText(selected.config)
-                    .catch((e) => console.error(e));
+                  if (deviceState?.device?.privateKey && preparedConfig) {
+                    navigator.clipboard
+                      .writeText(preparedConfig)
+                      .catch((e) => console.error(e));
+                  } else {
+                    navigator.clipboard
+                      .writeText(selected.config)
+                      .catch((e) => console.error(e));
+                  }
                 }
               }}
             />
@@ -91,10 +114,10 @@ export const DeviceConfiguration = () => {
               disabled={isUndefined(selected)}
               variant={ActionButtonVariant.DOWNLOAD}
               onClick={() => {
-                if (selected) {
+                if (preparedConfig && selected) {
                   downloadWGConfig(
-                    selected.config,
-                    `${selected.network_name.toLowerCase().replace(' ', '-')}`,
+                    deviceState?.device?.privateKey ? preparedConfig : selected.config,
+                    `${selected.network_name.toLowerCase().replace(/\s+/g, '-')}`,
                   );
                 }
               }}
@@ -102,10 +125,10 @@ export const DeviceConfiguration = () => {
           </div>
         </div>
         <div className="qr">
-          {selected && (
+          {!isUndefined(preparedConfig) && (
             <QRCode
               size={275}
-              value={selected.config}
+              value={preparedConfig}
               bgColor={colors.surfaceDefaultModal}
               fgColor={colors.textBodyPrimary}
             />

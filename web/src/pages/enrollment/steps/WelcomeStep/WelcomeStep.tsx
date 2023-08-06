@@ -1,10 +1,9 @@
 import './style.scss';
 
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitaze from 'rehype-sanitize';
-import { timer } from 'rxjs';
 import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
@@ -13,30 +12,28 @@ import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicato
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 
 export const WelcomeStep = () => {
-  const { LL, locale } = useI18nContext();
-  const [timeLeft, setTimeLeft] = useState<string | undefined>();
-  const sessionEnd = useEnrollmentStore((state) => state.sessionEnd);
+  const { LL } = useI18nContext();
+  const [sessionEnd, sessionStart] = useEnrollmentStore((state) => [
+    state.sessionEnd,
+    state.sessionStart,
+  ]);
+  const userInfo = useEnrollmentStore((state) => state.userInfo);
 
   const [nextSubject, next] = useEnrollmentStore(
     (state) => [state.nextSubject, state.nextStep],
     shallow,
   );
 
-  const updateTimeLeft = useCallback(
-    (endDate: string) => {
-      const endDay = dayjs(endDate);
-      const now = dayjs();
-      const diff = endDay.diff(now, 'minute');
-      setTimeLeft(dayjs.duration(diff, 'minutes').locale(locale).humanize());
-    },
-    [locale],
-  );
-
   const markdown = useMemo(() => {
+    const startDay = dayjs(sessionStart);
+    const endDay = dayjs(sessionEnd);
+    const diffMils = endDay.diff(startDay);
+    const mins = Math.ceil(diffMils / (1000 * 60));
+
     return LL.pages.enrollment.steps.welcome.explanation({
-      time: timeLeft ?? 'not set',
+      time: mins.toString(),
     });
-  }, [LL.pages.enrollment.steps.welcome, timeLeft]);
+  }, [LL.pages.enrollment.steps.welcome, sessionEnd, sessionStart]);
 
   useEffect(() => {
     const sub = nextSubject.subscribe(() => {
@@ -47,20 +44,13 @@ export const WelcomeStep = () => {
     };
   }, [next, nextSubject]);
 
-  useEffect(() => {
-    if (sessionEnd) {
-      const sub = timer(0, 1000 * 60).subscribe(() => updateTimeLeft(sessionEnd));
-      return () => {
-        sub.unsubscribe();
-      };
-    }
-  }, [sessionEnd, updateTimeLeft, locale]);
-
   return (
     <>
       <Card id="enrollment-welcome-card">
         <EnrollmentStepIndicator />
-        <h3>{LL.pages.enrollment.steps.welcome.title({ name: 'placeholder' })}</h3>
+        <h3>
+          {LL.pages.enrollment.steps.welcome.title({ name: `${userInfo?.first_name}` })}
+        </h3>
         <div className="explenation">
           <ReactMarkdown rehypePlugins={[rehypeSanitaze]}>{markdown}</ReactMarkdown>
         </div>

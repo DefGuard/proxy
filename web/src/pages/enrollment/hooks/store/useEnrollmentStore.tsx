@@ -1,7 +1,7 @@
 import { pick } from 'lodash-es';
 import { Subject } from 'rxjs';
-import { create } from 'zustand';
 import { createJSONStorage, devtools, persist } from 'zustand/middleware';
+import { createWithEqualityFn } from 'zustand/traditional';
 
 import {
   AdminInfo,
@@ -22,13 +22,14 @@ const persistKeys: Array<keyof StoreValues> = [
   'step',
   'userInfo',
   'sessionEnd',
+  'sessionStart',
   'adminInfo',
   'deviceState',
   'endContent',
   'vpnOptional',
 ];
 
-export const useEnrollmentStore = create<Store>()(
+export const useEnrollmentStore = createWithEqualityFn<Store>()(
   devtools(
     persist(
       (set, get) => ({
@@ -60,6 +61,7 @@ export const useEnrollmentStore = create<Store>()(
       },
     ),
   ),
+  Object.is,
 );
 
 type Store = StoreValues & StoreMethods;
@@ -69,6 +71,7 @@ type StoreValues = {
   stepsMax: number;
   nextSubject: Subject<void>;
   // Date
+  sessionStart?: string;
   sessionEnd?: string;
   userInfo?: UserInfo;
   adminInfo?: AdminInfo;
