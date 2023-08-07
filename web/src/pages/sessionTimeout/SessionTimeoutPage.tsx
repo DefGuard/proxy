@@ -1,5 +1,6 @@
 import './style.scss';
 
+import { isUndefined } from 'lodash-es';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from 'use-breakpoint';
 
@@ -19,8 +20,10 @@ import { Card } from '../../shared/components/layout/Card/Card';
 import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
 import { deviceBreakpoints } from '../../shared/constants';
 import { routes } from '../../shared/routes';
+import { useEnrollmentStore } from '../enrollment/hooks/store/useEnrollmentStore';
 
 export const SessionTimeoutPage = () => {
+  const adminInfo = useEnrollmentStore((state) => state.adminInfo);
   const { breakpoint } = useBreakpoint(deviceBreakpoints);
   const { LL } = useI18nContext();
   const navigate = useNavigate();
@@ -49,6 +52,12 @@ export const SessionTimeoutPage = () => {
           size={ButtonSize.LARGE}
           styleVariant={ButtonStyleVariant.PRIMARY}
           text={LL.pages.sessionTimeout.controls.contact()}
+          disabled={isUndefined(adminInfo?.email)}
+          onClick={() => {
+            if (adminInfo?.email) {
+              window.location.href = `mailto:${adminInfo.email}`;
+            }
+          }}
         />
       </div>
     </PageContainer>

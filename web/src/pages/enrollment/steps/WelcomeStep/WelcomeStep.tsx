@@ -8,6 +8,7 @@ import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { Card } from '../../../../shared/components/layout/Card/Card';
+import { AdminInfo } from '../../components/AdminInfo/AdminInfo';
 import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicator/EnrollmentStepIndicator';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 
@@ -54,6 +55,7 @@ export const WelcomeStep = () => {
         <div className="explenation">
           <ReactMarkdown rehypePlugins={[rehypeSanitaze]}>{markdown}</ReactMarkdown>
         </div>
+        <AdminInfo />
       </Card>
     </>
   );

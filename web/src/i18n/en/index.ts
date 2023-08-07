@@ -37,6 +37,11 @@ const en = {
       submit: 'Submit',
     },
   },
+  components: {
+    adminInfo: {
+      title: 'Your admin',
+    },
+  },
   pages: {
     enrollment: {
       sideBar: {
@@ -66,7 +71,7 @@ In order to gain access to the company infrastructure, we require you to complet
 3. Configurate VPN device
 
 You have a time limit of **{time: string} minutes** to complete this process.
-If you have any questions, please consult your assigned admin.All necessary information can also be found at the bottom of the sidebar.`,
+If you have any questions, please consult your assigned admin.All necessary information can be found at the bottom of the sidebar.`,
         },
         dataVerification: {
           title: 'Data verification',
@@ -258,7 +263,7 @@ If you want to disengage your VPN connection, simply press "deactivate".
           'Sorry, you have exceeded the time limit to complete the process. Please try again. If you need assistance, please watch our guide or contact your administrator.',
       },
       controls: {
-        back: 'Return to services menu',
+        back: 'Enter new token',
         contact: 'Contact admin',
       },
     },

@@ -59,7 +59,6 @@ export const EnrollmentPage = () => {
       const diff = endDay.diff(dayjs(), 'millisecond');
       if (diff > 0) {
         const timeout = setTimeout(() => {
-          reset();
           navigate(routes.timeout, { replace: true });
         }, diff);
         return () => {

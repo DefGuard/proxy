@@ -8,10 +8,13 @@
     max-width: 650px;
 
     & > h3 {
+      user-select: none;
       margin-bottom: 30px;
     }
 
     & > .explenation {
+      user-select: none;
+      margin-bottom: 30px;
       p,
       ul,
       ol,
@@ -23,6 +26,18 @@
 
       strong {
         color: var(--text-body-primary);
+      }
+    }
+
+    & > .admin-info {
+      user-select: text;
+      & > p {
+        &:not(.title) {
+          font-weight: 700;
+        }
+      }
+      & > .title {
+        user-select: none;
       }
     }
   }
