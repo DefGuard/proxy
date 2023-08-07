@@ -1,0 +1,191 @@
+@use '../../../../shared/scss/helpers' as *;
+
+.btn {
+  opacity: 1;
+  box-sizing: border-box;
+  display: grid;
+  align-items: center;
+  align-content: center;
+  overflow: hidden;
+  border: 0 solid transparent;
+  background-color: var(--surface-button);
+  cursor: pointer;
+  transition-duration: 250ms;
+  transition-property: background-color, border, opacity, box-shadow;
+  transition-timing-function: ease-out;
+  align-items: center;
+  justify-items: center;
+  box-shadow: var(--inactive-box-shadow);
+  border-radius: 10px;
+  justify-content: center;
+  user-select: none;
+
+  .text {
+    max-width: 100%;
+
+    @include text-overflow-dots;
+    text-align: center;
+    transition-duration: 250ms;
+    transition-property: color;
+    transition-timing-function: ease-out;
+    color: inherit;
+  }
+
+  &.icon,
+  &.loading {
+    .text {
+      text-align: left;
+    }
+  }
+
+  // sizes
+  &.large {
+    height: 60px;
+    min-height: 36px;
+    column-gap: 10px;
+    grid-template-columns: auto;
+    grid-template-rows: 36px;
+    padding: 0 20px;
+
+    .text {
+      @include typography(app-button-l);
+    }
+  }
+
+  &.small {
+    height: 40px;
+    min-height: 18px;
+    padding: 0 10px;
+    grid-template-columns: auto;
+    column-gap: 13px;
+    grid-template-rows: 18px;
+
+    .text {
+      @include typography(app-button-s);
+    }
+  }
+
+  // variants
+  &.variant-icon {
+    height: auto;
+    width: auto;
+    display: flex;
+    flex-flow: row;
+    align-self: center;
+    justify-content: center;
+  }
+
+  &.variant-primary {
+    background-color: var(--surface-main-primary);
+    color: var(--text-button-secondary);
+    &.hovered {
+      background-color: var(--surface-main-secondary);
+      box-shadow: var(--drop-shadow-blue);
+    }
+
+    .loader-spinner {
+      path {
+        stroke: var(--text-button-secondary);
+      }
+    }
+  }
+
+  &.variant-link {
+    background-color: var(--surface-default-modal);
+    border: 1px solid var(--border-primary);
+    color: var(--text-button-primary);
+
+    &.hovered {
+      color: var(--text-button-tertiary);
+      border-color: var(--border-secondary);
+      box-shadow: var(--button-shadow-light);
+    }
+
+    .loader-spinner {
+      path {
+        stroke: var(--text-button-primary);
+      }
+    }
+  }
+
+  &.variant-standard {
+    background-color: var(--surface-default-modal);
+    border: 1px solid var(--border-primary);
+    color: var(--text-button-primary);
+
+    &.hovered {
+      box-shadow: var(--button-shadow-light);
+      border-color: var(--border-secondary);
+    }
+    .loader-spinner {
+      path {
+        stroke: var(--text-button-primary);
+      }
+    }
+  }
+
+  &.variant-confirm {
+    background-color: var(--surface-default-modal);
+    border: 1px solid var(--border-primary);
+    color: var(--text-alert);
+
+    &.hovered {
+      box-shadow: var(--button-shadow-light);
+      border-color: var(--border-secondary);
+    }
+
+    .loader-spinner {
+      path {
+        stroke: var(--text-alert);
+      }
+    }
+  }
+
+  &.variant-delete {
+    background-color: var(--surface-alert-primary);
+    color: var(--text-button-secondary);
+    &.hovered {
+      background-color: var(--surface-alert-secondary);
+      box-shadow: var(--button-shadow-red);
+    }
+
+    &.small {
+      &.hovered {
+        box-shadow: var(--button-shadow-red);
+      }
+    }
+
+    .loader-spinner {
+      path {
+        stroke: var(--text-button-secondary);
+      }
+    }
+  }
+
+  &.variant-save {
+    background-color: var(--surface-positive-primary);
+    color: var(--text-button-secondary);
+    &.hovered {
+      background-color: var(--surface-positive-secondary);
+      box-shadow: var(--button-shadow-green);
+    }
+
+    .loader-spinner {
+      path {
+        stroke: var(--text-button-secondary);
+      }
+    }
+  }
+
+  // inactive states
+
+  &:disabled,
+  &.disabled,
+  &.loading {
+    cursor: not-allowed;
+  }
+
+  &.disabled {
+    opacity: 0.7;
+  }
+}

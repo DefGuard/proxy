@@ -1,0 +1,63 @@
+@use '../../../scss/helpers' as *;
+
+.tag {
+  display: flex;
+  flex-flow: row nowrap;
+  column-gap: 10px;
+  box-sizing: border-box;
+  padding: 0 5px 0 10px;
+  align-items: center;
+  justify-content: flex-start;
+  height: 32px;
+  border-radius: 10px;
+  position: relative;
+  border: 1px solid var(--border-primary);
+  background-color: var(--surface-default-modal);
+
+  &.disposable {
+    padding-right: 20px;
+    min-width: 80px;
+  }
+
+  & > .dispose {
+    height: inherit;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    align-content: center;
+    background-color: transparent;
+    cursor: pointer;
+    border: 0 solid transparent;
+    border-radius: 0;
+    padding: 0;
+    width: 18px;
+    height: 18px;
+
+    & > svg {
+      height: 100%;
+      width: 100%;
+      & > path {
+        fill: var(--border-separator);
+        transition-duration: 250ms;
+        transition-property: fill;
+        transition-timing-function: ease-in-out;
+      }
+    }
+
+    &:hover {
+      & > svg {
+        & > path {
+          fill: var(--surface-alert-primary);
+        }
+      }
+    }
+  }
+
+  & > span,
+  & > p {
+    display: block;
+
+    @include typography(app-input);
+    color: var(--text-body-primary);
+  }
+}

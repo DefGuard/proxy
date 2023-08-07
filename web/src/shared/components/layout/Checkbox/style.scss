@@ -1,0 +1,40 @@
+@use '../../../scss/helpers' as *;
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  width: 18px;
+  cursor: pointer;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  background-color: var(--surface-button);
+  opacity: 1;
+
+  & > .box {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background-color: var(--surface-button);
+    display: none;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  &.checked {
+    border-color: var(--surface-main-primary);
+    background-color: var(--surface-main-primary);
+
+    & > .box {
+      display: block;
+    }
+  }
+}

@@ -1,0 +1,141 @@
+@use '../../../scss/helpers' as *;
+
+.input {
+  position: relative;
+  box-sizing: border-box;
+  padding-bottom: 25px;
+
+  & > .error-message {
+    position: absolute;
+    @include typography(app-wizard-1);
+    @include text-overflow-dots;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    bottom: 5px;
+
+    color: var(--text-alert);
+  }
+
+  & > .input-label {
+    @include typography(app-wizard-1);
+
+    color: var(--text-body-tertiary);
+    padding: 0;
+    margin: 0;
+    margin-bottom: 10px;
+    display: block;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  & > .input-container {
+    background-color: var(--surface-frame-bg);
+    position: relative;
+    display: inline-flex;
+    width: inherit;
+    border-radius: 10px;
+    height: 50px;
+    opacity: 1;
+    display: grid;
+    grid-template-rows: 1fr;
+    grid-template-columns: 1fr 22px;
+    grid-template-areas: 'input icon';
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    column-gap: 10px;
+    box-sizing: border-box;
+    padding: 0 20px;
+    border: 1px solid var(--border-primary);
+    margin: 0;
+    opacity: 1;
+
+    transition-timing-function: ease-in-out;
+    transition-duration: 250ms;
+    transition-property: border-color, background-color, opacity;
+
+    &.invalid {
+      border-color: var(--border-alert);
+    }
+
+    &.disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    &.disposable {
+      & > .icon-container {
+        cursor: pointer;
+      }
+    }
+
+    & > .icon-container {
+      grid-area: icon;
+      display: flex;
+      flex-flow: row;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      height: 22px;
+      width: 22px;
+    }
+
+    & > input {
+      height: 22px;
+      border: 0 solid transparent;
+      background-color: transparent;
+      margin: 0;
+      padding: 0;
+      @include typography(app-input);
+
+      grid-area: input;
+      color: var(--text-body-primary);
+
+      &:disabled {
+        cursor: not-allowed;
+      }
+
+      &:placeholder {
+        color: var(--text-body-tertiary);
+      }
+    }
+  }
+}
+
+.floating-input-errors {
+  & > .title {
+    white-space: nowrap;
+    margin-bottom: 20px;
+    color: var(--text-body-primary);
+
+    @include typography(app-modal-1);
+    @include text-overflow-dots;
+  }
+
+  & > .errors {
+    display: flex;
+    flex-flow: column;
+    row-gap: 10px;
+
+    & > .error {
+      display: flex;
+      flex-flow: row nowrap;
+      overflow: hidden;
+      column-gap: 5px;
+      align-items: center;
+      justify-content: flex-start;
+
+      svg {
+        transform: scale(66.67%);
+      }
+
+      & > p {
+        white-space: nowrap;
+        color: var(--text-body-primary);
+
+        @include typography(app-modal-2);
+      }
+    }
+  }
+}

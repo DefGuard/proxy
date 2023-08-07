@@ -1,0 +1,10 @@
+@use '../../../scss/helpers' as *;
+
+.floating-box {
+  z-index: 5;
+  border-radius: 10px;
+  box-sizing: border-box;
+  padding: 20px;
+  background-color: var(--surface-default-modal);
+  border: 1px solid var(--border-primary);
+}

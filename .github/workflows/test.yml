@@ -1,0 +1,49 @@
+name: Test backend
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: self-hosted
+    container: rust:1.71
+
+    steps:
+      - name: Debug
+        run: echo ${{ github.ref_name }}
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install protoc
+        run: apt-get update && apt-get -y install protobuf-compiler
+      - name: Check format
+        run: |
+          rustup component add rustfmt
+          cargo fmt -- --check
+      - name: Run tests
+        run: cargo test --locked --no-fail-fast
