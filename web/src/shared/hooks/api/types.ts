@@ -11,7 +11,7 @@ export type UserInfo = {
   last_name: string;
   login: string;
   email: string;
-  phone?: string;
+  phone_number?: string;
 };
 
 export type EnrollmentStartRequest = {

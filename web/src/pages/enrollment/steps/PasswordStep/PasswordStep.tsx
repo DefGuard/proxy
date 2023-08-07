@@ -71,9 +71,9 @@ export const PasswordStep = () => {
   });
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
-    if (!isLoading && userInfo && userInfo.phone) {
+    if (!isLoading && userInfo && userInfo.phone_number) {
       mutate({
-        phone_number: userInfo.phone,
+        phone_number: userInfo.phone_number,
         password: values.password,
       });
     }

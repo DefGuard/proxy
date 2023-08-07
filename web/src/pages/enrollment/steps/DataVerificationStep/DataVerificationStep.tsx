@@ -58,7 +58,7 @@ export const DataVerificationStep = () => {
 
   const { control, handleSubmit } = useForm<FormFields>({
     defaultValues: {
-      phone: userInfo?.phone ?? '',
+      phone: userInfo?.phone_number ?? '',
     },
     mode: 'all',
     resolver: zodResolver(schema),
@@ -66,9 +66,9 @@ export const DataVerificationStep = () => {
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
     if (userInfo) {
-      if (userInfo.phone !== values.phone) {
+      if (userInfo.phone_number !== values.phone) {
         setEnrollment({
-          userInfo: { ...userInfo, phone: values.phone },
+          userInfo: { ...userInfo, phone_number: values.phone },
         });
       }
       next();
