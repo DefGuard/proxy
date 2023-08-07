@@ -3,6 +3,16 @@
 import type { BaseTranslation } from '../i18n-types';
 
 const en = {
+  time: {
+    seconds: {
+      singular: 'second',
+      prular: 'seconds',
+    },
+    minutes: {
+      singular: 'minute',
+      prular: 'minutes',
+    },
+  },
   form: {
     errors: {
       invalid: 'Field is invalid',
@@ -25,6 +35,11 @@ const en = {
       back: 'Back',
       next: 'Next',
       submit: 'Submit',
+    },
+  },
+  components: {
+    adminInfo: {
+      title: 'Your admin',
     },
   },
   pages: {
@@ -55,8 +70,8 @@ In order to gain access to the company infrastructure, we require you to complet
 2. Create your password
 3. Configurate VPN device
 
-You have a time limit of **{time: string}** to complete this process.
-If you have any questions, please consult your assigned admin.All necessary information can also be found at the bottom of the sidebar.`,
+You have a time limit of **{time: string} minutes** to complete this process.
+If you have any questions, please consult your assigned admin.All necessary information can be found at the bottom of the sidebar.`,
         },
         dataVerification: {
           title: 'Data verification',
@@ -116,6 +131,29 @@ If you have any questions, please consult your assigned admin.All necessary info
                       own: 'Use my own public key',
                     },
                   },
+                },
+              },
+              config: {
+                messageBox: {
+                  auto: `
+       <p>
+          Please be advised that you have to download the configuration now,
+          since <strong>we do not</strong> store your private key. After this
+          dialog is closed, you <strong>will not be able</strong> to get your
+          full configuration file (with private keys, only blank template).
+        </p>
+`,
+                  manual: `
+        <p>
+          Please be advised that configuration provided here <strong> does not include private key and uses public key to fill it's place </strong> you will need to repalce it on your own for configuration to work properly.
+        </p>
+`,
+                },
+                deviceNameLabel: 'My Device Name',
+                cardTitle:
+                  'Use provided configuration file below by scanning QR Code or importing it as file on your devices WireGuard app.',
+                card: {
+                  selectLabel: 'Config file for location',
                 },
               },
             },
@@ -225,7 +263,7 @@ If you want to disengage your VPN connection, simply press "deactivate".
           'Sorry, you have exceeded the time limit to complete the process. Please try again. If you need assistance, please watch our guide or contact your administrator.',
       },
       controls: {
-        back: 'Return to services menu',
+        back: 'Enter new token',
         contact: 'Contact admin',
       },
     },

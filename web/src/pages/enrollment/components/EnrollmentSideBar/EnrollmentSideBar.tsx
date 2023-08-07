@@ -7,6 +7,7 @@ import { LocalizedString } from 'typesafe-i18n';
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { Divider } from '../../../../shared/components/layout/Divider/Divider';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
+import { AdminInfo } from '../AdminInfo/AdminInfo';
 import { TimeLeft } from '../TimeLeft/TimeLeft';
 
 export const EnrollmentSideBar = () => {
@@ -36,8 +37,15 @@ export const EnrollmentSideBar = () => {
       </div>
       <TimeLeft />
       <Divider />
+      <AdminInfo />
+      <Divider />
       <div className="copyright">
-        <p>Copyright © 2023 teonite</p>
+        <p>
+          Copyright © 2023{' '}
+          <a href="https://teonite.com" target="_blank" rel="noopener noreferrer">
+            teonite
+          </a>
+        </p>
         <p>{LL.pages.enrollment.sideBar.appVersion()}: 0.4.1</p>
       </div>
     </div>

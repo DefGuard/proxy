@@ -14,6 +14,12 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // load .env
+
+    if dotenvy::from_filename(".env.local").is_err() {
+        dotenvy::dotenv().ok();
+    }
+
     // read config from env
     let config = Config::parse();
 

@@ -13,6 +13,28 @@ export type Translation = RootTranslation
 export type Translations = RootTranslation
 
 type RootTranslation = {
+	time: {
+		seconds: {
+			/**
+			 * s​e​c​o​n​d
+			 */
+			singular: string
+			/**
+			 * s​e​c​o​n​d​s
+			 */
+			prular: string
+		}
+		minutes: {
+			/**
+			 * m​i​n​u​t​e
+			 */
+			singular: string
+			/**
+			 * m​i​n​u​t​e​s
+			 */
+			prular: string
+		}
+	}
 	form: {
 		errors: {
 			/**
@@ -81,6 +103,14 @@ type RootTranslation = {
 			submit: string
 		}
 	}
+	components: {
+		adminInfo: {
+			/**
+			 * Y​o​u​r​ ​a​d​m​i​n
+			 */
+			title: string
+		}
+	}
 	pages: {
 		enrollment: {
 			sideBar: {
@@ -144,8 +174,8 @@ type RootTranslation = {
 				​2​.​ ​C​r​e​a​t​e​ ​y​o​u​r​ ​p​a​s​s​w​o​r​d​
 				​3​.​ ​C​o​n​f​i​g​u​r​a​t​e​ ​V​P​N​ ​d​e​v​i​c​e​
 				​
-				​Y​o​u​ ​h​a​v​e​ ​a​ ​t​i​m​e​ ​l​i​m​i​t​ ​o​f​ ​*​*​{​t​i​m​e​}​*​*​ ​t​o​ ​c​o​m​p​l​e​t​e​ ​t​h​i​s​ ​p​r​o​c​e​s​s​.​
-				​I​f​ ​y​o​u​ ​h​a​v​e​ ​a​n​y​ ​q​u​e​s​t​i​o​n​s​,​ ​p​l​e​a​s​e​ ​c​o​n​s​u​l​t​ ​y​o​u​r​ ​a​s​s​i​g​n​e​d​ ​a​d​m​i​n​.​A​l​l​ ​n​e​c​e​s​s​a​r​y​ ​i​n​f​o​r​m​a​t​i​o​n​ ​c​a​n​ ​a​l​s​o​ ​b​e​ ​f​o​u​n​d​ ​a​t​ ​t​h​e​ ​b​o​t​t​o​m​ ​o​f​ ​t​h​e​ ​s​i​d​e​b​a​r​.
+				​Y​o​u​ ​h​a​v​e​ ​a​ ​t​i​m​e​ ​l​i​m​i​t​ ​o​f​ ​*​*​{​t​i​m​e​}​ ​m​i​n​u​t​e​s​*​*​ ​t​o​ ​c​o​m​p​l​e​t​e​ ​t​h​i​s​ ​p​r​o​c​e​s​s​.​
+				​I​f​ ​y​o​u​ ​h​a​v​e​ ​a​n​y​ ​q​u​e​s​t​i​o​n​s​,​ ​p​l​e​a​s​e​ ​c​o​n​s​u​l​t​ ​y​o​u​r​ ​a​s​s​i​g​n​e​d​ ​a​d​m​i​n​.​A​l​l​ ​n​e​c​e​s​s​a​r​y​ ​i​n​f​o​r​m​a​t​i​o​n​ ​c​a​n​ ​b​e​ ​f​o​u​n​d​ ​a​t​ ​t​h​e​ ​b​o​t​t​o​m​ ​o​f​ ​t​h​e​ ​s​i​d​e​b​a​r​.
 					 * @param {string} time
 					 */
 					explanation: RequiredParams<'time'>
@@ -257,6 +287,43 @@ type RootTranslation = {
 											own: string
 										}
 									}
+								}
+							}
+							config: {
+								messageBox: {
+									/**
+									 * 
+								​ ​ ​ ​ ​ ​ ​ ​<​p​>​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​P​l​e​a​s​e​ ​b​e​ ​a​d​v​i​s​e​d​ ​t​h​a​t​ ​y​o​u​ ​h​a​v​e​ ​t​o​ ​d​o​w​n​l​o​a​d​ ​t​h​e​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​n​o​w​,​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​s​i​n​c​e​ ​<​s​t​r​o​n​g​>​w​e​ ​d​o​ ​n​o​t​<​/​s​t​r​o​n​g​>​ ​s​t​o​r​e​ ​y​o​u​r​ ​p​r​i​v​a​t​e​ ​k​e​y​.​ ​A​f​t​e​r​ ​t​h​i​s​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​d​i​a​l​o​g​ ​i​s​ ​c​l​o​s​e​d​,​ ​y​o​u​ ​<​s​t​r​o​n​g​>​w​i​l​l​ ​n​o​t​ ​b​e​ ​a​b​l​e​<​/​s​t​r​o​n​g​>​ ​t​o​ ​g​e​t​ ​y​o​u​r​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​f​u​l​l​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​(​w​i​t​h​ ​p​r​i​v​a​t​e​ ​k​e​y​s​,​ ​o​n​l​y​ ​b​l​a​n​k​ ​t​e​m​p​l​a​t​e​)​.​
+								​ ​ ​ ​ ​ ​ ​ ​ ​<​/​p​>​
+							
+									 */
+									auto: string
+									/**
+									 * 
+								​ ​ ​ ​ ​ ​ ​ ​ ​<​p​>​
+								​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​P​l​e​a​s​e​ ​b​e​ ​a​d​v​i​s​e​d​ ​t​h​a​t​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​p​r​o​v​i​d​e​d​ ​h​e​r​e​ ​<​s​t​r​o​n​g​>​ ​d​o​e​s​ ​n​o​t​ ​i​n​c​l​u​d​e​ ​p​r​i​v​a​t​e​ ​k​e​y​ ​a​n​d​ ​u​s​e​s​ ​p​u​b​l​i​c​ ​k​e​y​ ​t​o​ ​f​i​l​l​ ​i​t​'​s​ ​p​l​a​c​e​ ​<​/​s​t​r​o​n​g​>​ ​y​o​u​ ​w​i​l​l​ ​n​e​e​d​ ​t​o​ ​r​e​p​a​l​c​e​ ​i​t​ ​o​n​ ​y​o​u​r​ ​o​w​n​ ​f​o​r​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​t​o​ ​w​o​r​k​ ​p​r​o​p​e​r​l​y​.​
+								​ ​ ​ ​ ​ ​ ​ ​ ​<​/​p​>​
+							
+									 */
+									manual: string
+								}
+								/**
+								 * M​y​ ​D​e​v​i​c​e​ ​N​a​m​e
+								 */
+								deviceNameLabel: string
+								/**
+								 * U​s​e​ ​p​r​o​v​i​d​e​d​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​b​e​l​o​w​ ​b​y​ ​s​c​a​n​n​i​n​g​ ​Q​R​ ​C​o​d​e​ ​o​r​ ​i​m​p​o​r​t​i​n​g​ ​i​t​ ​a​s​ ​f​i​l​e​ ​o​n​ ​y​o​u​r​ ​d​e​v​i​c​e​s​ ​W​i​r​e​G​u​a​r​d​ ​a​p​p​.
+								 */
+								cardTitle: string
+								card: {
+									/**
+									 * C​o​n​f​i​g​ ​f​i​l​e​ ​f​o​r​ ​l​o​c​a​t​i​o​n
+									 */
+									selectLabel: string
 								}
 							}
 						}
@@ -453,7 +520,7 @@ type RootTranslation = {
 			}
 			controls: {
 				/**
-				 * R​e​t​u​r​n​ ​t​o​ ​s​e​r​v​i​c​e​s​ ​m​e​n​u
+				 * E​n​t​e​r​ ​n​e​w​ ​t​o​k​e​n
 				 */
 				back: string
 				/**
@@ -504,6 +571,28 @@ type RootTranslation = {
 }
 
 export type TranslationFunctions = {
+	time: {
+		seconds: {
+			/**
+			 * second
+			 */
+			singular: () => LocalizedString
+			/**
+			 * seconds
+			 */
+			prular: () => LocalizedString
+		}
+		minutes: {
+			/**
+			 * minute
+			 */
+			singular: () => LocalizedString
+			/**
+			 * minutes
+			 */
+			prular: () => LocalizedString
+		}
+	}
 	form: {
 		errors: {
 			/**
@@ -570,6 +659,14 @@ export type TranslationFunctions = {
 			submit: () => LocalizedString
 		}
 	}
+	components: {
+		adminInfo: {
+			/**
+			 * Your admin
+			 */
+			title: () => LocalizedString
+		}
+	}
 	pages: {
 		enrollment: {
 			sideBar: {
@@ -632,8 +729,8 @@ export type TranslationFunctions = {
 				2. Create your password
 				3. Configurate VPN device
 			
-				You have a time limit of **{time}** to complete this process.
-				If you have any questions, please consult your assigned admin.All necessary information can also be found at the bottom of the sidebar.
+				You have a time limit of **{time} minutes** to complete this process.
+				If you have any questions, please consult your assigned admin.All necessary information can be found at the bottom of the sidebar.
 					 */
 					explanation: (arg: { time: string }) => LocalizedString
 				}
@@ -744,6 +841,43 @@ export type TranslationFunctions = {
 											own: () => LocalizedString
 										}
 									}
+								}
+							}
+							config: {
+								messageBox: {
+									/**
+									 * 
+								       <p>
+								          Please be advised that you have to download the configuration now,
+								          since <strong>we do not</strong> store your private key. After this
+								          dialog is closed, you <strong>will not be able</strong> to get your
+								          full configuration file (with private keys, only blank template).
+								        </p>
+							
+									 */
+									auto: () => LocalizedString
+									/**
+									 * 
+								        <p>
+								          Please be advised that configuration provided here <strong> does not include private key and uses public key to fill it's place </strong> you will need to repalce it on your own for configuration to work properly.
+								        </p>
+							
+									 */
+									manual: () => LocalizedString
+								}
+								/**
+								 * My Device Name
+								 */
+								deviceNameLabel: () => LocalizedString
+								/**
+								 * Use provided configuration file below by scanning QR Code or importing it as file on your devices WireGuard app.
+								 */
+								cardTitle: () => LocalizedString
+								card: {
+									/**
+									 * Config file for location
+									 */
+									selectLabel: () => LocalizedString
 								}
 							}
 						}
@@ -939,7 +1073,7 @@ export type TranslationFunctions = {
 			}
 			controls: {
 				/**
-				 * Return to services menu
+				 * Enter new token
 				 */
 				back: () => LocalizedString
 				/**

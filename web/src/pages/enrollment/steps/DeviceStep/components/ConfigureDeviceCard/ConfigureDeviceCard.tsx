@@ -7,7 +7,7 @@ import { Card } from '../../../../../../shared/components/layout/Card/Card';
 import { EnrollmentStepIndicator } from '../../../../components/EnrollmentStepIndicator/EnrollmentStepIndicator';
 import { useEnrollmentStore } from '../../../../hooks/store/useEnrollmentStore';
 import { CreateDevice } from './components/CreateDevice';
-import { DeviceConfiguration } from './components/DeviceConfiguration';
+import { DeviceConfiguration } from './components/DeviceConfiguration/DeviceConfiguration';
 
 export const ConfigureDeviceCard = () => {
   const { LL } = useI18nContext();

@@ -142,6 +142,7 @@ export const CreateDevice = () => {
           label={cardLL.create.form.fields.public.label()}
           controller={{ control, name: 'public' }}
           disabled={configTypeValue === ConfigurationType.AUTO}
+          required={configTypeValue === ConfigurationType.MANUAL}
         />
         <Button
           type="submit"

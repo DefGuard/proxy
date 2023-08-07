@@ -50,6 +50,24 @@
     }
   }
 
+  & > .admin-info {
+    box-sizing: border-box;
+    padding: 20px 10px 20px 40px;
+    & > p {
+      @include typography(app-body-2);
+      @include text-overflow-dots;
+
+      max-width: 100%;
+      color: var(--text-body-tertiary);
+      user-select: text;
+    }
+
+    & > .title {
+      color: var(--text-body-primary);
+      user-select: none;
+    }
+  }
+
   & > .steps {
     display: flex;
     flex-flow: column;
@@ -77,8 +95,7 @@
       transition-timing-function: ease-in-out;
       transition-duration: 250ms;
 
-      &.active,
-      &:hover {
+      &.active {
         color: var(--text-body-primary);
       }
 
@@ -129,6 +146,13 @@
       text-align: center;
       color: var(--text-body-tertiary);
       width: 100%;
+
+      a {
+        @include typography(app-copyright);
+
+        color: var(--text-body-tertiary);
+        text-decoration-color: var(--text-body-tertiary);
+      }
     }
   }
 }

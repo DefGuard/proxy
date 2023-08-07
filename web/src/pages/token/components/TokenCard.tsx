@@ -65,21 +65,29 @@ export const TokenCard = () => {
   const { isLoading, mutate } = useMutation({
     mutationFn: startEnrollment,
     onSuccess: (res) => {
-      const sessionEndDate = dayjs.unix(res.deadline_timestamp).toDate();
+      const sessionEnd = dayjs.unix(res.deadline_timestamp).utc().local().format();
+      const sessionStart = dayjs().local().format();
       initEnrollment({
         step: 0,
         userInfo: res.user,
         adminInfo: res.admin,
-        sessionEnd: sessionEndDate.toISOString(),
+        sessionStart,
+        sessionEnd,
         vpnOptional: res.vpn_setup_optional,
         endContent: res.final_page_content,
       });
       navigate(routes.enrollment, { replace: true });
     },
     onError: (err) => {
-      setError('token', LL.form.errors.invalid(), {
-        shouldFocus: true,
-      });
+      setError(
+        'token',
+        {
+          message: LL.form.errors.invalid(),
+        },
+        {
+          shouldFocus: true,
+        },
+      );
       console.error(err);
     },
   });
@@ -108,6 +116,7 @@ export const TokenCard = () => {
         />
         <div className="controls">
           <Button
+            type="submit"
             loading={isLoading}
             size={ButtonSize.LARGE}
             styleVariant={ButtonStyleVariant.PRIMARY}

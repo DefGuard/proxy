@@ -2,6 +2,7 @@ import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -64,8 +65,8 @@ export const PasswordStep = () => {
     onSuccess: () => {
       next();
     },
-    onError: (err) => {
-      console.error(err);
+    onError: (err: AxiosError) => {
+      console.error(err.message);
     },
   });
 
@@ -97,11 +98,16 @@ export const PasswordStep = () => {
           label={pageLL.form.fields.password.label()}
           controller={{ control, name: 'password' }}
           type="password"
+          floatingErrors={{
+            title: LL.form.errors.password.floatingTitle(),
+          }}
+          autoComplete="new-password"
         />
         <FormInput
           label={pageLL.form.fields.repeat.label()}
           controller={{ control, name: 'repeat' }}
           type="password"
+          autoComplete="new-password"
         />
         <input className="hidden" type="submit" ref={submitRef} />
       </form>
