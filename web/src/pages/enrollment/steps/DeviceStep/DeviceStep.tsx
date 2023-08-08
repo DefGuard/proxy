@@ -9,6 +9,7 @@ import { QuickGuideCard } from './components/QuickGuideCard/QuickGuideCard';
 
 export const DeviceStep = () => {
   const deviceState = useEnrollmentStore((state) => state.deviceState);
+  const vpnOptional = useEnrollmentStore((state) => state.vpnOptional);
   const [nextSubject, next] = useEnrollmentStore(
     (state) => [state.nextSubject, state.nextStep],
     shallow,
@@ -16,7 +17,7 @@ export const DeviceStep = () => {
 
   useEffect(() => {
     const sub = nextSubject.subscribe(() => {
-      if (deviceState && deviceState.device && deviceState.configs) {
+      if ((deviceState && deviceState.device && deviceState.configs) || vpnOptional) {
         next();
       }
     });
@@ -24,7 +25,7 @@ export const DeviceStep = () => {
     return () => {
       sub.unsubscribe();
     };
-  }, [deviceState, next, nextSubject]);
+  }, [deviceState, next, nextSubject, vpnOptional]);
 
   return (
     <div id="enrollment-device-step">
