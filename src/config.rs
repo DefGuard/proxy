@@ -23,6 +23,6 @@ pub struct Config {
     pub grpc_url: Url,
 
     // path to certificate `.pem` file used if connecting over HTTPS
-    #[arg(long, env = "DEFGUARD_GRPC_CA")]
+    #[arg(long, env = "DEFGUARD_PROXY_GRPC_CA")]
     pub grpc_ca: Option<String>,
 }
