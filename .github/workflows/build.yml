@@ -1,4 +1,4 @@
-name: Build latest image
+name: Build current image
 on:
   push:
     branches:
@@ -8,7 +8,7 @@ on:
       - 'LICENSE'
 
 jobs:
-  publish:
+  build:
     runs-on: self-hosted
     steps:
       - name: Docker meta
@@ -18,7 +18,7 @@ jobs:
           images: |
             ghcr.io/defguard/defguard-proxy
           tags: |
-            type=raw,value=latest
+            type=raw,value=current
             type=ref,event=branch
             type=sha
       - name: Login to GitHub container registry
