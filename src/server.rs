@@ -50,6 +50,10 @@ async fn app_info() -> ApiResult<Json<AppInfo>> {
     Ok(Json(AppInfo { version }))
 }
 
+async fn healthcheck() -> &'static str {
+    "I'm alive!"
+}
+
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
 
@@ -78,6 +82,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             "/api/v1",
             Router::new()
                 .nest("/enrollment", enrollment::router())
+                .route("/health", get(healthcheck))
                 .route("/info", get(app_info)),
         )
         .nest_service("/svg", serve_images)
