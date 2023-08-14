@@ -74,7 +74,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     };
     // serving static frontend files
     let serve_web_dir =
-        ServeDir::new("web/dist").not_found_service(ServeFile::new("web/dist/index.html"));
+        ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
     let app = Router::new()
