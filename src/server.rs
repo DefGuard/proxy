@@ -73,8 +73,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         client: Arc::new(Mutex::new(client)),
     };
     // serving static frontend files
-    let serve_web_dir =
-        ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
+    let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
     let app = Router::new()
