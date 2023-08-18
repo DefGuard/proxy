@@ -95,6 +95,7 @@ export const EnrollmentPage = () => {
             text={LL.common.controls.next()}
             size={controlsSize}
             styleVariant={ButtonStyleVariant.PRIMARY}
+            data-testid="enrollment-next"
             onClick={() => nextSubject.next()}
             rightIcon={<ArrowSingle size={ArrowSingleSize.SMALL} />}
           />

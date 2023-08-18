@@ -93,7 +93,10 @@ export const PasswordStep = () => {
     <Card id="enrollment-password-card">
       <EnrollmentStepIndicator />
       <h3>{pageLL.title()}</h3>
-      <form onSubmit={handleSubmit(handleValidSubmit)}>
+      <form
+        onSubmit={handleSubmit(handleValidSubmit)}
+        data-testid="enrollment-password-form"
+      >
         <FormInput
           label={pageLL.form.fields.password.label()}
           controller={{ control, name: 'password' }}

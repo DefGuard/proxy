@@ -90,21 +90,24 @@ export const DataVerificationStep = () => {
       <EnrollmentStepIndicator />
       <h3>{pageLL.title()}</h3>
       <MessageBox type={MessageBoxType.INFO} message={pageLL.messageBox()} />
-      <form onSubmit={handleSubmit(handleValidSubmit)}>
+      <form
+        onSubmit={handleSubmit(handleValidSubmit)}
+        data-testid="enrollment-data-verification"
+      >
         <div className="row">
           <div className="item">
             <label>{pageLL.form.fields.firstName.label()}:</label>
-            <p>{userInfo?.first_name}</p>
+            <p data-testid="enrollment-first-name">{userInfo?.first_name}</p>
           </div>
           <div className="item">
             <label>{pageLL.form.fields.lastName.label()}:</label>
-            <p>{userInfo?.last_name}</p>
+            <p data-testid="enrollment-last-name">{userInfo?.last_name}</p>
           </div>
         </div>
         <div className="row">
           <div className="item">
             <label>{pageLL.form.fields.email.label()}:</label>
-            <p>{userInfo?.email}</p>
+            <p data-testid="enrollment-email">{userInfo?.email}</p>
           </div>
           <FormInput
             label={pageLL.form.fields.phone.label()}

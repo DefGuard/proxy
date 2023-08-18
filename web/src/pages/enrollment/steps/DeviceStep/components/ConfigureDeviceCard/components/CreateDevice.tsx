@@ -128,7 +128,10 @@ export const CreateDevice = () => {
   return (
     <>
       <MessageBox message={cardLL.create.messageBox()} />
-      <form onSubmit={handleSubmit(handleValidSubmit)}>
+      <form
+        onSubmit={handleSubmit(handleValidSubmit)}
+        data-testid="enrollment-device-form"
+      >
         <FormInput
           label={cardLL.create.form.fields.name.label()}
           controller={{ control, name: 'name' }}
