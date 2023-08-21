@@ -97,17 +97,17 @@ export const DataVerificationStep = () => {
         <div className="row">
           <div className="item">
             <label>{pageLL.form.fields.firstName.label()}:</label>
-            <p data-testid="enrollment-first-name">{userInfo?.first_name}</p>
+            <p>{userInfo?.first_name}</p>
           </div>
           <div className="item">
             <label>{pageLL.form.fields.lastName.label()}:</label>
-            <p data-testid="enrollment-last-name">{userInfo?.last_name}</p>
+            <p>{userInfo?.last_name}</p>
           </div>
         </div>
         <div className="row">
           <div className="item">
             <label>{pageLL.form.fields.email.label()}:</label>
-            <p data-testid="enrollment-email">{userInfo?.email}</p>
+            <p>{userInfo?.email}</p>
           </div>
           <FormInput
             label={pageLL.form.fields.phone.label()}
