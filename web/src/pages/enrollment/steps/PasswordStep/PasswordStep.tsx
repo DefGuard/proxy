@@ -94,8 +94,8 @@ export const PasswordStep = () => {
       <EnrollmentStepIndicator />
       <h3>{pageLL.title()}</h3>
       <form
-        onSubmit={handleSubmit(handleValidSubmit)}
         data-testid="enrollment-password-form"
+        onSubmit={handleSubmit(handleValidSubmit)}
       >
         <FormInput
           label={pageLL.form.fields.password.label()}

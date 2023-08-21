@@ -129,8 +129,8 @@ export const CreateDevice = () => {
     <>
       <MessageBox message={cardLL.create.messageBox()} />
       <form
-        onSubmit={handleSubmit(handleValidSubmit)}
         data-testid="enrollment-device-form"
+        onSubmit={handleSubmit(handleValidSubmit)}
       >
         <FormInput
           label={cardLL.create.form.fields.name.label()}

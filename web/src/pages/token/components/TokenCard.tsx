@@ -109,8 +109,8 @@ export const TokenCard = () => {
         dismissId="token-page-card-email"
       />
       <form
-        onSubmit={handleSubmit(handleValidSubmit)}
         data-testid="enrollment-token-form"
+        onSubmit={handleSubmit(handleValidSubmit)}
       >
         <FormInput
           controller={{ control, name: 'token' }}
