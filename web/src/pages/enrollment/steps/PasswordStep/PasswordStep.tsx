@@ -28,6 +28,7 @@ export const PasswordStep = () => {
   const submitRef = useRef<HTMLInputElement | null>(null);
   const { LL } = useI18nContext();
 
+  const setStore = useEnrollmentStore((state) => state.setState);
   const userInfo = useEnrollmentStore((state) => state.userInfo);
   const [nextSubject, next] = useEnrollmentStore(
     (state) => [state.nextSubject, state.nextStep],
@@ -63,15 +64,18 @@ export const PasswordStep = () => {
   const { mutate, isLoading } = useMutation({
     mutationFn: activateUser,
     onSuccess: () => {
+      setStore({ loading: false });
       next();
     },
     onError: (err: AxiosError) => {
+      setStore({ loading: false });
       console.error(err.message);
     },
   });
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
     if (!isLoading && userInfo && userInfo.phone_number) {
+      setStore({ loading: true });
       mutate({
         phone_number: userInfo.phone_number,
         password: values.password,

@@ -12,8 +12,12 @@
   border-right: 1px solid var(--border-primary);
   position: fixed;
   inset: 0;
-  display: flex;
+  display: none;
   flex-flow: column;
+
+  @include media-breakpoint-up(lg) {
+    display: flex;
+  }
 
   scrollbar-width: none;
 

@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/hooks/api/types';
 
 const defaultValues: StoreValues = {
+  loading: false,
   step: 0,
   stepsMax: 4,
   sessionEnd: undefined,
@@ -67,6 +68,8 @@ export const useEnrollmentStore = createWithEqualityFn<Store>()(
 type Store = StoreValues & StoreMethods;
 
 type StoreValues = {
+  // next and back are disabled
+  loading: boolean;
   step: number;
   stepsMax: number;
   nextSubject: Subject<void>;

@@ -97,15 +97,13 @@
     .message {
       color: var(--text-important);
     }
-    & > .icon-container {
+    .icon-container {
       & > svg {
-        & > g {
-          & > circle {
-            fill: var(--surface-important);
-          }
-          & > rect {
-            fill: var(--surface-important-accent);
-          }
+        & > circle {
+          fill: var(--surface-important);
+        }
+        & > rect {
+          fill: var(--surface-important-accent);
         }
       }
     }
