@@ -22,6 +22,7 @@ const defaultValues: StoreValues = {
 const persistKeys: Array<keyof StoreValues> = [
   'step',
   'userInfo',
+  'userPassword',
   'sessionEnd',
   'sessionStart',
   'adminInfo',
@@ -77,6 +78,7 @@ type StoreValues = {
   sessionStart?: string;
   sessionEnd?: string;
   userInfo?: UserInfo;
+  userPassword?: string;
   adminInfo?: AdminInfo;
   vpnOptional?: boolean;
   // Markdown content for final step card

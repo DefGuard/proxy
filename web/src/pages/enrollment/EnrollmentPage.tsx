@@ -124,7 +124,6 @@ const steps: EnrollmentStep[] = [
   {
     key: 3,
     step: <DeviceStep key={3} />,
-    backDisabled: true,
   },
   {
     key: 4,
