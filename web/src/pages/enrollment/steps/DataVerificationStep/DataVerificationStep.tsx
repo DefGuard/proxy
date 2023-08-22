@@ -79,7 +79,10 @@ export const DataVerificationStep = () => {
       <EnrollmentStepIndicator />
       <h3>{pageLL.title()}</h3>
       <MessageBox type={MessageBoxType.INFO} message={pageLL.messageBox()} />
-      <form onSubmit={handleSubmit(handleValidSubmit)}>
+      <form
+        data-testid="enrollment-data-verification"
+        onSubmit={handleSubmit(handleValidSubmit)}
+      >
         <div className="row">
           <div className="item">
             <label>{pageLL.form.fields.firstName.label()}:</label>

@@ -93,6 +93,7 @@ export const EnrollmentPage = () => {
             }
           />
           <Button
+            data-testid="enrollment-next"
             loading={loading}
             text={LL.common.controls.next()}
             size={controlsSize}

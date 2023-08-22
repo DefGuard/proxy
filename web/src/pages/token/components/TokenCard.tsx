@@ -108,7 +108,10 @@ export const TokenCard = () => {
         type={MessageBoxType.INFO}
         dismissId="token-page-card-email"
       />
-      <form onSubmit={handleSubmit(handleValidSubmit)}>
+      <form
+        data-testid="enrollment-token-form"
+        onSubmit={handleSubmit(handleValidSubmit)}
+      >
         <FormInput
           controller={{ control, name: 'token' }}
           placeholder={LL.pages.token.card.form.fields.token.placeholder()}
