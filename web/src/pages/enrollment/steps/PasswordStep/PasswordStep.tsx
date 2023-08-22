@@ -1,8 +1,6 @@
 import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -11,7 +9,6 @@ import { shallow } from 'zustand/shallow';
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { FormInput } from '../../../../shared/components/Form/FormInput/FormInput';
 import { Card } from '../../../../shared/components/layout/Card/Card';
-import { useApi } from '../../../../shared/hooks/api/useApi';
 import { passwordValidator } from '../../../../shared/validators/password';
 import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicator/EnrollmentStepIndicator';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
@@ -22,14 +19,11 @@ type FormFields = {
 };
 
 export const PasswordStep = () => {
-  const {
-    enrollment: { activateUser },
-  } = useApi();
   const submitRef = useRef<HTMLInputElement | null>(null);
   const { LL } = useI18nContext();
 
   const setStore = useEnrollmentStore((state) => state.setState);
-  const userInfo = useEnrollmentStore((state) => state.userInfo);
+  const userPassword = useEnrollmentStore((state) => state.userPassword);
   const [nextSubject, next] = useEnrollmentStore(
     (state) => [state.nextSubject, state.nextStep],
     shallow,
@@ -51,9 +45,9 @@ export const PasswordStep = () => {
     [LL, pageLL.form.fields.repeat.errors],
   );
 
-  const { handleSubmit, control } = useForm<FormFields>({
+  const { handleSubmit, control, reset } = useForm<FormFields>({
     defaultValues: {
-      password: '',
+      password: userPassword ?? '',
       repeat: '',
     },
     mode: 'all',
@@ -61,26 +55,9 @@ export const PasswordStep = () => {
     resolver: zodResolver(schema),
   });
 
-  const { mutate, isLoading } = useMutation({
-    mutationFn: activateUser,
-    onSuccess: () => {
-      setStore({ loading: false });
-      next();
-    },
-    onError: (err: AxiosError) => {
-      setStore({ loading: false });
-      console.error(err.message);
-    },
-  });
-
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
-    if (!isLoading && userInfo && userInfo.phone_number) {
-      setStore({ loading: true });
-      mutate({
-        phone_number: userInfo.phone_number,
-        password: values.password,
-      });
-    }
+    setStore({ userPassword: values.password });
+    next();
   };
 
   useEffect(() => {
@@ -92,6 +69,11 @@ export const PasswordStep = () => {
       sub.unsubscribe();
     };
   }, [nextSubject, submitRef]);
+
+  useEffect(() => {
+    reset();
+    //eslint-disable-next-line
+  }, []);
 
   return (
     <Card id="enrollment-password-card">
