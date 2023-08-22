@@ -22,10 +22,24 @@
 
     p,
     span,
-    a {
+    a,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5 {
       @include typography(app-welcome-2);
 
       color: var(--text-body-tertiary);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5 {
+      font-weight: 500;
+      margin: 20px 0;
     }
 
     a {
@@ -34,8 +48,9 @@
 
     ul,
     ol {
-      &::marker {
+      ::marker {
         color: var(--text-body-tertiary);
+        background-color: var(--text-body-tertiary);
       }
 
       li {
@@ -46,6 +61,7 @@
           @include typography(app-welcome-2);
           color: var(--text-body-primary);
           text-decoration-color: var(--text-body-primary);
+          text-decoration: underline;
         }
       }
     }

@@ -37,6 +37,7 @@ export const EnrollmentPage = () => {
   const sessionEnd = useEnrollmentStore((state) => state.sessionEnd);
   const currentStep = useEnrollmentStore((state) => state.step);
   const stepsMax = useEnrollmentStore((state) => state.stepsMax);
+  const loading = useEnrollmentStore((state) => state.loading);
 
   const [setEnrollmentState, back, reset, nextSubject] = useEnrollmentStore(
     (state) => [state.setState, state.perviousStep, state.reset, state.nextSubject],
@@ -83,7 +84,7 @@ export const EnrollmentPage = () => {
             size={controlsSize}
             styleVariant={ButtonStyleVariant.STANDARD}
             onClick={() => back()}
-            disabled={steps[currentStep].backDisabled ?? false}
+            disabled={(steps[currentStep].backDisabled ?? false) || loading}
             icon={
               <ArrowSingle
                 size={ArrowSingleSize.SMALL}
@@ -93,6 +94,7 @@ export const EnrollmentPage = () => {
           />
           <Button
             data-testid="enrollment-next"
+            loading={loading}
             text={LL.common.controls.next()}
             size={controlsSize}
             styleVariant={ButtonStyleVariant.PRIMARY}
@@ -123,7 +125,6 @@ const steps: EnrollmentStep[] = [
   {
     key: 3,
     step: <DeviceStep key={3} />,
-    backDisabled: true,
   },
   {
     key: 4,

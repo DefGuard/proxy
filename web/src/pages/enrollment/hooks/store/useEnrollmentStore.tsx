@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/hooks/api/types';
 
 const defaultValues: StoreValues = {
+  loading: false,
   step: 0,
   stepsMax: 4,
   sessionEnd: undefined,
@@ -21,6 +22,7 @@ const defaultValues: StoreValues = {
 const persistKeys: Array<keyof StoreValues> = [
   'step',
   'userInfo',
+  'userPassword',
   'sessionEnd',
   'sessionStart',
   'adminInfo',
@@ -67,6 +69,8 @@ export const useEnrollmentStore = createWithEqualityFn<Store>()(
 type Store = StoreValues & StoreMethods;
 
 type StoreValues = {
+  // next and back are disabled
+  loading: boolean;
   step: number;
   stepsMax: number;
   nextSubject: Subject<void>;
@@ -74,6 +78,7 @@ type StoreValues = {
   sessionStart?: string;
   sessionEnd?: string;
   userInfo?: UserInfo;
+  userPassword?: string;
   adminInfo?: AdminInfo;
   vpnOptional?: boolean;
   // Markdown content for final step card
