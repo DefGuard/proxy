@@ -247,6 +247,10 @@ type RootTranslation = {
 					}
 				}
 				deviceSetup: {
+					/**
+					 * *​ ​T​h​i​s​ ​s​t​e​p​ ​i​s​ ​O​P​T​I​O​N​A​L​.​ ​Y​o​u​ ​c​a​n​ ​s​k​i​p​ ​i​t​ ​i​f​ ​y​o​u​ ​w​i​s​h​.​ ​T​h​i​s​ ​c​a​n​ ​b​e​ ​c​o​n​f​i​g​u​r​e​d​ ​l​a​t​e​r​ ​i​n​ ​d​e​f​g​u​a​r​d​.
+					 */
+					optionalMessage: string
 					cards: {
 						device: {
 							/**
@@ -357,7 +361,7 @@ type RootTranslation = {
 								 */
 								downloadConfig: string
 								/**
-								 * O​p​e​n​ ​W​i​r​e​G​u​a​r​d​ ​a​n​d​ ​s​e​l​e​c​t​ ​"​A​d​d​ ​T​u​n​n​e​l​"​ ​(​I​m​p​o​r​t​ ​t​u​n​n​e​l​(​s​)​ ​f​r​o​m​ ​f​i​l​e​)​.​ ​F​i​n​d​ ​y​o​u​r​ ​
+								 * O​p​e​n​ ​W​i​r​e​G​u​a​r​d​ ​a​n​d​ ​s​e​l​e​c​t​ ​"​A​d​d​ ​T​u​n​n​e​l​"​ ​(​I​m​p​o​r​t​ ​t​u​n​n​e​l​(​s​)​ ​f​r​o​m​ ​f​i​l​e​)​.​ ​F​i​n​d​ ​y​o​u​r​
 							​D​e​f​g​u​a​r​d​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​a​n​d​ ​h​i​t​ ​"​O​K​"​.​ ​O​n​ ​p​h​o​n​e​ ​u​s​e​ ​W​i​r​e​G​u​a​r​d​ ​a​p​p​ ​“​+​”​ ​i​c​o​n​ ​a​n​d​ ​s​c​a​n​ ​Q​R​ ​c​o​d​e​.
 								 */
 								addTunnel: string
@@ -367,7 +371,7 @@ type RootTranslation = {
 								activate: string
 								/**
 								 * 
-							​*​*​G​r​e​a​t​ ​w​o​r​k​ ​-​ ​y​o​u​r​ ​D​e​f​g​u​a​r​d​ ​V​P​N​ ​i​s​ ​n​o​w​ ​a​c​t​i​v​e​!​*​*​ ​ ​
+							​*​*​G​r​e​a​t​ ​w​o​r​k​ ​-​ ​y​o​u​r​ ​D​e​f​g​u​a​r​d​ ​V​P​N​ ​i​s​ ​n​o​w​ ​a​c​t​i​v​e​!​*​*​
 							​
 							​I​f​ ​y​o​u​ ​w​a​n​t​ ​t​o​ ​d​i​s​e​n​g​a​g​e​ ​y​o​u​r​ ​V​P​N​ ​c​o​n​n​e​c​t​i​o​n​,​ ​s​i​m​p​l​y​ ​p​r​e​s​s​ ​"​d​e​a​c​t​i​v​a​t​e​"​.​
 						
@@ -801,6 +805,10 @@ export type TranslationFunctions = {
 					}
 				}
 				deviceSetup: {
+					/**
+					 * * This step is OPTIONAL. You can skip it if you wish. This can be configured later in defguard.
+					 */
+					optionalMessage: () => LocalizedString
 					cards: {
 						device: {
 							/**
@@ -910,7 +918,7 @@ export type TranslationFunctions = {
 								 */
 								downloadConfig: () => LocalizedString
 								/**
-								 * Open WireGuard and select "Add Tunnel" (Import tunnel(s) from file). Find your 
+								 * Open WireGuard and select "Add Tunnel" (Import tunnel(s) from file). Find your
 							Defguard configuration file and hit "OK". On phone use WireGuard app “+” icon and scan QR code.
 								 */
 								addTunnel: () => LocalizedString
@@ -920,7 +928,7 @@ export type TranslationFunctions = {
 								activate: () => LocalizedString
 								/**
 								 * 
-							**Great work - your Defguard VPN is now active!**  
+							**Great work - your Defguard VPN is now active!**
 						
 							If you want to disengage your VPN connection, simply press "deactivate".
 						

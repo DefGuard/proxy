@@ -111,6 +111,7 @@ If you have any questions, please consult your assigned admin.All necessary info
           },
         },
         deviceSetup: {
+          optionalMessage: `* This step is OPTIONAL. You can skip it if you wish. This can be configured later in defguard.`,
           cards: {
             device: {
               title: 'Configure your device for VPN',
@@ -168,11 +169,11 @@ If you have any questions, please consult your assigned admin.All necessary info
                   button: 'Download WireGuard',
                 },
                 downloadConfig: 'Download provided configuration file to your device.',
-                addTunnel: `Open WireGuard and select "Add Tunnel" (Import tunnel(s) from file). Find your 
+                addTunnel: `Open WireGuard and select "Add Tunnel" (Import tunnel(s) from file). Find your
 Defguard configuration file and hit "OK". On phone use WireGuard app “+” icon and scan QR code.`,
                 activate: 'Select your tunnel from the list and press "activate".',
                 finish: `
-**Great work - your Defguard VPN is now active!**  
+**Great work - your Defguard VPN is now active!**
 
 If you want to disengage your VPN connection, simply press "deactivate".
 `,

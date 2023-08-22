@@ -1,10 +1,9 @@
 import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { isUndefined } from 'lodash-es';
 import { useEffect, useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { z, ZodIssueCode } from 'zod';
+import { z } from 'zod';
 import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
@@ -18,7 +17,7 @@ import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 const phonePattern = /^\+?[0-9]+( [0-9]+)?$/;
 
 type FormFields = {
-  phone?: string;
+  phone: string;
 };
 
 export const DataVerificationStep = () => {
@@ -38,21 +37,13 @@ export const DataVerificationStep = () => {
 
   const schema = useMemo(
     () =>
-      z
-        .object({
-          phone: z.string().trim().optional(),
-        })
-        .superRefine((obj, ctx) => {
-          if (!isUndefined(obj?.phone) && obj.phone.length) {
-            if (!phonePattern.test(obj.phone)) {
-              ctx.addIssue({
-                code: ZodIssueCode.custom,
-                message: LL.form.errors.invalid(),
-                path: ['phone'],
-              });
-            }
-          }
-        }),
+      z.object({
+        phone: z
+          .string()
+          .trim()
+          .nonempty(LL.form.errors.required())
+          .regex(phonePattern, LL.form.errors.invalid()),
+      }),
     [LL.form.errors],
   );
 
@@ -66,11 +57,9 @@ export const DataVerificationStep = () => {
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
     if (userInfo) {
-      if (userInfo.phone_number !== values.phone) {
-        setEnrollment({
-          userInfo: { ...userInfo, phone_number: values.phone },
-        });
-      }
+      setEnrollment({
+        userInfo: { ...userInfo, phone_number: values.phone },
+      });
       next();
     }
   };
