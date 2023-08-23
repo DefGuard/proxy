@@ -58,10 +58,15 @@ export type CreateDeviceResponse = {
   configs: DeviceConfig[];
 };
 
+export type AppInfo = {
+  version: string;
+};
+
 export type UseApi = {
   enrollment: {
     start: (data: EnrollmentStartRequest) => Promise<EnrollmentStartResponse>;
     activateUser: (data: ActivateUserRequest) => Promise<EmptyApiResponse>;
     createDevice: (data: CreateDeviceRequest) => Promise<CreateDeviceResponse>;
   };
+  getAppInfo: () => Promise<AppInfo>;
 };
