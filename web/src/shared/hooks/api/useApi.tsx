@@ -22,11 +22,14 @@ export const useApi = (): UseApi => {
   const createDevice: UseApi['enrollment']['createDevice'] = (data) =>
     client.post('/enrollment/create_device', data).then(unpackRequest);
 
+  const getAppInfo: UseApi['getAppInfo'] = () => client.get('/info').then(unpackRequest);
+
   return {
     enrollment: {
       start: startEnrollment,
       activateUser,
       createDevice,
     },
+    getAppInfo,
   };
 };
