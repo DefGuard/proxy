@@ -13,16 +13,19 @@ import { TimeLeft } from '../TimeLeft/TimeLeft';
 export const EnrollmentSideBar = () => {
   const { LL } = useI18nContext();
 
+  const vpnOptional = useEnrollmentStore((state) => state.vpnOptional);
+
   const steps = useMemo((): LocalizedString[] => {
     const steps = LL.pages.enrollment.sideBar.steps;
+    const vpnStep = vpnOptional ? `${steps.vpn()}*` : steps.vpn();
     return [
       steps.welcome(),
       steps.verification(),
       steps.password(),
-      steps.vpn(),
+      vpnStep as LocalizedString,
       steps.finish(),
     ];
-  }, [LL.pages.enrollment.sideBar.steps]);
+  }, [LL.pages.enrollment.sideBar.steps, vpnOptional]);
 
   return (
     <div id="enrollment-side-bar">
