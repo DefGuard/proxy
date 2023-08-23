@@ -2,3 +2,5 @@ target/
 web/node_modules
 web/dist
 .volumes/
+.github/
+docs/
