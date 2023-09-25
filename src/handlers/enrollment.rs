@@ -104,7 +104,7 @@ pub async fn get_network_info(
     cookies: Cookies,
     Json(req): Json<ExistingDevice>,
 ) -> ApiResult<Json<CreateDeviceResponse>> {
-    info!("Adding new device");
+    info!("Getting network info");
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
