@@ -2,7 +2,7 @@ use crate::error::ApiError;
 use crate::server::{COOKIE_NAME, SECRET_KEY};
 use crate::{
     grpc::enrollment::proto::{
-        ActivateUserRequest, CreateDeviceResponse, EnrollmentStartRequest, EnrollmentStartResponse,
+        ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
         ExistingDevice, NewDevice,
     },
     handlers::ApiResult,
@@ -89,7 +89,7 @@ pub async fn create_device(
     State(state): State<AppState>,
     cookies: Cookies,
     Json(req): Json<NewDevice>,
-) -> ApiResult<Json<CreateDeviceResponse>> {
+) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Adding new device");
 
     let mut client = state.client.lock().await;
@@ -103,7 +103,7 @@ pub async fn get_network_info(
     State(state): State<AppState>,
     cookies: Cookies,
     Json(req): Json<ExistingDevice>,
-) -> ApiResult<Json<CreateDeviceResponse>> {
+) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Getting network info");
 
     let mut client = state.client.lock().await;
