@@ -2,8 +2,8 @@ use crate::error::ApiError;
 use crate::server::{COOKIE_NAME, SECRET_KEY};
 use crate::{
     grpc::enrollment::proto::{
-        ActivateUserRequest, CreateDeviceResponse, EnrollmentStartRequest, EnrollmentStartResponse,
-        NewDevice,
+        ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
+        ExistingDevice, NewDevice,
     },
     handlers::ApiResult,
     server::AppState,
@@ -18,6 +18,7 @@ pub fn router() -> Router<AppState> {
         .route("/start", post(start_enrollment_process))
         .route("/activate_user", post(activate_user))
         .route("/create_device", post(create_device))
+        .route("/network_info", post(get_network_info))
 }
 
 // extract token from session cookies and add it to gRPC request auth header
@@ -88,13 +89,27 @@ pub async fn create_device(
     State(state): State<AppState>,
     cookies: Cookies,
     Json(req): Json<NewDevice>,
-) -> ApiResult<Json<CreateDeviceResponse>> {
+) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Adding new device");
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
     add_auth_header(cookies, &mut request)?;
     let response = client.create_device(request).await?;
+
+    Ok(Json(response.into_inner()))
+}
+pub async fn get_network_info(
+    State(state): State<AppState>,
+    cookies: Cookies,
+    Json(req): Json<ExistingDevice>,
+) -> ApiResult<Json<DeviceConfigResponse>> {
+    info!("Getting network info");
+
+    let mut client = state.client.lock().await;
+    let mut request = tonic::Request::new(req);
+    add_auth_header(cookies, &mut request)?;
+    let response = client.get_network_info(request).await?;
 
     Ok(Json(response.into_inner()))
 }
