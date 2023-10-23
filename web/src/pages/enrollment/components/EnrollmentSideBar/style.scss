@@ -34,6 +34,10 @@
 
   .divider {
     background-color: var(--border-primary);
+
+    &.push {
+      margin-top: auto;
+    }
   }
 
   & > .title {
@@ -78,7 +82,7 @@
     align-items: center;
     justify-content: flex-start;
     box-sizing: border-box;
-    padding: 62px 0 0 0;
+    padding: 62px 0 10px 0;
     position: relative;
     user-select: none;
 
