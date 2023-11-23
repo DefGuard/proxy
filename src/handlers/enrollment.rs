@@ -10,10 +10,12 @@ use crate::{
     handlers::ApiResult,
     server::AppState,
 };
-use axum::extract::ConnectInfo;
-use axum::headers::UserAgent;
-use axum::TypedHeader;
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{
+    extract::{ConnectInfo, State},
+    headers::UserAgent,
+    routing::post,
+    Json, Router, TypedHeader,
+};
 use tonic::metadata::MetadataValue;
 use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
 use tracing::{debug, error, info};
@@ -51,7 +53,7 @@ fn add_device_info_header<T>(
     ip_address: String,
     user_agent: Option<TypedHeader<UserAgent>>,
 ) -> Result<(), ApiError> {
-    let user_agent_string: String = user_agent.map(|v| v.to_string()).unwrap_or("".to_string());
+    let user_agent_string: String = user_agent.map(|v| v.to_string()).unwrap_or_default();
 
     request
         .metadata_mut()
