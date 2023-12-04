@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-
 use crate::error::ApiError;
 use crate::server::{COOKIE_NAME, SECRET_KEY};
 use crate::{
@@ -10,12 +8,8 @@ use crate::{
     handlers::ApiResult,
     server::AppState,
 };
-use axum::{
-    extract::{ConnectInfo, State},
-    headers::UserAgent,
-    routing::post,
-    Json, Router, TypedHeader,
-};
+use axum::{extract::State, headers::UserAgent, routing::post, Json, Router, TypedHeader};
+use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
 use tonic::metadata::MetadataValue;
 use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
 use tracing::{debug, error, info};
@@ -96,14 +90,15 @@ pub async fn start_enrollment_process(
 
 pub async fn activate_user(
     State(state): State<AppState>,
-    ConnectInfo(connect_info): ConnectInfo<SocketAddr>,
+    forwarded_for_ip: Option<LeftmostXForwardedFor>,
+    InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
     cookies: Cookies,
     Json(req): Json<ActivateUserRequest>,
 ) -> ApiResult<()> {
     info!("Activating user");
 
-    let ip_address = connect_info.ip().to_string();
+    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
     add_auth_header(cookies, &mut request)?;
@@ -115,14 +110,15 @@ pub async fn activate_user(
 
 pub async fn create_device(
     State(state): State<AppState>,
-    ConnectInfo(connect_info): ConnectInfo<SocketAddr>,
+    forwarded_for_ip: Option<LeftmostXForwardedFor>,
+    InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
     cookies: Cookies,
     Json(req): Json<NewDevice>,
 ) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Adding new device");
 
-    let ip_address = connect_info.ip().to_string();
+    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
     add_auth_header(cookies, &mut request)?;

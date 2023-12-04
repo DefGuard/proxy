@@ -9,6 +9,7 @@ repository = "https://github.com/DefGuard/proxy"
 [dependencies]
 # base `axum` deps
 axum = { version = "0.6", features = ["json", "tracing", "macros", "headers"] }
+axum-client-ip = "0.4"
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tower = "0.4"
