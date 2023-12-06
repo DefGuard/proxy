@@ -93,6 +93,6 @@
     "typesafe-i18n": "^5.26.0",
     "typescript": "^5.1.6",
     "typescript-eslint-language-service": "^5.0.5",
-    "vite": "^4.4.8"
+    "vite": "^4.4.12"
   }
 }
