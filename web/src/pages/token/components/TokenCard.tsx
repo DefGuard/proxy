@@ -116,6 +116,7 @@ export const TokenCard = () => {
           onClick={() => navigate(routes.main)}
         />
         <Button
+          data-testid="enrollment-token-submit-button"
           size={ButtonSize.LARGE}
           styleVariant={ButtonStyleVariant.PRIMARY}
           text={LL.pages.resetPassword.steps.email.controls.send()}
