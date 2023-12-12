@@ -24,11 +24,25 @@ export const useApi = (): UseApi => {
 
   const getAppInfo: UseApi['getAppInfo'] = () => client.get('/info').then(unpackRequest);
 
+  const requestPasswordReset: UseApi['passwordReset']['request'] = (data) =>
+    client.post('/password-reset/request', data).then(unpackRequest);
+
+  const startPasswordReset: UseApi['passwordReset']['start'] = (data) =>
+    client.post('/password-reset/start', data).then(unpackRequest);
+
+  const resetPassword: UseApi['passwordReset']['reset'] = (data) =>
+    client.post('/password-reset/reset', data).then(unpackRequest);
+
   return {
     enrollment: {
       start: startEnrollment,
       activateUser,
       createDevice,
+    },
+    passwordReset: {
+      request: requestPasswordReset,
+      start: startPasswordReset,
+      reset: resetPassword,
     },
     getAppInfo,
   };

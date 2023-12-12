@@ -1,4 +1,4 @@
-use crate::error::ApiError;
+use crate::handlers::shared::{add_auth_header, add_device_info_header};
 use crate::server::{COOKIE_NAME, SECRET_KEY};
 use crate::{
     grpc::enrollment::proto::{
@@ -10,9 +10,8 @@ use crate::{
 };
 use axum::{extract::State, headers::UserAgent, routing::post, Json, Router, TypedHeader};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
-use tonic::metadata::MetadataValue;
 use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -20,43 +19,6 @@ pub fn router() -> Router<AppState> {
         .route("/activate_user", post(activate_user))
         .route("/create_device", post(create_device))
         .route("/network_info", post(get_network_info))
-}
-
-// extract token from session cookies and add it to gRPC request auth header
-fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Result<(), ApiError> {
-    debug!("Adding auth header to gRPC request");
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
-
-    match private_cookies.get(COOKIE_NAME) {
-        Some(cookie) => {
-            let token = MetadataValue::try_from(cookie.value())?;
-            request.metadata_mut().insert("authorization", token);
-        }
-        None => {
-            error!("Enrollment session cookie not found");
-            return Err(ApiError::CookieNotFound);
-        }
-    }
-
-    Ok(())
-}
-
-fn add_device_info_header<T>(
-    request: &mut tonic::Request<T>,
-    ip_address: String,
-    user_agent: Option<TypedHeader<UserAgent>>,
-) -> Result<(), ApiError> {
-    let user_agent_string: String = user_agent.map(|v| v.to_string()).unwrap_or_default();
-
-    request
-        .metadata_mut()
-        .insert("ip_address", MetadataValue::try_from(ip_address)?);
-    request
-        .metadata_mut()
-        .insert("user_agent", MetadataValue::try_from(user_agent_string)?);
-
-    Ok(())
 }
 
 pub async fn start_enrollment_process(

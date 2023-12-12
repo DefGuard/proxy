@@ -4,10 +4,12 @@ import dayjs from 'dayjs';
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { LogoContainer } from '../../components/LogoContainer/LogoContainer';
 import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
 import { useApi } from '../../shared/hooks/api/useApi';
 import { routes } from '../../shared/routes';
 import { useEnrollmentStore } from '../enrollment/hooks/store/useEnrollmentStore';
+import { SelectPath } from './SelectPath';
 
 export const MainPage = () => {
   const navigate = useNavigate();
@@ -48,12 +50,13 @@ export const MainPage = () => {
           navigate(routes.token, { replace: true });
         });
     }
-
-    if (!token && !requestPending.current) {
-      navigate(routes.token, { replace: true });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  return <PageContainer id="main-page"></PageContainer>;
+  return (
+    <PageContainer id="main-page">
+      <LogoContainer />
+      <SelectPath />
+    </PageContainer>
+  );
 };
