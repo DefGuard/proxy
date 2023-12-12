@@ -3,21 +3,19 @@ use tonic::metadata::MetadataValue;
 use tower_cookies::Cookies;
 use tracing::{debug, error};
 
-use crate::{
-    error::ApiError,
-    server::{COOKIE_NAME, SECRET_KEY},
-};
+use crate::{error::ApiError, server::SECRET_KEY};
 
 // extract token from session cookies and add it to gRPC request auth header
 pub fn add_auth_header<T>(
     cookies: Cookies,
     request: &mut tonic::Request<T>,
+    cookie_name: &str,
 ) -> Result<(), ApiError> {
     debug!("Adding auth header to gRPC request");
     let key = SECRET_KEY.get().unwrap();
     let private_cookies = cookies.private(key);
 
-    match private_cookies.get(COOKIE_NAME) {
+    match private_cookies.get(cookie_name) {
         Some(cookie) => {
             let token = MetadataValue::try_from(cookie.value())?;
             request.metadata_mut().insert("authorization", token);

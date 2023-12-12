@@ -1,5 +1,5 @@
 use crate::handlers::shared::{add_auth_header, add_device_info_header};
-use crate::server::{COOKIE_NAME, SECRET_KEY};
+use crate::server::{ENROLLMENT_COOKIE_NAME, SECRET_KEY};
 use crate::{
     grpc::enrollment::proto::{
         ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
@@ -31,7 +31,7 @@ pub async fn start_enrollment_process(
     // clear session cookies if already populated
     let key = SECRET_KEY.get().unwrap();
     let private_cookies = cookies.private(key);
-    if let Some(cookie) = private_cookies.get(COOKIE_NAME) {
+    if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
         debug!("Removing previous session cookie");
         cookies.remove(cookie)
     };
@@ -42,7 +42,7 @@ pub async fn start_enrollment_process(
     let response = client.start_enrollment(req).await?.into_inner();
 
     // set session cookie
-    let cookie = Cookie::build(COOKIE_NAME, token)
+    let cookie = Cookie::build(ENROLLMENT_COOKIE_NAME, token)
         .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap())
         .finish();
     private_cookies.add(cookie);
@@ -63,9 +63,16 @@ pub async fn activate_user(
     let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(cookies.clone(), &mut request, ENROLLMENT_COOKIE_NAME)?;
     add_device_info_header(&mut request, ip_address, user_agent)?;
     client.activate_user(request).await?;
+
+    let key = SECRET_KEY.get().unwrap();
+    let private_cookies = cookies.private(key);
+    if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
+        debug!("Enrollment finished. Removing session cookie");
+        cookies.remove(cookie)
+    };
 
     Ok(())
 }
@@ -83,7 +90,7 @@ pub async fn create_device(
     let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
     add_device_info_header(&mut request, ip_address, user_agent)?;
     let response = client.create_device(request).await?;
 
@@ -98,7 +105,7 @@ pub async fn get_network_info(
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
     let response = client.get_network_info(request).await?;
 
     Ok(Json(response.into_inner()))

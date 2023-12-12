@@ -9,7 +9,7 @@ use crate::{
         PasswordResetStartResponse,
     },
     handlers::shared::{add_auth_header, add_device_info_header},
-    server::{AppState, COOKIE_NAME, SECRET_KEY},
+    server::{AppState, PASSWORD_RESET_COOKIE_NAME, SECRET_KEY},
 };
 
 use super::ApiResult;
@@ -59,7 +59,7 @@ pub async fn start_password_reset(
     // clear session cookies if already populated
     let key = SECRET_KEY.get().unwrap();
     let private_cookies = cookies.private(key);
-    if let Some(cookie) = private_cookies.get(COOKIE_NAME) {
+    if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
         debug!("Removing previous session cookie");
         cookies.remove(cookie)
     };
@@ -77,9 +77,8 @@ pub async fn start_password_reset(
         .await?
         .into_inner();
 
-    // TODO: consider changing name to that it does not collide with?
     // set session cookie
-    let cookie = Cookie::build(COOKIE_NAME, token)
+    let cookie = Cookie::build(PASSWORD_RESET_COOKIE_NAME, token)
         .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap())
         .finish();
     private_cookies.add(cookie);
@@ -102,10 +101,17 @@ pub async fn reset_password(
     let mut password_reset_client = state.password_reset_client.lock().await;
     let mut request = tonic::Request::new(req);
 
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(cookies.clone(), &mut request, PASSWORD_RESET_COOKIE_NAME)?;
     add_device_info_header(&mut request, ip_address, user_agent)?;
 
     password_reset_client.reset_password(request).await?;
+
+    let key = SECRET_KEY.get().unwrap();
+    let private_cookies = cookies.private(key);
+    if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
+        debug!("Password reset finished. Removing session cookie");
+        cookies.remove(cookie)
+    };
 
     Ok(())
 }

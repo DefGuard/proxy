@@ -29,7 +29,8 @@ use tower_http::{
 };
 use tracing::{debug, info, info_span, Level};
 
-pub const COOKIE_NAME: &str = "defguard_proxy";
+pub const ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub const PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
 
 #[derive(Clone)]
