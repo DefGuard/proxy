@@ -1,4 +1,7 @@
+use std::net::IpAddr;
+
 use axum::{headers::UserAgent, TypedHeader};
+use axum_client_ip::LeftmostXForwardedFor;
 use tonic::metadata::MetadataValue;
 use tower_cookies::Cookies;
 use tracing::{debug, error};
@@ -31,9 +34,11 @@ pub fn add_auth_header<T>(
 
 pub fn add_device_info_header<T>(
     request: &mut tonic::Request<T>,
-    ip_address: String,
+    forwarded_for_ip: Option<LeftmostXForwardedFor>,
+    insecure_ip: IpAddr,
     user_agent: Option<TypedHeader<UserAgent>>,
 ) -> Result<(), ApiError> {
+    let ip_address: String = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let user_agent_string: String = user_agent.map(|v| v.to_string()).unwrap_or_default();
 
     request
@@ -44,4 +49,8 @@ pub fn add_device_info_header<T>(
         .insert("user_agent", MetadataValue::try_from(user_agent_string)?);
 
     Ok(())
+}
+
+pub fn create_request<T>(req: T) -> tonic::Request<T> {
+    tonic::Request::new(req)
 }

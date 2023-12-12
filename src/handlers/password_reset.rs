@@ -8,7 +8,7 @@ use crate::{
         PasswordResetInitializeRequest, PasswordResetRequest, PasswordResetStartRequest,
         PasswordResetStartResponse,
     },
-    handlers::shared::{add_auth_header, add_device_info_header},
+    handlers::shared::{add_auth_header, add_device_info_header, create_request},
     server::{AppState, PASSWORD_RESET_COOKIE_NAME, SECRET_KEY},
 };
 
@@ -34,10 +34,9 @@ pub async fn request_password_reset(
     );
 
     let mut password_reset_client = state.password_reset_client.lock().await;
-    let mut request = tonic::Request::new(req);
+    let mut request = create_request(req);
 
-    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
-    add_device_info_header(&mut request, ip_address, user_agent)?;
+    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
 
     password_reset_client
         .request_password_reset(request)
@@ -67,10 +66,9 @@ pub async fn start_password_reset(
     let token = req.clone().token.clone();
 
     let mut password_reset_client = state.password_reset_client.lock().await;
-    let mut request = tonic::Request::new(req);
+    let mut request = create_request(req);
 
-    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
-    add_device_info_header(&mut request, ip_address, user_agent)?;
+    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
 
     let response = password_reset_client
         .start_password_reset(request)
@@ -96,13 +94,11 @@ pub async fn reset_password(
 ) -> ApiResult<()> {
     info!("Resetting password");
 
-    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
-
     let mut password_reset_client = state.password_reset_client.lock().await;
-    let mut request = tonic::Request::new(req);
+    let mut request = create_request(req);
 
     add_auth_header(cookies.clone(), &mut request, PASSWORD_RESET_COOKIE_NAME)?;
-    add_device_info_header(&mut request, ip_address, user_agent)?;
+    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
 
     password_reset_client.reset_password(request).await?;
 

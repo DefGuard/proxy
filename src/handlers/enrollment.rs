@@ -1,4 +1,4 @@
-use crate::handlers::shared::{add_auth_header, add_device_info_header};
+use crate::handlers::shared::{add_auth_header, add_device_info_header, create_request};
 use crate::server::{ENROLLMENT_COOKIE_NAME, SECRET_KEY};
 use crate::{
     grpc::enrollment::proto::{
@@ -60,11 +60,10 @@ pub async fn activate_user(
 ) -> ApiResult<()> {
     info!("Activating user");
 
-    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
-    let mut request = tonic::Request::new(req);
+    let mut request = create_request(req);
     add_auth_header(cookies.clone(), &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, ip_address, user_agent)?;
+    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
     client.activate_user(request).await?;
 
     let key = SECRET_KEY.get().unwrap();
@@ -87,11 +86,10 @@ pub async fn create_device(
 ) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Adding new device");
 
-    let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
-    let mut request = tonic::Request::new(req);
+    let mut request = create_request(req);
     add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, ip_address, user_agent)?;
+    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
     let response = client.create_device(request).await?;
 
     Ok(Json(response.into_inner()))
@@ -104,7 +102,7 @@ pub async fn get_network_info(
     info!("Getting network info");
 
     let mut client = state.client.lock().await;
-    let mut request = tonic::Request::new(req);
+    let mut request = create_request(req);
     add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
     let response = client.get_network_info(request).await?;
 
