@@ -49,8 +49,6 @@ export const PasswordResetPage = () => {
           const sessionStart = dayjs().local().format();
           setStore({
             step: 2,
-            userInfo: res.user,
-            adminInfo: res.admin,
             sessionStart,
             sessionEnd,
           });

@@ -5,8 +5,8 @@ use tracing::{debug, info};
 
 use crate::{
     grpc::password_reset::proto::{
-        PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
-        PasswordResetVerifyRequest,
+        PasswordResetInitializeRequest, PasswordResetRequest, PasswordResetStartRequest,
+        PasswordResetStartResponse,
     },
     handlers::shared::{add_auth_header, add_device_info_header},
     server::{AppState, COOKIE_NAME, SECRET_KEY},
@@ -26,7 +26,7 @@ pub async fn request_password_reset(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
-    Json(req): Json<PasswordResetStartRequest>,
+    Json(req): Json<PasswordResetInitializeRequest>,
 ) -> ApiResult<()> {
     info!(
         "Starting password reset request for {}",
@@ -52,7 +52,7 @@ pub async fn start_password_reset(
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
     cookies: Cookies,
-    Json(req): Json<PasswordResetVerifyRequest>,
+    Json(req): Json<PasswordResetStartRequest>,
 ) -> ApiResult<Json<PasswordResetStartResponse>> {
     info!("Starting password reset process");
 
