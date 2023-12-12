@@ -38,7 +38,7 @@ pub async fn start_enrollment_process(
 
     let token = req.token.clone();
 
-    let mut client = state.client.lock().await;
+    let mut client = state.enrollment_client.lock().await;
     let response = client.start_enrollment(req).await?.into_inner();
 
     // set session cookie
@@ -60,7 +60,7 @@ pub async fn activate_user(
 ) -> ApiResult<()> {
     info!("Activating user");
 
-    let mut client = state.client.lock().await;
+    let mut client = state.enrollment_client.lock().await;
     let mut request = create_request(req);
     add_auth_header(cookies.clone(), &mut request, ENROLLMENT_COOKIE_NAME)?;
     add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
@@ -86,7 +86,7 @@ pub async fn create_device(
 ) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Adding new device");
 
-    let mut client = state.client.lock().await;
+    let mut client = state.enrollment_client.lock().await;
     let mut request = create_request(req);
     add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
     add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
@@ -101,7 +101,7 @@ pub async fn get_network_info(
 ) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Getting network info");
 
-    let mut client = state.client.lock().await;
+    let mut client = state.enrollment_client.lock().await;
     let mut request = create_request(req);
     add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
     let response = client.get_network_info(request).await?;

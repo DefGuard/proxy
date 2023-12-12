@@ -36,7 +36,7 @@ pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    pub enrollment_client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
     pub password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
 }
 
@@ -76,7 +76,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Setting up API server");
     let shared_state = AppState {
         config: Arc::new(config),
-        client: Arc::new(Mutex::new(client)),
+        enrollment_client: Arc::new(Mutex::new(client)),
         password_reset_client: Arc::new(Mutex::new(password_reset_client)),
     };
     // serving static frontend files
