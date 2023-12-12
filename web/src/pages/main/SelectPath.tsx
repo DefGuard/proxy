@@ -15,6 +15,7 @@ export const SelectPath = () => {
   return (
     <Card shaded id="setup-method-step">
       <PathSelectCard
+        testId="select-enrollment"
         onSelect={() => navigate(routes.token)}
         title="Enrollment process"
         subtitle="Confirm your new account"
@@ -22,6 +23,7 @@ export const SelectPath = () => {
       />
 
       <PathSelectCard
+        testId="select-password-reset"
         onSelect={() => {
           reset();
           navigate(routes.passwordReset);
