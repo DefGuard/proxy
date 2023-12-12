@@ -1,4 +1,6 @@
-use crate::handlers::ApiResult;
+use crate::grpc::password_reset::proto::password_reset_service_client::PasswordResetServiceClient;
+use crate::grpc::setup_password_reset_client;
+use crate::handlers::{password_reset, ApiResult};
 use crate::{
     config::Config,
     grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
@@ -27,13 +29,15 @@ use tower_http::{
 };
 use tracing::{debug, info, info_span, Level};
 
-pub const COOKIE_NAME: &str = "defguard_proxy";
+pub const ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub const PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    pub enrollment_client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    pub password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
 }
 
 async fn handle_404() -> (StatusCode, &'static str) {
@@ -59,6 +63,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     // connect to upstream gRPC server
     let client = setup_client(&config).context("Failed to setup gRPC client")?;
+    let password_reset_client = setup_password_reset_client(&config)
+        .context("Failed to setup password reset gRPC client")?;
 
     // store port before moving config
     let http_port = config.http_port;
@@ -70,7 +76,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Setting up API server");
     let shared_state = AppState {
         config: Arc::new(config),
-        client: Arc::new(Mutex::new(client)),
+        enrollment_client: Arc::new(Mutex::new(client)),
+        password_reset_client: Arc::new(Mutex::new(password_reset_client)),
     };
     // serving static frontend files
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
@@ -81,6 +88,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             "/api/v1",
             Router::new()
                 .nest("/enrollment", enrollment::router())
+                .nest("/password-reset", password_reset::router())
                 .route("/health", get(healthcheck))
                 .route("/info", get(app_info)),
         )
