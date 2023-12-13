@@ -44,7 +44,7 @@ export const LinkSentStep = () => {
           }
         />
       </div>
-      <Card id="link-sent-card">
+      <Card id="link-sent-card" data-testid="email-sent-message">
         <MessageBox
           type={MessageBoxType.INFO}
           message={LL.pages.resetPassword.steps.linkSent.messageBox()}
