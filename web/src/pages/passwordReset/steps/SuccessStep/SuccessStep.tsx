@@ -44,7 +44,7 @@ export const SuccessStep = () => {
           }}
         />
       </div>
-      <Card id="reset-succeded-card">
+      <Card id="reset-succeded-card" data-testid="password-reset-success">
         <MessageBox
           type={MessageBoxType.SUCCESS}
           message={LL.pages.resetPassword.steps.resetSuccess.messageBox()}

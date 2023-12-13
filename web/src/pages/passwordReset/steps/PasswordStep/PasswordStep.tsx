@@ -84,6 +84,7 @@ export const PasswordStep = () => {
     <>
       <div className="controls single">
         <Button
+          data-testid="password-reset-submit"
           type="button"
           size={ButtonSize.LARGE}
           styleVariant={ButtonStyleVariant.PRIMARY}

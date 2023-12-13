@@ -97,6 +97,7 @@ export const EmailStep = () => {
           }}
         />
         <Button
+          data-testid="password-reset-email-submit-button"
           size={ButtonSize.LARGE}
           styleVariant={ButtonStyleVariant.PRIMARY}
           text={LL.pages.resetPassword.steps.email.controls.send()}
