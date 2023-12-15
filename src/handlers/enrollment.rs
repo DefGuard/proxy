@@ -1,18 +1,23 @@
-use crate::error::ApiError;
-use crate::server::{COOKIE_NAME, SECRET_KEY};
+use axum::{extract::State, routing::post, Json, Router};
+use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
+use axum_extra::{
+    extract::{cookie::Cookie, PrivateCookieJar},
+    headers::UserAgent,
+    TypedHeader,
+};
+use time::OffsetDateTime;
+use tonic::metadata::MetadataValue;
+use tracing::{debug, error, info};
+
 use crate::{
+    error::ApiError,
     grpc::enrollment::proto::{
         ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
         ExistingDevice, NewDevice,
     },
     handlers::ApiResult,
-    server::AppState,
+    server::{AppState, COOKIE_NAME},
 };
-use axum::{extract::State, headers::UserAgent, routing::post, Json, Router, TypedHeader};
-use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
-use tonic::metadata::MetadataValue;
-use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
-use tracing::{debug, error, info};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -23,23 +28,20 @@ pub fn router() -> Router<AppState> {
 }
 
 // extract token from session cookies and add it to gRPC request auth header
-fn add_auth_header<T>(cookies: Cookies, request: &mut tonic::Request<T>) -> Result<(), ApiError> {
+fn add_auth_header<T>(
+    private_cookies: PrivateCookieJar,
+    request: &mut tonic::Request<T>,
+) -> Result<(), ApiError> {
     debug!("Adding auth header to gRPC request");
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
+    if let Some(cookie) = private_cookies.get(COOKIE_NAME) {
+        let token = MetadataValue::try_from(cookie.value())?;
+        request.metadata_mut().insert("authorization", token);
 
-    match private_cookies.get(COOKIE_NAME) {
-        Some(cookie) => {
-            let token = MetadataValue::try_from(cookie.value())?;
-            request.metadata_mut().insert("authorization", token);
-        }
-        None => {
-            error!("Enrollment session cookie not found");
-            return Err(ApiError::CookieNotFound);
-        }
+        Ok(())
+    } else {
+        error!("Enrollment session cookie not found");
+        Err(ApiError::CookieNotFound)
     }
-
-    Ok(())
 }
 
 fn add_device_info_header<T>(
@@ -61,18 +63,16 @@ fn add_device_info_header<T>(
 
 pub async fn start_enrollment_process(
     State(state): State<AppState>,
-    cookies: Cookies,
+    mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
-) -> ApiResult<Json<EnrollmentStartResponse>> {
+) -> Result<(PrivateCookieJar, Json<EnrollmentStartResponse>), ApiError> {
     info!("Starting enrollment process");
 
     // clear session cookies if already populated
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
     if let Some(cookie) = private_cookies.get(COOKIE_NAME) {
         debug!("Removing previous session cookie");
-        cookies.remove(cookie)
-    };
+        private_cookies = private_cookies.remove(cookie);
+    }
 
     let token = req.token.clone();
 
@@ -80,12 +80,10 @@ pub async fn start_enrollment_process(
     let response = client.start_enrollment(req).await?.into_inner();
 
     // set session cookie
-    let cookie = Cookie::build(COOKIE_NAME, token)
-        .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap())
-        .finish();
-    private_cookies.add(cookie);
+    let cookie = Cookie::build((COOKIE_NAME, token))
+        .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-    Ok(Json(response))
+    Ok((private_cookies.add(cookie), Json(response)))
 }
 
 pub async fn activate_user(
@@ -93,7 +91,7 @@ pub async fn activate_user(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
-    cookies: Cookies,
+    private_cookies: PrivateCookieJar,
     Json(req): Json<ActivateUserRequest>,
 ) -> ApiResult<()> {
     info!("Activating user");
@@ -101,7 +99,7 @@ pub async fn activate_user(
     let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(private_cookies, &mut request)?;
     add_device_info_header(&mut request, ip_address, user_agent)?;
     client.activate_user(request).await?;
 
@@ -113,7 +111,7 @@ pub async fn create_device(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
-    cookies: Cookies,
+    private_cookies: PrivateCookieJar,
     Json(req): Json<NewDevice>,
 ) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Adding new device");
@@ -121,7 +119,7 @@ pub async fn create_device(
     let ip_address = forwarded_for_ip.map_or(insecure_ip, |v| v.0).to_string();
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(private_cookies, &mut request)?;
     add_device_info_header(&mut request, ip_address, user_agent)?;
     let response = client.create_device(request).await?;
 
@@ -129,14 +127,14 @@ pub async fn create_device(
 }
 pub async fn get_network_info(
     State(state): State<AppState>,
-    cookies: Cookies,
+    private_cookies: PrivateCookieJar,
     Json(req): Json<ExistingDevice>,
 ) -> ApiResult<Json<DeviceConfigResponse>> {
     info!("Getting network info");
 
     let mut client = state.client.lock().await;
     let mut request = tonic::Request::new(req);
-    add_auth_header(cookies, &mut request)?;
+    add_auth_header(private_cookies, &mut request)?;
     let response = client.get_network_info(request).await?;
 
     Ok(Json(response.into_inner()))

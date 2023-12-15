@@ -1,39 +1,46 @@
-use crate::handlers::ApiResult;
-use crate::{
-    config::Config,
-    grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
-    handlers::enrollment,
-};
-use anyhow::Context;
-use axum::routing::get;
-use axum::{
-    handler::HandlerWithoutStateExt,
-    http::{Request, StatusCode},
-    Json, Router,
-};
-use clap::crate_version;
-use once_cell::sync::OnceCell;
-use serde::Serialize;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
 };
-use tokio::sync::Mutex;
+
+use anyhow::Context;
+use axum::{
+    extract::FromRef,
+    handler::HandlerWithoutStateExt,
+    http::{Request, StatusCode},
+    routing::get,
+    serve, Json, Router,
+};
+use axum_extra::extract::cookie::Key;
+use clap::crate_version;
+use serde::Serialize;
+use tokio::{net::TcpListener, sync::Mutex};
 use tonic::transport::Channel;
-use tower_cookies::{CookieManagerLayer, Key};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
 use tracing::{debug, info, info_span, Level};
 
-pub const COOKIE_NAME: &str = "defguard_proxy";
-pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
+use crate::{
+    config::Config,
+    grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
+    handlers::{enrollment, ApiResult},
+};
+
+pub static COOKIE_NAME: &str = "defguard_proxy";
 
 #[derive(Clone)]
-pub struct AppState {
-    pub config: Arc<Config>,
+pub(crate) struct AppState {
+    // pub config: Arc<Config>,
     pub client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    key: Key,
+}
+
+impl FromRef<AppState> for Key {
+    fn from_ref(state: &AppState) -> Self {
+        state.key.clone()
+    }
 }
 
 async fn handle_404() -> (StatusCode, &'static str) {
@@ -63,14 +70,13 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // store port before moving config
     let http_port = config.http_port;
 
-    // generate secret key for encrypting cookies
-    SECRET_KEY.set(Key::generate()).ok();
-
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
-        config: Arc::new(config),
+        // config: Arc::new(config),
         client: Arc::new(Mutex::new(client)),
+        // generate secret key for encrypting cookies
+        key: Key::generate(),
     };
     // serving static frontend files
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
@@ -87,7 +93,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .nest_service("/svg", serve_images)
         .fallback_service(serve_web_dir)
         .with_state(shared_state)
-        .layer(CookieManagerLayer::new())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
@@ -101,10 +106,13 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         );
 
     // run server
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), http_port);
-    info!("Listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .context("Error running HTTP server")
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), http_port);
+    let listener = TcpListener::bind(&addr).await?;
+    info!("Listening on {addr}");
+    serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .context("Error running HTTP server")
 }
