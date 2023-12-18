@@ -27,7 +27,7 @@ use crate::{
     grpc::{
         enrollment::proto::enrollment_service_client::EnrollmentServiceClient,
         password_reset::proto::password_reset_service_client::PasswordResetServiceClient,
-        setup_client, setup_password_reset_client,
+        setup_channel,
     },
     handlers::{enrollment, password_reset, ApiResult},
 };
@@ -71,9 +71,9 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
 
     // connect to upstream gRPC server
-    let client = setup_client(&config).context("Failed to setup gRPC client")?;
-    let password_reset_client = setup_password_reset_client(&config)
-        .context("Failed to setup password reset gRPC client")?;
+    let channel = setup_channel(&config).context("Failed to setup gRPC channel")?;
+    let client = EnrollmentServiceClient::new(channel.clone());
+    let password_reset_client = PasswordResetServiceClient::new(channel);
 
     // store port before moving config
     let http_port = config.http_port;

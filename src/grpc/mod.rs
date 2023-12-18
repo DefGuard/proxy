@@ -1,62 +1,35 @@
-pub mod enrollment;
-pub mod password_reset;
+pub(crate) mod enrollment;
+pub(crate) mod password_reset;
 
-use crate::{
-    config::Config,
-    grpc::password_reset::proto::password_reset_service_client::PasswordResetServiceClient,
-};
-use enrollment::proto::enrollment_service_client::EnrollmentServiceClient;
-use std::time::Duration;
+use std::{fs::read_to_string, time::Duration};
+
+use crate::config::Config;
 use thiserror::Error;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 use tracing::debug;
 
+pub const TEN_SECS: Duration = Duration::from_secs(10);
+
 #[derive(Debug, Error)]
-pub enum GrpcError {
+pub(crate) enum GrpcError {
     #[error("gRPC client setup error: {0}")]
     ClientSetup(String),
     #[error(transparent)]
     TransportError(#[from] tonic::transport::Error),
 }
 
-pub fn setup_client(config: &Config) -> Result<EnrollmentServiceClient<Channel>, GrpcError> {
-    debug!("Setting up gRPC client");
+pub(crate) fn setup_channel(config: &Config) -> Result<Channel, GrpcError> {
+    debug!("Setting up gRPC channel");
     let endpoint = Endpoint::from_shared(config.grpc_url.to_string())?;
-    let endpoint = endpoint.http2_keep_alive_interval(Duration::from_secs(10));
-    let endpoint = endpoint.tcp_keepalive(Some(Duration::from_secs(10)));
+    let endpoint = endpoint.http2_keep_alive_interval(TEN_SECS);
+    let endpoint = endpoint.tcp_keepalive(Some(TEN_SECS));
     let endpoint = if let Some(ca) = config.grpc_ca.clone() {
-        let ca =
-            std::fs::read_to_string(ca).map_err(|err| GrpcError::ClientSetup(err.to_string()))?;
+        let ca = read_to_string(ca).map_err(|err| GrpcError::ClientSetup(err.to_string()))?;
         let tls = ClientTlsConfig::new().ca_certificate(Certificate::from_pem(ca));
         endpoint.tls_config(tls)?
     } else {
         endpoint
     };
-    let channel = endpoint.connect_lazy();
 
-    let client = EnrollmentServiceClient::new(channel);
-
-    Ok(client)
-}
-
-pub fn setup_password_reset_client(
-    config: &Config,
-) -> Result<PasswordResetServiceClient<Channel>, GrpcError> {
-    debug!("Setting up password reset gRPC client");
-    let endpoint = Endpoint::from_shared(config.grpc_url.to_string())?;
-    let endpoint = endpoint.http2_keep_alive_interval(Duration::from_secs(10));
-    let endpoint = endpoint.tcp_keepalive(Some(Duration::from_secs(10)));
-    let endpoint = if let Some(ca) = config.grpc_ca.clone() {
-        let ca =
-            std::fs::read_to_string(ca).map_err(|err| GrpcError::ClientSetup(err.to_string()))?;
-        let tls = ClientTlsConfig::new().ca_certificate(Certificate::from_pem(ca));
-        endpoint.tls_config(tls)?
-    } else {
-        endpoint
-    };
-    let channel = endpoint.connect_lazy();
-
-    let client = PasswordResetServiceClient::new(channel);
-
-    Ok(client)
+    Ok(endpoint.connect_lazy())
 }

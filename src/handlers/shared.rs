@@ -15,15 +15,12 @@ pub fn add_auth_header<T>(
 ) -> Result<(), ApiError> {
     debug!("Adding auth header to gRPC request");
 
-    match private_cookies.get(cookie_name) {
-        Some(cookie) => {
-            let token = MetadataValue::try_from(cookie.value())?;
-            request.metadata_mut().insert("authorization", token);
-        }
-        None => {
-            error!("Enrollment session cookie not found");
-            return Err(ApiError::CookieNotFound);
-        }
+    if let Some(cookie) = private_cookies.get(cookie_name) {
+        let token = MetadataValue::try_from(cookie.value())?;
+        request.metadata_mut().insert("authorization", token);
+    } else {
+        error!("Enrollment session cookie not found");
+        return Err(ApiError::CookieNotFound);
     }
 
     Ok(())
@@ -46,8 +43,4 @@ pub fn add_device_info_header<T>(
         .insert("user_agent", MetadataValue::try_from(user_agent_string)?);
 
     Ok(())
-}
-
-pub fn create_request<T>(req: T) -> tonic::Request<T> {
-    tonic::Request::new(req)
 }
