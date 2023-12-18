@@ -13,7 +13,7 @@
     display: none;
     @include media-breakpoint-up(lg) {
       display: flex;
-      margin-bottom: 50px;
+      margin-bottom: 100px;
     }
   }
 
@@ -26,8 +26,12 @@
     column-gap: 32px;
     width: 100%;
     box-sizing: border-box;
-    padding: 0 135px;
+    padding: 0 20px;
     margin-bottom: 50px;
+
+    @include media-breakpoint-up(md) {
+      padding: 0 135px;
+    }
 
     &.single {
       grid-template-columns: 1fr;

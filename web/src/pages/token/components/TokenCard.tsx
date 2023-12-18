@@ -101,38 +101,52 @@ export const TokenCard = () => {
   };
 
   return (
-    <Card shaded={breakpoint !== 'mobile'} className="token-card">
-      <h2>{LL.pages.token.card.title()}</h2>
-      <MessageBox
-        message={LL.pages.token.card.messageBox.email()}
-        type={MessageBoxType.INFO}
-        dismissId="token-page-card-email"
-      />
-      <form
-        data-testid="enrollment-token-form"
-        onSubmit={handleSubmit(handleValidSubmit)}
-      >
-        <FormInput
-          controller={{ control, name: 'token' }}
-          placeholder={LL.pages.token.card.form.fields.token.placeholder()}
-          required
+    <>
+      <div className="controls">
+        <Button
+          size={ButtonSize.LARGE}
+          styleVariant={ButtonStyleVariant.LINK}
+          text={LL.common.controls.back()}
+          icon={
+            <ArrowSingle
+              size={ArrowSingleSize.SMALL}
+              direction={ArrowSingleDirection.LEFT}
+            />
+          }
+          onClick={() => navigate(routes.main)}
         />
-        <div className="controls">
-          <Button
-            type="submit"
-            loading={isLoading}
-            size={ButtonSize.LARGE}
-            styleVariant={ButtonStyleVariant.PRIMARY}
-            text={LL.pages.token.card.form.controls.submit()}
-            rightIcon={
-              <ArrowSingle
-                direction={ArrowSingleDirection.RIGHT}
-                size={ArrowSingleSize.LARGE}
-              />
-            }
+        <Button
+          data-testid="enrollment-token-submit-button"
+          size={ButtonSize.LARGE}
+          styleVariant={ButtonStyleVariant.PRIMARY}
+          text={LL.pages.resetPassword.steps.email.controls.send()}
+          rightIcon={
+            <ArrowSingle
+              size={ArrowSingleSize.SMALL}
+              direction={ArrowSingleDirection.RIGHT}
+            />
+          }
+          onClick={handleSubmit(handleValidSubmit)}
+        />
+      </div>
+      <Card shaded={breakpoint !== 'mobile'} className="token-card">
+        <h2>{LL.pages.token.card.title()}</h2>
+        <MessageBox
+          message={LL.pages.token.card.messageBox.email()}
+          type={MessageBoxType.INFO}
+          dismissId="token-page-card-email"
+        />
+        <form
+          data-testid="enrollment-token-form"
+          onSubmit={handleSubmit(handleValidSubmit)}
+        >
+          <FormInput
+            controller={{ control, name: 'token' }}
+            placeholder={LL.pages.token.card.form.fields.token.placeholder()}
+            required
           />
-        </div>
-      </form>
-    </Card>
+        </form>
+      </Card>
+    </>
   );
 };

@@ -1,7 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { useMemo, useRef } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { FormInput } from '../../../../shared/components/Form/FormInput/FormInput';
@@ -16,7 +19,9 @@ import {
   ButtonStyleVariant,
 } from '../../../../shared/components/layout/Button/types';
 import { Card } from '../../../../shared/components/layout/Card/Card';
+import { useApi } from '../../../../shared/hooks/api/useApi';
 import { passwordValidator } from '../../../../shared/validators/password';
+import { usePasswordResetStore } from '../../hooks/usePasswordResetStore';
 
 type FormFields = {
   password: string;
@@ -26,6 +31,10 @@ type FormFields = {
 export const PasswordStep = () => {
   const { LL } = useI18nContext();
   const submitRef = useRef<HTMLInputElement | null>(null);
+
+  const {
+    passwordReset: { reset },
+  } = useApi();
 
   const schema = useMemo(
     () =>
@@ -41,6 +50,22 @@ export const PasswordStep = () => {
     [LL],
   );
 
+  const setStore = usePasswordResetStore((state) => state.setState);
+
+  const [next] = usePasswordResetStore((state) => [state.nextStep], shallow);
+
+  const { mutate } = useMutation({
+    mutationFn: reset,
+    onSuccess: () => {
+      setStore({ loading: false });
+      next(3);
+    },
+    onError: (err: AxiosError) => {
+      setStore({ loading: false });
+      console.error(err.message);
+    },
+  });
+
   const { control, handleSubmit } = useForm<FormFields>({
     defaultValues: {
       password: '',
@@ -50,12 +75,16 @@ export const PasswordStep = () => {
     resolver: zodResolver(schema),
   });
 
-  const handleValidSubmit: SubmitHandler<FormFields> = (values) => console.table(values);
+  const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
+    setStore({ loading: true });
+    mutate(values);
+  };
 
   return (
     <>
       <div className="controls single">
         <Button
+          data-testid="password-reset-submit"
           type="button"
           size={ButtonSize.LARGE}
           styleVariant={ButtonStyleVariant.PRIMARY}

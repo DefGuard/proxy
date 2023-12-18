@@ -62,11 +62,30 @@ export type AppInfo = {
   version: string;
 };
 
+export type PasswordResetStartRequest = {
+  email: string;
+};
+
+export type PasswordResetStartResponse = {
+  admin: AdminInfo;
+  user: UserInfo;
+  deadline_timestamp: number;
+};
+
+export type PasswordResetRequest = {
+  password: string;
+};
+
 export type UseApi = {
   enrollment: {
     start: (data: EnrollmentStartRequest) => Promise<EnrollmentStartResponse>;
     activateUser: (data: ActivateUserRequest) => Promise<EmptyApiResponse>;
     createDevice: (data: CreateDeviceRequest) => Promise<CreateDeviceResponse>;
+  };
+  passwordReset: {
+    request: (data: PasswordResetStartRequest) => Promise<EmptyApiResponse>;
+    start: (data: EnrollmentStartRequest) => Promise<PasswordResetStartResponse>;
+    reset: (data: PasswordResetRequest) => Promise<EmptyApiResponse>;
   };
   getAppInfo: () => Promise<AppInfo>;
 };

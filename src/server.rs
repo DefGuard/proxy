@@ -24,16 +24,22 @@ use tracing::{debug, info, info_span, Level};
 
 use crate::{
     config::Config,
-    grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
-    handlers::{enrollment, ApiResult},
+    grpc::{
+        enrollment::proto::enrollment_service_client::EnrollmentServiceClient,
+        password_reset::proto::password_reset_service_client::PasswordResetServiceClient,
+        setup_client, setup_password_reset_client,
+    },
+    handlers::{enrollment, password_reset, ApiResult},
 };
 
-pub static COOKIE_NAME: &str = "defguard_proxy";
+pub static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
     // pub config: Arc<Config>,
-    pub client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    pub enrollment_client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    pub password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
     key: Key,
 }
 
@@ -66,6 +72,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     // connect to upstream gRPC server
     let client = setup_client(&config).context("Failed to setup gRPC client")?;
+    let password_reset_client = setup_password_reset_client(&config)
+        .context("Failed to setup password reset gRPC client")?;
 
     // store port before moving config
     let http_port = config.http_port;
@@ -74,7 +82,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Setting up API server");
     let shared_state = AppState {
         // config: Arc::new(config),
-        client: Arc::new(Mutex::new(client)),
+        enrollment_client: Arc::new(Mutex::new(client)),
+        password_reset_client: Arc::new(Mutex::new(password_reset_client)),
         // generate secret key for encrypting cookies
         key: Key::generate(),
     };
@@ -87,6 +96,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             "/api/v1",
             Router::new()
                 .nest("/enrollment", enrollment::router())
+                .nest("/password-reset", password_reset::router())
                 .route("/health", get(healthcheck))
                 .route("/info", get(app_info)),
         )

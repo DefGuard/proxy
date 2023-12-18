@@ -18,6 +18,7 @@ import { detectLocale } from '../../i18n/i18n-util';
 import { loadLocaleAsync } from '../../i18n/i18n-util.async';
 import { EnrollmentPage } from '../../pages/enrollment/EnrollmentPage';
 import { MainPage } from '../../pages/main/MainPage';
+import { PasswordResetPage } from '../../pages/passwordReset/PasswordResetPage';
 import { SessionTimeoutPage } from '../../pages/sessionTimeout/SessionTimeoutPage';
 import { TokenPage } from '../../pages/token/TokenPage';
 import { routes } from '../../shared/routes';
@@ -46,6 +47,10 @@ const router = createBrowserRouter([
   {
     path: routes.enrollment,
     element: <EnrollmentPage />,
+  },
+  {
+    path: routes.passwordReset,
+    element: <PasswordResetPage />,
   },
   {
     path: '/*',
