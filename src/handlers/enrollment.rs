@@ -12,13 +12,10 @@ use tracing::{debug, info};
 use crate::{
     error::ApiError,
     grpc::enrollment::proto::{
-        ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
-        ExistingDevice, NewDevice,
+        ActivateUserRequest, DeviceConfigResponse, ExistingDevice, NewDevice,
     },
-    handlers::{
-        shared::{add_auth_header, add_device_info_header},
-        ApiResult,
-    },
+    handlers::shared::{add_auth_header, add_device_info_header},
+    proto::{proxy_request, proxy_response, EnrollmentStartRequest, EnrollmentStartResponse},
     server::{AppState, ENROLLMENT_COOKIE_NAME},
 };
 
@@ -45,14 +42,24 @@ pub async fn start_enrollment_process(
 
     let token = req.token.clone();
 
-    let mut client = state.enrollment_client.lock().await;
-    let response = client.start_enrollment(req).await?.into_inner();
+    // let mut client = state.enrollment_client.lock().await;
+    // let response = client.start_enrollment(req).await?.into_inner();
+    if let Some(rx) = state
+        .grpc_server
+        .send(proxy_response::Payload::EnrollmentStart(req))
+    {
+        if let Ok(proxy_request::Payload::EnrollmentStart(response)) = rx.await {
+            // set session cookie
+            let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
+                .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-    // set session cookie
-    let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
-        .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
+            return Ok((private_cookies.add(cookie), Json(response)));
+        }
+    }
 
-    Ok((private_cookies.add(cookie), Json(response)))
+    Err(ApiError::Unexpected(
+        "failed to communicate with core".into(),
+    ))
 }
 
 pub async fn activate_user(
@@ -62,7 +69,7 @@ pub async fn activate_user(
     user_agent: Option<TypedHeader<UserAgent>>,
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<ActivateUserRequest>,
-) -> ApiResult<PrivateCookieJar> {
+) -> Result<PrivateCookieJar, ApiError> {
     info!("Activating user");
 
     let mut client = state.enrollment_client.lock().await;
@@ -86,7 +93,7 @@ pub async fn create_device(
     user_agent: Option<TypedHeader<UserAgent>>,
     private_cookies: PrivateCookieJar,
     Json(req): Json<NewDevice>,
-) -> ApiResult<Json<DeviceConfigResponse>> {
+) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Adding new device");
 
     let mut client = state.enrollment_client.lock().await;
@@ -101,7 +108,7 @@ pub async fn get_network_info(
     State(state): State<AppState>,
     private_cookies: PrivateCookieJar,
     Json(req): Json<ExistingDevice>,
-) -> ApiResult<Json<DeviceConfigResponse>> {
+) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Getting network info");
 
     let mut client = state.enrollment_client.lock().await;

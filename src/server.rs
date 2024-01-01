@@ -15,7 +15,7 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use serde::Serialize;
 use tokio::{net::TcpListener, sync::Mutex};
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Server};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
@@ -24,22 +24,25 @@ use tracing::{debug, info, info_span, Level};
 
 use crate::{
     config::Config,
+    error::ApiError,
     grpc::{
         enrollment::proto::enrollment_service_client::EnrollmentServiceClient,
         password_reset::proto::password_reset_service_client::PasswordResetServiceClient,
         setup_channel,
     },
-    handlers::{enrollment, password_reset, ApiResult},
+    handlers::{enrollment, password_reset},
+    proto::proxy_server,
+    ProxyServer,
 };
 
-pub static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
-pub static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
-    // pub config: Arc<Config>,
-    pub enrollment_client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
-    pub password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
+    pub(crate) enrollment_client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+    pub(crate) password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
+    pub(crate) grpc_server: ProxyServer,
     key: Key,
 }
 
@@ -54,12 +57,12 @@ async fn handle_404() -> (StatusCode, &'static str) {
 }
 
 #[derive(Serialize)]
-struct AppInfo {
-    version: String,
+struct AppInfo<'a> {
+    version: &'a str,
 }
 
-async fn app_info() -> ApiResult<Json<AppInfo>> {
-    let version = crate_version!().to_string();
+async fn app_info<'a>() -> Result<Json<AppInfo<'a>>, ApiError> {
+    let version = crate_version!();
     Ok(Json(AppInfo { version }))
 }
 
@@ -75,19 +78,30 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     let client = EnrollmentServiceClient::new(channel.clone());
     let password_reset_client = PasswordResetServiceClient::new(channel);
 
-    // store port before moving config
-    let http_port = config.http_port;
+    let grpc_server = ProxyServer::new();
 
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
-        // config: Arc::new(config),
         enrollment_client: Arc::new(Mutex::new(client)),
         password_reset_client: Arc::new(Mutex::new(password_reset_client)),
-        // generate secret key for encrypting cookies
+        grpc_server: grpc_server.clone(),
+        // Generate secret key for encrypting cookies.
         key: Key::generate(),
     };
-    // serving static frontend files
+
+    // Start gRPC server.
+    tokio::spawn(async move {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
+        info!("gRPC server is listening on {addr}");
+        // TODO: TLS
+        Server::builder()
+            .add_service(proxy_server::ProxyServer::new(grpc_server))
+            .serve(addr)
+            .await
+    });
+
+    // Serve static frontend files.
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
@@ -115,10 +129,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
 
-    // run server
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), http_port);
+    // Start web server.
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
     let listener = TcpListener::bind(&addr).await?;
-    info!("Listening on {addr}");
+    info!("Web server is listening on {addr}");
     serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),

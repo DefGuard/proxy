@@ -18,6 +18,7 @@ axum-extra = { version = "0.9", features = [
 # match axum-extra -> cookies
 time = { version = "0.3", default-features = false }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio-stream = { version = "0.1" }
 tower-http = { version = "0.5", features = ["fs", "trace"] }
 # logging/tracing
 tracing = "0.1"
@@ -26,7 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 # gRPC
-tonic = {version = "0.10", features = ["gzip", "tls", "tls-roots"] }
+tonic = { version = "0.10", features = ["gzip", "tls", "tls-roots"] }
 prost = "0.12"
 # error handling
 thiserror = "1.0"

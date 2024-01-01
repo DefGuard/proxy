@@ -1,6 +1,6 @@
 use clap::Parser;
 use defguard_proxy::{config::Config, server::run_server};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -9,7 +9,7 @@ async fn main() -> anyhow::Result<()> {
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
             "defguard_proxy=debug,tower_http=debug,axum::rejection=trace".into()
         }))
-        .with(tracing_subscriber::fmt::layer())
+        .with(fmt::layer())
         .init();
 
     // load .env

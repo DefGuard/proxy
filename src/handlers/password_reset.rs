@@ -19,8 +19,6 @@ use crate::{
     server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
 
-use super::ApiResult;
-
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/request", post(request_password_reset))
@@ -34,7 +32,7 @@ pub async fn request_password_reset(
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
     Json(req): Json<PasswordResetInitializeRequest>,
-) -> ApiResult<()> {
+) -> Result<(), ApiError> {
     info!("Starting password reset request for {}", req.email);
 
     let mut password_reset_client = state.password_reset_client.lock().await;
@@ -91,7 +89,7 @@ pub async fn reset_password(
     user_agent: Option<TypedHeader<UserAgent>>,
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<PasswordResetRequest>,
-) -> ApiResult<PrivateCookieJar> {
+) -> Result<PrivateCookieJar, ApiError> {
     info!("Resetting password");
 
     let mut password_reset_client = state.password_reset_client.lock().await;

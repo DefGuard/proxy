@@ -3,12 +3,13 @@ pub(crate) mod password_reset;
 
 use std::{fs::read_to_string, time::Duration};
 
-use crate::config::Config;
 use thiserror::Error;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 use tracing::debug;
 
-pub const TEN_SECS: Duration = Duration::from_secs(10);
+use crate::config::Config;
+
+const TEN_SECS: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Error)]
 pub(crate) enum GrpcError {
