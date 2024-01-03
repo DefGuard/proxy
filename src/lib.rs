@@ -47,14 +47,11 @@ impl ProxyServer {
     #[must_use]
     pub fn send(
         &self,
-        payload: proxy_response::Payload,
+        payload: Option<proxy_response::Payload>,
     ) -> Option<oneshot::Receiver<proxy_request::Payload>> {
         if let Some(client_tx) = self.clients.lock().unwrap().values().next() {
             let id = self.current_id.fetch_add(1, Ordering::Relaxed);
-            let res = ProxyResponse {
-                id,
-                payload: Some(payload),
-            };
+            let res = ProxyResponse { id, payload };
             if client_tx.send(Ok(res)).is_ok() {
                 let (tx, rx) = oneshot::channel();
                 self.results.lock().unwrap().insert(id, tx);

@@ -11,11 +11,11 @@ use tracing::{debug, info};
 
 use crate::{
     error::ApiError,
-    grpc::enrollment::proto::{
-        ActivateUserRequest, DeviceConfigResponse, ExistingDevice, NewDevice,
-    },
     handlers::shared::{add_auth_header, add_device_info_header},
-    proto::{proxy_request, proxy_response, EnrollmentStartRequest, EnrollmentStartResponse},
+    proto::{
+        proxy_request, proxy_response, ActivateUserRequest, DeviceConfigResponse,
+        EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
+    },
     server::{AppState, ENROLLMENT_COOKIE_NAME},
 };
 
@@ -42,11 +42,9 @@ pub async fn start_enrollment_process(
 
     let token = req.token.clone();
 
-    // let mut client = state.enrollment_client.lock().await;
-    // let response = client.start_enrollment(req).await?.into_inner();
     if let Some(rx) = state
         .grpc_server
-        .send(proxy_response::Payload::EnrollmentStart(req))
+        .send(Some(proxy_response::Payload::EnrollmentStart(req)))
     {
         if let Ok(proxy_request::Payload::EnrollmentStart(response)) = rx.await {
             // set session cookie
@@ -58,7 +56,7 @@ pub async fn start_enrollment_process(
     }
 
     Err(ApiError::Unexpected(
-        "failed to communicate with core".into(),
+        "failed to communicate with Defguard core".into(),
     ))
 }
 
@@ -72,11 +70,17 @@ pub async fn activate_user(
 ) -> Result<PrivateCookieJar, ApiError> {
     info!("Activating user");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = Request::new(req);
-    add_auth_header(&private_cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
-    client.activate_user(request).await?;
+    // let mut client = state.enrollment_client.lock().await;
+    // let mut request = Request::new(req);
+    // add_auth_header(&private_cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
+    // add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
+
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::ActivateUser(req)))
+    {
+        // to be implemented
+    }
 
     if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
         debug!("Enrollment finished. Removing session cookie");

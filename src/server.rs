@@ -25,13 +25,13 @@ use tracing::{debug, info, info_span, Level};
 use crate::{
     config::Config,
     error::ApiError,
-    grpc::{
-        enrollment::proto::enrollment_service_client::EnrollmentServiceClient,
-        password_reset::proto::password_reset_service_client::PasswordResetServiceClient,
-        setup_channel,
-    },
+    grpc::setup_channel,
     handlers::{enrollment, password_reset},
     proto::proxy_server,
+    proto::{
+        enrollment_service_client::EnrollmentServiceClient,
+        password_reset_service_client::PasswordResetServiceClient,
+    },
     ProxyServer,
 };
 
@@ -74,6 +74,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
 
     // connect to upstream gRPC server
+    // TODO: remove once bi-directional RPC is fully implemented.
     let channel = setup_channel(&config).context("Failed to setup gRPC channel")?;
     let client = EnrollmentServiceClient::new(channel.clone());
     let password_reset_client = PasswordResetServiceClient::new(channel);

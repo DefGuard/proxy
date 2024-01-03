@@ -1,6 +1,3 @@
-pub(crate) mod enrollment;
-pub(crate) mod password_reset;
-
 use std::{fs::read_to_string, time::Duration};
 
 use thiserror::Error;
@@ -24,7 +21,7 @@ pub(crate) fn setup_channel(config: &Config) -> Result<Channel, GrpcError> {
     let endpoint = Endpoint::from_shared(config.grpc_url.to_string())?;
     let endpoint = endpoint.http2_keep_alive_interval(TEN_SECS);
     let endpoint = endpoint.tcp_keepalive(Some(TEN_SECS));
-    let endpoint = if let Some(ca) = config.grpc_ca.clone() {
+    let endpoint = if let Some(ca) = &config.grpc_ca {
         let ca = read_to_string(ca).map_err(|err| GrpcError::ClientSetup(err.to_string()))?;
         let tls = ClientTlsConfig::new().ca_certificate(Certificate::from_pem(ca));
         endpoint.tls_config(tls)?

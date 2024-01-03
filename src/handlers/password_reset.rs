@@ -11,11 +11,11 @@ use tracing::{debug, info};
 
 use crate::{
     error::ApiError,
-    grpc::password_reset::proto::{
+    handlers::shared::{add_auth_header, add_device_info_header},
+    proto::{
         PasswordResetInitializeRequest, PasswordResetRequest, PasswordResetStartRequest,
         PasswordResetStartResponse,
     },
-    handlers::shared::{add_auth_header, add_device_info_header},
     server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
 
