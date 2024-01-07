@@ -33,9 +33,6 @@ pub async fn request_password_reset(
 ) -> Result<(), ApiError> {
     info!("Starting password reset request for {}", req.email);
 
-    // let mut password_reset_client = state.password_reset_client.lock().await;
-    // let mut request = Request::new(req);
-
     // set device info
     req.ip_address = forwarded_for_ip
         .map(|v| v.0)
@@ -110,6 +107,10 @@ pub async fn reset_password(
 ) -> Result<PrivateCookieJar, ApiError> {
     info!("Resetting password");
 
+    // set auth info
+    req.token = private_cookies
+        .get(PASSWORD_RESET_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
     // set device info
     req.ip_address = forwarded_for_ip
         .map(|v| v.0)

@@ -68,6 +68,10 @@ pub async fn activate_user(
 ) -> Result<PrivateCookieJar, ApiError> {
     info!("Activating user");
 
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
     // set device info
     req.ip_address = forwarded_for_ip
         .map(|v| v.0)
@@ -99,10 +103,15 @@ pub async fn create_device(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
+    private_cookies: PrivateCookieJar,
     Json(mut req): Json<NewDevice>,
 ) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Adding new device");
 
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
     // set device info
     req.ip_address = forwarded_for_ip
         .map(|v| v.0)
@@ -126,9 +135,15 @@ pub async fn create_device(
 
 pub async fn get_network_info(
     State(state): State<AppState>,
-    Json(req): Json<ExistingDevice>,
+    private_cookies: PrivateCookieJar,
+    Json(mut req): Json<ExistingDevice>,
 ) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Getting network info");
+
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
 
     if let Some(rx) = state
         .grpc_server

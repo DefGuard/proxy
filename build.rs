@@ -10,5 +10,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &["proto/core/proxy.proto"],
         &["proto/core"],
     )?;
+    println!("cargo:rerun-if-changed=proto");
     Ok(())
 }
