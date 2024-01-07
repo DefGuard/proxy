@@ -27,11 +27,8 @@ use crate::{
     error::ApiError,
     grpc::setup_channel,
     handlers::{enrollment, password_reset},
+    proto::password_reset_service_client::PasswordResetServiceClient,
     proto::proxy_server,
-    proto::{
-        enrollment_service_client::EnrollmentServiceClient,
-        password_reset_service_client::PasswordResetServiceClient,
-    },
     ProxyServer,
 };
 
@@ -40,7 +37,6 @@ pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_re
 
 #[derive(Clone)]
 pub(crate) struct AppState {
-    pub(crate) enrollment_client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
     pub(crate) password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
     pub(crate) grpc_server: ProxyServer,
     key: Key,
@@ -76,7 +72,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // connect to upstream gRPC server
     // TODO: remove once bi-directional RPC is fully implemented.
     let channel = setup_channel(&config).context("Failed to setup gRPC channel")?;
-    let client = EnrollmentServiceClient::new(channel.clone());
     let password_reset_client = PasswordResetServiceClient::new(channel);
 
     let grpc_server = ProxyServer::new();
@@ -84,7 +79,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
-        enrollment_client: Arc::new(Mutex::new(client)),
         password_reset_client: Arc::new(Mutex::new(password_reset_client)),
         grpc_server: grpc_server.clone(),
         // Generate secret key for encrypting cookies.

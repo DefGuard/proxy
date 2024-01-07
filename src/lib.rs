@@ -56,9 +56,9 @@ impl ProxyServer {
                 let (tx, rx) = oneshot::channel();
                 self.results.lock().unwrap().insert(id, tx);
                 return Some(rx);
-            } else {
-                debug!("Failed to send ProxyResponse");
             }
+
+            debug!("Failed to send ProxyResponse");
         }
 
         None
