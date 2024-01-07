@@ -7,11 +7,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]");
     tonic_build::configure().compile_with_config(
         config,
-        &[
-            "proto/password_reset/password_reset.proto",
-            "proto/core/proxy.proto",
-        ],
-        &["proto/password_reset", "proto/core"],
+        &["proto/core/proxy.proto"],
+        &["proto/core"],
     )?;
     Ok(())
 }

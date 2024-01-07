@@ -1,7 +1,4 @@
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::Arc,
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use anyhow::Context;
 use axum::{
@@ -14,8 +11,8 @@ use axum::{
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::Mutex};
-use tonic::transport::{Channel, Server};
+use tokio::net::TcpListener;
+use tonic::transport::Server;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
@@ -25,9 +22,7 @@ use tracing::{debug, info, info_span, Level};
 use crate::{
     config::Config,
     error::ApiError,
-    grpc::setup_channel,
     handlers::{enrollment, password_reset},
-    proto::password_reset_service_client::PasswordResetServiceClient,
     proto::proxy_server,
     ProxyServer,
 };
@@ -37,7 +32,6 @@ pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_re
 
 #[derive(Clone)]
 pub(crate) struct AppState {
-    pub(crate) password_reset_client: Arc<Mutex<PasswordResetServiceClient<Channel>>>,
     pub(crate) grpc_server: ProxyServer,
     key: Key,
 }
@@ -70,16 +64,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
 
     // connect to upstream gRPC server
-    // TODO: remove once bi-directional RPC is fully implemented.
-    let channel = setup_channel(&config).context("Failed to setup gRPC channel")?;
-    let password_reset_client = PasswordResetServiceClient::new(channel);
-
     let grpc_server = ProxyServer::new();
 
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
-        password_reset_client: Arc::new(Mutex::new(password_reset_client)),
         grpc_server: grpc_server.clone(),
         // Generate secret key for encrypting cookies.
         key: Key::generate(),

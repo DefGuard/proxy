@@ -6,15 +6,13 @@ use axum_extra::{
     TypedHeader,
 };
 use time::OffsetDateTime;
-use tonic::Request;
 use tracing::{debug, info};
 
 use crate::{
     error::ApiError,
-    handlers::shared::{add_auth_header, add_device_info_header},
     proto::{
-        PasswordResetInitializeRequest, PasswordResetRequest, PasswordResetStartRequest,
-        PasswordResetStartResponse,
+        proxy_request, proxy_response, PasswordResetInitializeRequest, PasswordResetRequest,
+        PasswordResetStartRequest, PasswordResetStartResponse,
     },
     server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
@@ -31,20 +29,32 @@ pub async fn request_password_reset(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
-    Json(req): Json<PasswordResetInitializeRequest>,
+    Json(mut req): Json<PasswordResetInitializeRequest>,
 ) -> Result<(), ApiError> {
     info!("Starting password reset request for {}", req.email);
 
-    let mut password_reset_client = state.password_reset_client.lock().await;
-    let mut request = Request::new(req);
+    // let mut password_reset_client = state.password_reset_client.lock().await;
+    // let mut request = Request::new(req);
 
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
+    // set device info
+    req.ip_address = forwarded_for_ip
+        .map(|v| v.0)
+        .or(Some(insecure_ip))
+        .map(|v| v.to_string());
+    req.user_agent = user_agent.map(|v| v.to_string());
 
-    password_reset_client
-        .request_password_reset(request)
-        .await?;
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::PasswordResetInit(req)))
+    {
+        if rx.await.is_ok() {
+            return Ok(());
+        }
+    }
 
-    Ok(())
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }
 
 pub async fn start_password_reset(
@@ -53,7 +63,7 @@ pub async fn start_password_reset(
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
     mut private_cookies: PrivateCookieJar,
-    Json(req): Json<PasswordResetStartRequest>,
+    Json(mut req): Json<PasswordResetStartRequest>,
 ) -> Result<(PrivateCookieJar, Json<PasswordResetStartResponse>), ApiError> {
     info!("Starting password reset process");
 
@@ -65,21 +75,29 @@ pub async fn start_password_reset(
 
     let token = req.clone().token.clone();
 
-    let mut password_reset_client = state.password_reset_client.lock().await;
-    let mut request = Request::new(req);
+    // set device info
+    req.ip_address = forwarded_for_ip
+        .map(|v| v.0)
+        .or(Some(insecure_ip))
+        .map(|v| v.to_string());
+    req.user_agent = user_agent.map(|v| v.to_string());
 
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::PasswordResetStart(req)))
+    {
+        if let Ok(proxy_request::Payload::PasswordResetStart(response)) = rx.await {
+            // set session cookie
+            let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
+                .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-    let response = password_reset_client
-        .start_password_reset(request)
-        .await?
-        .into_inner();
+            return Ok((private_cookies.add(cookie), Json(response)));
+        }
+    }
 
-    // set session cookie
-    let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
-        .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
-
-    Ok((private_cookies.add(cookie), Json(response)))
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }
 
 pub async fn reset_password(
@@ -88,22 +106,31 @@ pub async fn reset_password(
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
     mut private_cookies: PrivateCookieJar,
-    Json(req): Json<PasswordResetRequest>,
+    Json(mut req): Json<PasswordResetRequest>,
 ) -> Result<PrivateCookieJar, ApiError> {
     info!("Resetting password");
 
-    let mut password_reset_client = state.password_reset_client.lock().await;
-    let mut request = Request::new(req);
+    // set device info
+    req.ip_address = forwarded_for_ip
+        .map(|v| v.0)
+        .or(Some(insecure_ip))
+        .map(|v| v.to_string());
+    req.user_agent = user_agent.map(|v| v.to_string());
 
-    add_auth_header(&private_cookies, &mut request, PASSWORD_RESET_COOKIE_NAME)?;
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
-
-    password_reset_client.reset_password(request).await?;
-
-    if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
-        debug!("Password reset finished. Removing session cookie");
-        private_cookies = private_cookies.remove(cookie);
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::PasswordReset(req)))
+    {
+        if rx.await.is_ok() {
+            if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
+                debug!("Password reset finished. Removing session cookie");
+                private_cookies = private_cookies.remove(cookie);
+            }
+            return Ok(private_cookies);
+        }
     }
 
-    Ok(private_cookies)
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }
