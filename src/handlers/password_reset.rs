@@ -47,7 +47,7 @@ pub async fn request_password_reset(
         .grpc_server
         .send(Some(proxy_response::Payload::PasswordResetInit(req)))
     {
-        if rx.await.is_ok() {
+        if let Ok(proxy_request::Payload::Empty(_)) = rx.await {
             return Ok(());
         }
     }
@@ -121,7 +121,7 @@ pub async fn reset_password(
         .grpc_server
         .send(Some(proxy_response::Payload::PasswordReset(req)))
     {
-        if rx.await.is_ok() {
+        if let Ok(proxy_request::Payload::Empty(_)) = rx.await {
             if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
                 debug!("Password reset finished. Removing session cookie");
                 private_cookies = private_cookies.remove(cookie);

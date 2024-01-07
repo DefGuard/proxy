@@ -1,3 +1,2 @@
-pub mod enrollment;
-pub mod password_reset;
-pub mod shared;
+pub(crate) mod enrollment;
+pub(crate) mod password_reset;

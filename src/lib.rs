@@ -1,6 +1,5 @@
 pub mod config;
 pub mod error;
-mod grpc;
 mod handlers;
 pub mod server;
 
@@ -20,7 +19,7 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use proto::{proxy_request, proxy_response, proxy_server, ProxyRequest, ProxyResponse};
 
@@ -79,6 +78,7 @@ impl Clone for ProxyServer {
 impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<ProxyResponse, Status>>;
 
+    /// Handle bidirectional communication with Defguard core.
     async fn bidi(
         &self,
         request: Request<Streaming<ProxyRequest>>,
@@ -86,7 +86,7 @@ impl proxy_server::Proxy for ProxyServer {
         let Some(address) = request.remote_addr() else {
             return Err(Status::internal("failed to determine client address"));
         };
-        info!("gRPC client connected from: {address}");
+        info!("RPC client connected from: {address}");
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients.lock().unwrap().insert(address, tx);
@@ -98,24 +98,30 @@ impl proxy_server::Proxy for ProxyServer {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(response) => {
-                        debug!("bidi received {response:?}");
+                        debug!("RPC message received {response:?}");
                         // Discard empty payloads.
                         if let Some(payload) = response.payload {
-                            if let Some(rx) = results.lock().unwrap().remove(&response.id) {
-                                if rx.send(payload).is_err() {
-                                    debug!("Failed to send to rx");
+                            if let Ok(mut results) = results.lock() {
+                                if let Some(rx) = results.remove(&response.id) {
+                                    if rx.send(payload).is_err() {
+                                        debug!("failed to send to rx");
+                                    }
+                                } else {
+                                    debug!("missing receiver for response #{}", response.id);
                                 }
                             } else {
-                                debug!("No oneshot receiver for {}", response.id);
+                                error!("failed to obtain mutex on results");
                             }
                         }
                     }
-                    Err(err) => info!("bidi client error: {err}"),
+                    Err(err) => info!("RPC client error: {err}"),
                 }
             }
-            debug!("Client disconnected {address}");
+            debug!("client disconnected {address}");
             if let Ok(mut clients) = clients.lock() {
                 clients.remove(&address);
+            } else {
+                error!("failed to obtain mutex on clients");
             }
         });
 
