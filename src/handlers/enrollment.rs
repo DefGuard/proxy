@@ -1,17 +1,21 @@
-use crate::handlers::shared::{add_auth_header, add_device_info_header, create_request};
-use crate::server::{ENROLLMENT_COOKIE_NAME, SECRET_KEY};
-use crate::{
-    grpc::enrollment::proto::{
-        ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
-        ExistingDevice, NewDevice,
-    },
-    handlers::ApiResult,
-    server::AppState,
-};
-use axum::{extract::State, headers::UserAgent, routing::post, Json, Router, TypedHeader};
+use axum::{extract::State, routing::post, Json, Router};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
-use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
+use axum_extra::{
+    extract::{cookie::Cookie, PrivateCookieJar},
+    headers::UserAgent,
+    TypedHeader,
+};
+use time::OffsetDateTime;
 use tracing::{debug, info};
+
+use crate::{
+    error::ApiError,
+    proto::{
+        proxy_request, proxy_response, ActivateUserRequest, DeviceConfigResponse,
+        EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
+    },
+    server::{AppState, ENROLLMENT_COOKIE_NAME},
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -23,31 +27,35 @@ pub fn router() -> Router<AppState> {
 
 pub async fn start_enrollment_process(
     State(state): State<AppState>,
-    cookies: Cookies,
+    mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
-) -> ApiResult<Json<EnrollmentStartResponse>> {
+) -> Result<(PrivateCookieJar, Json<EnrollmentStartResponse>), ApiError> {
     info!("Starting enrollment process");
 
     // clear session cookies if already populated
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
     if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
         debug!("Removing previous session cookie");
-        cookies.remove(cookie)
-    };
+        private_cookies = private_cookies.remove(cookie);
+    }
 
     let token = req.token.clone();
 
-    let mut client = state.enrollment_client.lock().await;
-    let response = client.start_enrollment(req).await?.into_inner();
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::EnrollmentStart(req)))
+    {
+        if let Ok(proxy_request::Payload::EnrollmentStart(response)) = rx.await {
+            // set session cookie
+            let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
+                .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-    // set session cookie
-    let cookie = Cookie::build(ENROLLMENT_COOKIE_NAME, token)
-        .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap())
-        .finish();
-    private_cookies.add(cookie);
+            return Ok((private_cookies.add(cookie), Json(response)));
+        }
+    }
 
-    Ok(Json(response))
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }
 
 pub async fn activate_user(
@@ -55,25 +63,39 @@ pub async fn activate_user(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
-    cookies: Cookies,
-    Json(req): Json<ActivateUserRequest>,
-) -> ApiResult<()> {
+    mut private_cookies: PrivateCookieJar,
+    Json(mut req): Json<ActivateUserRequest>,
+) -> Result<PrivateCookieJar, ApiError> {
     info!("Activating user");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = create_request(req);
-    add_auth_header(cookies.clone(), &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
-    client.activate_user(request).await?;
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
+    // set device info
+    req.ip_address = forwarded_for_ip
+        .map(|v| v.0)
+        .or(Some(insecure_ip))
+        .map(|v| v.to_string());
+    req.user_agent = user_agent.map(|v| v.to_string());
 
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
-    if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
-        debug!("Enrollment finished. Removing session cookie");
-        cookies.remove(cookie)
-    };
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::ActivateUser(req)))
+    {
+        if let Ok(proxy_request::Payload::Empty(_)) = rx.await {
+            if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
+                debug!("Enrollment finished. Removing session cookie");
+                private_cookies = private_cookies.remove(cookie);
+            }
 
-    Ok(())
+            return Ok(private_cookies);
+        }
+    }
+
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }
 
 pub async fn create_device(
@@ -81,30 +103,58 @@ pub async fn create_device(
     forwarded_for_ip: Option<LeftmostXForwardedFor>,
     InsecureClientIp(insecure_ip): InsecureClientIp,
     user_agent: Option<TypedHeader<UserAgent>>,
-    cookies: Cookies,
-    Json(req): Json<NewDevice>,
-) -> ApiResult<Json<DeviceConfigResponse>> {
+    private_cookies: PrivateCookieJar,
+    Json(mut req): Json<NewDevice>,
+) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Adding new device");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = create_request(req);
-    add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
-    let response = client.create_device(request).await?;
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
+    // set device info
+    req.ip_address = forwarded_for_ip
+        .map(|v| v.0)
+        .or(Some(insecure_ip))
+        .map(|v| v.to_string());
+    req.user_agent = user_agent.map(|v| v.to_string());
 
-    Ok(Json(response.into_inner()))
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::NewDevice(req)))
+    {
+        if let Ok(proxy_request::Payload::DeviceConfig(response)) = rx.await {
+            return Ok(Json(response));
+        }
+    }
+
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }
+
 pub async fn get_network_info(
     State(state): State<AppState>,
-    cookies: Cookies,
-    Json(req): Json<ExistingDevice>,
-) -> ApiResult<Json<DeviceConfigResponse>> {
+    private_cookies: PrivateCookieJar,
+    Json(mut req): Json<ExistingDevice>,
+) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Getting network info");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = create_request(req);
-    add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
-    let response = client.get_network_info(request).await?;
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
 
-    Ok(Json(response.into_inner()))
+    if let Some(rx) = state
+        .grpc_server
+        .send(Some(proxy_response::Payload::ExistingDevice(req)))
+    {
+        if let Ok(proxy_request::Payload::DeviceConfig(response)) = rx.await {
+            return Ok(Json(response));
+        }
+    }
+
+    Err(ApiError::Unexpected(
+        "failed to communicate with Defguard core".into(),
+    ))
 }

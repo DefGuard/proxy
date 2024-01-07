@@ -13,6 +13,10 @@ pub struct Config {
     )]
     pub http_port: u16,
 
+    // port the API server will listen on
+    #[arg(long, env = "DEFGUARD_PROXY_GRPC_PORT", default_value_t = 50051)]
+    pub grpc_port: u16,
+
     // Defguard core server gRPC endpoint URL
     #[arg(
         long,
