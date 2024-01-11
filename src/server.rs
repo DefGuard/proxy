@@ -11,7 +11,7 @@ use axum::{
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use serde::Serialize;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::Server;
 use tower_http::{
     services::{ServeDir, ServeFile},
@@ -63,6 +63,8 @@ async fn healthcheck() -> &'static str {
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
 
+    let mut tasks = JoinSet::new();
+
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new();
 
@@ -75,7 +77,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     };
 
     // Start gRPC server.
-    tokio::spawn(async move {
+    tasks.spawn(async move {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
         info!("gRPC server is listening on {addr}");
         // TODO: TLS
@@ -83,6 +85,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             .add_service(proxy_server::ProxyServer::new(grpc_server))
             .serve(addr)
             .await
+            .context("Error running RPC server")
     });
 
     // Serve static frontend files.
@@ -114,13 +117,21 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         );
 
     // Start web server.
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
-    let listener = TcpListener::bind(&addr).await?;
-    info!("Web server is listening on {addr}");
-    serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await
-    .context("Error running HTTP server")
+    tasks.spawn(async move {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
+        let listener = TcpListener::bind(&addr).await?;
+        info!("Web server is listening on {addr}");
+        serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
+        .context("Error running HTTP server")
+    });
+
+    while let Some(Ok(result)) = tasks.join_next().await {
+        result?;
+    }
+
+    Ok(())
 }
