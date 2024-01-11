@@ -1,18 +1,13 @@
 use axum::{extract::State, routing::post, Json, Router};
-use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
-use axum_extra::{
-    extract::{cookie::Cookie, PrivateCookieJar},
-    headers::UserAgent,
-    TypedHeader,
-};
+use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
 use tracing::{debug, info};
 
 use crate::{
     error::ApiError,
     proto::{
-        proxy_request, proxy_response, PasswordResetInitializeRequest, PasswordResetRequest,
-        PasswordResetStartRequest, PasswordResetStartResponse,
+        core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
+        PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
     },
     server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
@@ -26,25 +21,16 @@ pub fn router() -> Router<AppState> {
 
 pub async fn request_password_reset(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
-    Json(mut req): Json<PasswordResetInitializeRequest>,
+    device_info: Option<DeviceInfo>,
+    Json(req): Json<PasswordResetInitializeRequest>,
 ) -> Result<(), ApiError> {
     info!("Starting password reset request for {}", req.email);
 
-    // set device info
-    req.ip_address = forwarded_for_ip
-        .map(|v| v.0)
-        .or(Some(insecure_ip))
-        .map(|v| v.to_string());
-    req.user_agent = user_agent.map(|v| v.to_string());
-
-    if let Some(rx) = state
-        .grpc_server
-        .send(Some(proxy_response::Payload::PasswordResetInit(req)))
-    {
-        if let Ok(proxy_request::Payload::Empty(_)) = rx.await {
+    if let Some(rx) = state.grpc_server.send(
+        Some(core_request::Payload::PasswordResetInit(req)),
+        device_info,
+    ) {
+        if let Ok(core_response::Payload::Empty(())) = rx.await {
             return Ok(());
         }
     }
@@ -56,11 +42,9 @@ pub async fn request_password_reset(
 
 pub async fn start_password_reset(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
+    device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
-    Json(mut req): Json<PasswordResetStartRequest>,
+    Json(req): Json<PasswordResetStartRequest>,
 ) -> Result<(PrivateCookieJar, Json<PasswordResetStartResponse>), ApiError> {
     info!("Starting password reset process");
 
@@ -72,18 +56,11 @@ pub async fn start_password_reset(
 
     let token = req.clone().token.clone();
 
-    // set device info
-    req.ip_address = forwarded_for_ip
-        .map(|v| v.0)
-        .or(Some(insecure_ip))
-        .map(|v| v.to_string());
-    req.user_agent = user_agent.map(|v| v.to_string());
-
-    if let Some(rx) = state
-        .grpc_server
-        .send(Some(proxy_response::Payload::PasswordResetStart(req)))
-    {
-        if let Ok(proxy_request::Payload::PasswordResetStart(response)) = rx.await {
+    if let Some(rx) = state.grpc_server.send(
+        Some(core_request::Payload::PasswordResetStart(req)),
+        device_info,
+    ) {
+        if let Ok(core_response::Payload::PasswordResetStart(response)) = rx.await {
             // set session cookie
             let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
                 .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
@@ -99,9 +76,7 @@ pub async fn start_password_reset(
 
 pub async fn reset_password(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
+    device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
     Json(mut req): Json<PasswordResetRequest>,
 ) -> Result<PrivateCookieJar, ApiError> {
@@ -111,18 +86,12 @@ pub async fn reset_password(
     req.token = private_cookies
         .get(PASSWORD_RESET_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
-    // set device info
-    req.ip_address = forwarded_for_ip
-        .map(|v| v.0)
-        .or(Some(insecure_ip))
-        .map(|v| v.to_string());
-    req.user_agent = user_agent.map(|v| v.to_string());
 
     if let Some(rx) = state
         .grpc_server
-        .send(Some(proxy_response::Payload::PasswordReset(req)))
+        .send(Some(core_request::Payload::PasswordReset(req)), device_info)
     {
-        if let Ok(proxy_request::Payload::Empty(_)) = rx.await {
+        if let Ok(core_response::Payload::Empty(())) = rx.await {
             if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
                 debug!("Password reset finished. Removing session cookie");
                 private_cookies = private_cookies.remove(cookie);

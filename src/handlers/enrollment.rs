@@ -1,17 +1,12 @@
 use axum::{extract::State, routing::post, Json, Router};
-use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
-use axum_extra::{
-    extract::{cookie::Cookie, PrivateCookieJar},
-    headers::UserAgent,
-    TypedHeader,
-};
+use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
 use tracing::{debug, info};
 
 use crate::{
     error::ApiError,
     proto::{
-        proxy_request, proxy_response, ActivateUserRequest, DeviceConfigResponse,
+        core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
         EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
     },
     server::{AppState, ENROLLMENT_COOKIE_NAME},
@@ -42,9 +37,9 @@ pub async fn start_enrollment_process(
 
     if let Some(rx) = state
         .grpc_server
-        .send(Some(proxy_response::Payload::EnrollmentStart(req)))
+        .send(Some(core_request::Payload::EnrollmentStart(req)), None)
     {
-        if let Ok(proxy_request::Payload::EnrollmentStart(response)) = rx.await {
+        if let Ok(core_response::Payload::EnrollmentStart(response)) = rx.await {
             // set session cookie
             let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
                 .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
@@ -60,9 +55,7 @@ pub async fn start_enrollment_process(
 
 pub async fn activate_user(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
+    device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
     Json(mut req): Json<ActivateUserRequest>,
 ) -> Result<PrivateCookieJar, ApiError> {
@@ -72,18 +65,12 @@ pub async fn activate_user(
     req.token = private_cookies
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
-    // set device info
-    req.ip_address = forwarded_for_ip
-        .map(|v| v.0)
-        .or(Some(insecure_ip))
-        .map(|v| v.to_string());
-    req.user_agent = user_agent.map(|v| v.to_string());
 
     if let Some(rx) = state
         .grpc_server
-        .send(Some(proxy_response::Payload::ActivateUser(req)))
+        .send(Some(core_request::Payload::ActivateUser(req)), device_info)
     {
-        if let Ok(proxy_request::Payload::Empty(_)) = rx.await {
+        if let Ok(core_response::Payload::Empty(())) = rx.await {
             if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
                 debug!("Enrollment finished. Removing session cookie");
                 private_cookies = private_cookies.remove(cookie);
@@ -100,9 +87,7 @@ pub async fn activate_user(
 
 pub async fn create_device(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
+    device_info: Option<DeviceInfo>,
     private_cookies: PrivateCookieJar,
     Json(mut req): Json<NewDevice>,
 ) -> Result<Json<DeviceConfigResponse>, ApiError> {
@@ -112,18 +97,12 @@ pub async fn create_device(
     req.token = private_cookies
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
-    // set device info
-    req.ip_address = forwarded_for_ip
-        .map(|v| v.0)
-        .or(Some(insecure_ip))
-        .map(|v| v.to_string());
-    req.user_agent = user_agent.map(|v| v.to_string());
 
     if let Some(rx) = state
         .grpc_server
-        .send(Some(proxy_response::Payload::NewDevice(req)))
+        .send(Some(core_request::Payload::NewDevice(req)), device_info)
     {
-        if let Ok(proxy_request::Payload::DeviceConfig(response)) = rx.await {
+        if let Ok(core_response::Payload::DeviceConfig(response)) = rx.await {
             return Ok(Json(response));
         }
     }
@@ -147,9 +126,9 @@ pub async fn get_network_info(
 
     if let Some(rx) = state
         .grpc_server
-        .send(Some(proxy_response::Payload::ExistingDevice(req)))
+        .send(Some(core_request::Payload::ExistingDevice(req)), None)
     {
-        if let Ok(proxy_request::Payload::DeviceConfig(response)) = rx.await {
+        if let Ok(core_response::Payload::DeviceConfig(response)) = rx.await {
             return Ok(Json(response));
         }
     }

@@ -21,20 +21,21 @@ use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::{debug, error, info};
 
-use proto::{proxy_request, proxy_response, proxy_server, ProxyRequest, ProxyResponse};
+use proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo};
 
 // connected clients
-type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<ProxyResponse, Status>>>;
+type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
 #[derive(Debug)]
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
-    results: Arc<Mutex<HashMap<u64, oneshot::Sender<proxy_request::Payload>>>>,
+    results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
 }
 
 impl ProxyServer {
     #[must_use]
+    /// Create new `ProxyServer`.
     pub fn new() -> Self {
         Self {
             current_id: Arc::new(AtomicU64::new(1)),
@@ -44,20 +45,29 @@ impl ProxyServer {
     }
 
     #[must_use]
+    /// Sends message to the other side of RPC, with given `payload` and optional 'device_info`.
+    /// Returns `tokio::sync::oneshot::Reveicer` to let the caller await reply.
     pub fn send(
         &self,
-        payload: Option<proxy_response::Payload>,
-    ) -> Option<oneshot::Receiver<proxy_request::Payload>> {
+        payload: Option<core_request::Payload>,
+        device_info: Option<DeviceInfo>,
+    ) -> Option<oneshot::Receiver<core_response::Payload>> {
         if let Some(client_tx) = self.clients.lock().unwrap().values().next() {
             let id = self.current_id.fetch_add(1, Ordering::Relaxed);
-            let res = ProxyResponse { id, payload };
+            let res = CoreRequest {
+                id,
+                device_info,
+                payload,
+            };
             if client_tx.send(Ok(res)).is_ok() {
                 let (tx, rx) = oneshot::channel();
-                self.results.lock().unwrap().insert(id, tx);
-                return Some(rx);
+                if let Ok(mut results) = self.results.lock() {
+                    results.insert(id, tx);
+                    return Some(rx);
+                }
             }
 
-            debug!("Failed to send ProxyResponse");
+            debug!("Failed to send CoreRequest");
         }
 
         None
@@ -76,12 +86,12 @@ impl Clone for ProxyServer {
 
 #[tonic::async_trait]
 impl proxy_server::Proxy for ProxyServer {
-    type BidiStream = UnboundedReceiverStream<Result<ProxyResponse, Status>>;
+    type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
 
     /// Handle bidirectional communication with Defguard core.
     async fn bidi(
         &self,
-        request: Request<Streaming<ProxyRequest>>,
+        request: Request<Streaming<CoreResponse>>,
     ) -> Result<Response<Self::BidiStream>, Status> {
         let Some(address) = request.remote_addr() else {
             return Err(Status::internal("failed to determine client address"));
