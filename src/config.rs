@@ -1,5 +1,4 @@
 use clap::Parser;
-use url::Url;
 
 #[derive(Parser)]
 #[command(version)]
@@ -16,17 +15,4 @@ pub struct Config {
     // port the API server will listen on
     #[arg(long, env = "DEFGUARD_PROXY_GRPC_PORT", default_value_t = 50051)]
     pub grpc_port: u16,
-
-    // Defguard core server gRPC endpoint URL
-    #[arg(
-        long,
-        short = 'g',
-        env = "DEFGUARD_PROXY_UPSTREAM_GRPC_URL",
-        default_value = "http://localhost:50055/"
-    )]
-    pub grpc_url: Url,
-
-    // path to certificate `.pem` file used if connecting over HTTPS
-    #[arg(long, env = "DEFGUARD_PROXY_GRPC_CA")]
-    pub grpc_ca: Option<String>,
 }
