@@ -31,7 +31,6 @@ impl IntoResponse for ApiError {
         let (status, error_message) = match self {
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            // Self::CoreTimeout => (StatusCode::REQUEST_TIMEOUT, self.to_string()),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
