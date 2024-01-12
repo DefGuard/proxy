@@ -12,7 +12,7 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
-use tonic::transport::Server;
+use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
@@ -80,8 +80,13 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     tasks.spawn(async move {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
         info!("gRPC server is listening on {addr}");
-        // TODO: TLS
-        Server::builder()
+        let mut builder = if let (Some(cert), Some(key)) = (config.grpc_cert, config.grpc_key) {
+            let identity = Identity::from_pem(cert, key);
+            Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?
+        } else {
+            Server::builder()
+        };
+        builder
             .add_service(proxy_server::ProxyServer::new(grpc_server))
             .serve(addr)
             .await

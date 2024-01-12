@@ -15,4 +15,10 @@ pub struct Config {
     // port the API server will listen on
     #[arg(long, env = "DEFGUARD_PROXY_GRPC_PORT", default_value_t = 50051)]
     pub grpc_port: u16,
+
+    #[arg(long, env = "DEFGUARD_PROXY_GRPC_CERT")]
+    pub grpc_cert: Option<String>,
+
+    #[arg(long, env = "DEFGUARD_PROXY_GRPC_KEY")]
+    pub grpc_key: Option<String>,
 }
