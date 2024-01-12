@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use tonic::{metadata::errors::InvalidMetadataValue, Code};
+use tonic::metadata::errors::InvalidMetadataValue;
 use tracing::error;
 
 #[derive(thiserror::Error, Debug)]
@@ -19,6 +19,10 @@ pub enum ApiError {
     InvalidMetadata(#[from] InvalidMetadataValue),
     #[error("Bad request: {0}")]
     BadRequest(String),
+    #[error("Core gRPC response timeout")]
+    CoreTimeout,
+    #[error("Invalid core gRPC response type received")]
+    InvalidResponseType,
 }
 
 impl IntoResponse for ApiError {
@@ -27,6 +31,7 @@ impl IntoResponse for ApiError {
         let (status, error_message) = match self {
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            // Self::CoreTimeout => (StatusCode::REQUEST_TIMEOUT, self.to_string()),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
@@ -38,16 +43,5 @@ impl IntoResponse for ApiError {
         }));
 
         (status, body).into_response()
-    }
-}
-
-// implement more granular mapping of gRPC errors
-impl From<tonic::Status> for ApiError {
-    fn from(status: tonic::Status) -> Self {
-        match status.code() {
-            Code::Unauthenticated => ApiError::Unauthorized,
-            Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
-            _ => ApiError::Unexpected(status.to_string()),
-        }
     }
 }

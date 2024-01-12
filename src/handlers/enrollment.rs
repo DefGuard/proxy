@@ -1,10 +1,11 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     error::ApiError,
+    handlers::get_core_response,
     proto::{
         core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
         EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
@@ -35,22 +36,23 @@ pub async fn start_enrollment_process(
 
     let token = req.token.clone();
 
-    if let Some(rx) = state
+    let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::EnrollmentStart(req)), None)
-    {
-        if let Ok(core_response::Payload::EnrollmentStart(response)) = rx.await {
+        .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::EnrollmentStart(response) => {
             // set session cookie
             let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
                 .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-            return Ok((private_cookies.add(cookie), Json(response)));
+            Ok((private_cookies.add(cookie), Json(response)))
+        }
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }
 
 pub async fn activate_user(
@@ -66,23 +68,24 @@ pub async fn activate_user(
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
 
-    if let Some(rx) = state
+    let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::ActivateUser(req)), device_info)
-    {
-        if let Ok(core_response::Payload::Empty(())) = rx.await {
+        .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::Empty(_) => {
             if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
                 debug!("Enrollment finished. Removing session cookie");
                 private_cookies = private_cookies.remove(cookie);
             }
 
-            return Ok(private_cookies);
+            Ok(private_cookies)
+        }
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }
 
 pub async fn create_device(
@@ -98,18 +101,17 @@ pub async fn create_device(
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
 
-    if let Some(rx) = state
+    let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::NewDevice(req)), device_info)
-    {
-        if let Ok(core_response::Payload::DeviceConfig(response)) = rx.await {
-            return Ok(Json(response));
+        .send(Some(core_request::Payload::NewDevice(req)), device_info)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::DeviceConfig(response) => Ok(Json(response)),
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }
 
 pub async fn get_network_info(
@@ -124,16 +126,15 @@ pub async fn get_network_info(
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
 
-    if let Some(rx) = state
+    let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::ExistingDevice(req)), None)
-    {
-        if let Ok(core_response::Payload::DeviceConfig(response)) = rx.await {
-            return Ok(Json(response));
+        .send(Some(core_request::Payload::ExistingDevice(req)), None)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::DeviceConfig(response) => Ok(Json(response)),
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }

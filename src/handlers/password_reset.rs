@@ -1,10 +1,11 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     error::ApiError,
+    handlers::get_core_response,
     proto::{
         core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
         PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
@@ -26,18 +27,18 @@ pub async fn request_password_reset(
 ) -> Result<(), ApiError> {
     info!("Starting password reset request for {}", req.email);
 
-    if let Some(rx) = state.grpc_server.send(
+    let rx = state.grpc_server.send(
         Some(core_request::Payload::PasswordResetInit(req)),
         device_info,
-    ) {
-        if let Ok(core_response::Payload::Empty(())) = rx.await {
-            return Ok(());
+    )?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::Empty(_) => Ok(()),
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }
 
 pub async fn start_password_reset(
@@ -56,22 +57,24 @@ pub async fn start_password_reset(
 
     let token = req.clone().token.clone();
 
-    if let Some(rx) = state.grpc_server.send(
+    let rx = state.grpc_server.send(
         Some(core_request::Payload::PasswordResetStart(req)),
         device_info,
-    ) {
-        if let Ok(core_response::Payload::PasswordResetStart(response)) = rx.await {
+    )?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::PasswordResetStart(response) => {
             // set session cookie
             let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
                 .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-            return Ok((private_cookies.add(cookie), Json(response)));
+            Ok((private_cookies.add(cookie), Json(response)))
+        }
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }
 
 pub async fn reset_password(
@@ -87,20 +90,21 @@ pub async fn reset_password(
         .get(PASSWORD_RESET_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
 
-    if let Some(rx) = state
+    let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::PasswordReset(req)), device_info)
-    {
-        if let Ok(core_response::Payload::Empty(())) = rx.await {
+        .send(Some(core_request::Payload::PasswordReset(req)), device_info)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::Empty(_) => {
             if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
                 debug!("Password reset finished. Removing session cookie");
                 private_cookies = private_cookies.remove(cookie);
             }
-            return Ok(private_cookies);
+            Ok(private_cookies)
+        }
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
         }
     }
-
-    Err(ApiError::Unexpected(
-        "failed to communicate with Defguard core".into(),
-    ))
 }

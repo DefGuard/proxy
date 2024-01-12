@@ -21,6 +21,7 @@ use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::{debug, error, info};
 
+use crate::error::ApiError;
 use proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo};
 
 // connected clients
@@ -44,14 +45,13 @@ impl ProxyServer {
         }
     }
 
-    #[must_use]
     /// Sends message to the other side of RPC, with given `payload` and optional 'device_info`.
     /// Returns `tokio::sync::oneshot::Reveicer` to let the caller await reply.
     pub fn send(
         &self,
         payload: Option<core_request::Payload>,
         device_info: Option<DeviceInfo>,
-    ) -> Option<oneshot::Receiver<core_response::Payload>> {
+    ) -> Result<oneshot::Receiver<core_response::Payload>, ApiError> {
         if let Some(client_tx) = self.clients.lock().unwrap().values().next() {
             let id = self.current_id.fetch_add(1, Ordering::Relaxed);
             let res = CoreRequest {
@@ -63,14 +63,16 @@ impl ProxyServer {
                 let (tx, rx) = oneshot::channel();
                 if let Ok(mut results) = self.results.lock() {
                     results.insert(id, tx);
-                    return Some(rx);
+                    return Ok(rx);
                 }
             }
 
             debug!("Failed to send CoreRequest");
         }
 
-        None
+        Err(ApiError::Unexpected(
+            "Failed to communicate with Defguard core".into(),
+        ))
     }
 }
 
