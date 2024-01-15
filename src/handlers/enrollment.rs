@@ -1,17 +1,17 @@
-use crate::handlers::shared::{add_auth_header, add_device_info_header, create_request};
-use crate::server::{ENROLLMENT_COOKIE_NAME, SECRET_KEY};
+use axum::{extract::State, routing::post, Json, Router};
+use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use time::OffsetDateTime;
+use tracing::{debug, error, info};
+
 use crate::{
-    grpc::enrollment::proto::{
-        ActivateUserRequest, DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse,
-        ExistingDevice, NewDevice,
+    error::ApiError,
+    handlers::get_core_response,
+    proto::{
+        core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
+        EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
     },
-    handlers::ApiResult,
-    server::AppState,
+    server::{AppState, ENROLLMENT_COOKIE_NAME},
 };
-use axum::{extract::State, headers::UserAgent, routing::post, Json, Router, TypedHeader};
-use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
-use tower_cookies::{cookie::time::OffsetDateTime, Cookie, Cookies};
-use tracing::{debug, info};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -23,88 +23,118 @@ pub fn router() -> Router<AppState> {
 
 pub async fn start_enrollment_process(
     State(state): State<AppState>,
-    cookies: Cookies,
+    mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
-) -> ApiResult<Json<EnrollmentStartResponse>> {
+) -> Result<(PrivateCookieJar, Json<EnrollmentStartResponse>), ApiError> {
     info!("Starting enrollment process");
 
     // clear session cookies if already populated
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
     if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
         debug!("Removing previous session cookie");
-        cookies.remove(cookie)
-    };
+        private_cookies = private_cookies.remove(cookie);
+    }
 
     let token = req.token.clone();
 
-    let mut client = state.enrollment_client.lock().await;
-    let response = client.start_enrollment(req).await?.into_inner();
+    let rx = state
+        .grpc_server
+        .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::EnrollmentStart(response) => {
+            // set session cookie
+            let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
+                .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-    // set session cookie
-    let cookie = Cookie::build(ENROLLMENT_COOKIE_NAME, token)
-        .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap())
-        .finish();
-    private_cookies.add(cookie);
-
-    Ok(Json(response))
+            Ok((private_cookies.add(cookie), Json(response)))
+        }
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
+        }
+    }
 }
 
 pub async fn activate_user(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
-    cookies: Cookies,
-    Json(req): Json<ActivateUserRequest>,
-) -> ApiResult<()> {
+    device_info: Option<DeviceInfo>,
+    mut private_cookies: PrivateCookieJar,
+    Json(mut req): Json<ActivateUserRequest>,
+) -> Result<PrivateCookieJar, ApiError> {
     info!("Activating user");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = create_request(req);
-    add_auth_header(cookies.clone(), &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
-    client.activate_user(request).await?;
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
 
-    let key = SECRET_KEY.get().unwrap();
-    let private_cookies = cookies.private(key);
-    if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
-        debug!("Enrollment finished. Removing session cookie");
-        cookies.remove(cookie)
-    };
+    let rx = state
+        .grpc_server
+        .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::Empty(_) => {
+            if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
+                debug!("Enrollment finished. Removing session cookie");
+                private_cookies = private_cookies.remove(cookie);
+            }
 
-    Ok(())
+            Ok(private_cookies)
+        }
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
+        }
+    }
 }
 
 pub async fn create_device(
     State(state): State<AppState>,
-    forwarded_for_ip: Option<LeftmostXForwardedFor>,
-    InsecureClientIp(insecure_ip): InsecureClientIp,
-    user_agent: Option<TypedHeader<UserAgent>>,
-    cookies: Cookies,
-    Json(req): Json<NewDevice>,
-) -> ApiResult<Json<DeviceConfigResponse>> {
+    device_info: Option<DeviceInfo>,
+    private_cookies: PrivateCookieJar,
+    Json(mut req): Json<NewDevice>,
+) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Adding new device");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = create_request(req);
-    add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
-    add_device_info_header(&mut request, forwarded_for_ip, insecure_ip, user_agent)?;
-    let response = client.create_device(request).await?;
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
 
-    Ok(Json(response.into_inner()))
+    let rx = state
+        .grpc_server
+        .send(Some(core_request::Payload::NewDevice(req)), device_info)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::DeviceConfig(response) => Ok(Json(response)),
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
+        }
+    }
 }
+
 pub async fn get_network_info(
     State(state): State<AppState>,
-    cookies: Cookies,
-    Json(req): Json<ExistingDevice>,
-) -> ApiResult<Json<DeviceConfigResponse>> {
+    private_cookies: PrivateCookieJar,
+    Json(mut req): Json<ExistingDevice>,
+) -> Result<Json<DeviceConfigResponse>, ApiError> {
     info!("Getting network info");
 
-    let mut client = state.enrollment_client.lock().await;
-    let mut request = create_request(req);
-    add_auth_header(cookies, &mut request, ENROLLMENT_COOKIE_NAME)?;
-    let response = client.get_network_info(request).await?;
+    // set auth info
+    req.token = private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string());
 
-    Ok(Json(response.into_inner()))
+    let rx = state
+        .grpc_server
+        .send(Some(core_request::Payload::ExistingDevice(req)), None)?;
+    let payload = get_core_response(rx).await?;
+    match payload {
+        core_response::Payload::DeviceConfig(response) => Ok(Json(response)),
+        _ => {
+            error!("Received invalid gRPC response type: {payload:#?}");
+            Err(ApiError::InvalidResponseType)
+        }
+    }
 }

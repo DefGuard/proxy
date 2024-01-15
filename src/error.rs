@@ -1,10 +1,12 @@
+use crate::proto::CoreError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
 use serde_json::json;
-use tonic::{metadata::errors::InvalidMetadataValue, Code};
+use tonic::metadata::errors::InvalidMetadataValue;
+use tonic::{Code, Status};
 use tracing::error;
 
 #[derive(thiserror::Error, Debug)]
@@ -19,6 +21,10 @@ pub enum ApiError {
     InvalidMetadata(#[from] InvalidMetadataValue),
     #[error("Bad request: {0}")]
     BadRequest(String),
+    #[error("Core gRPC response timeout")]
+    CoreTimeout,
+    #[error("Invalid core gRPC response type received")]
+    InvalidResponseType,
 }
 
 impl IntoResponse for ApiError {
@@ -41,9 +47,10 @@ impl IntoResponse for ApiError {
     }
 }
 
-// implement more granular mapping of gRPC errors
-impl From<tonic::Status> for ApiError {
-    fn from(status: tonic::Status) -> Self {
+impl From<CoreError> for ApiError {
+    fn from(core_error: CoreError) -> Self {
+        // convert to tonic::Status first
+        let status = Status::new(Code::from(core_error.status_code), core_error.message);
         match status.code() {
             Code::Unauthenticated => ApiError::Unauthorized,
             Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
