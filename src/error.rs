@@ -1,3 +1,4 @@
+use crate::proto::CoreError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -5,6 +6,7 @@ use axum::{
 };
 use serde_json::json;
 use tonic::metadata::errors::InvalidMetadataValue;
+use tonic::{Code, Status};
 use tracing::error;
 
 #[derive(thiserror::Error, Debug)]
@@ -42,5 +44,17 @@ impl IntoResponse for ApiError {
         }));
 
         (status, body).into_response()
+    }
+}
+
+impl From<CoreError> for ApiError {
+    fn from(core_error: CoreError) -> Self {
+        // convert to tonic::Status first
+        let status = Status::new(Code::from(core_error.status_code), core_error.message);
+        match status.code() {
+            Code::Unauthenticated => ApiError::Unauthorized,
+            Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
+            _ => ApiError::Unexpected(status.to_string()),
+        }
     }
 }
