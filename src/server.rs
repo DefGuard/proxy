@@ -22,7 +22,7 @@ use tracing::{debug, info, info_span, Level};
 use crate::{
     config::Config,
     error::ApiError,
-    handlers::{enrollment, password_reset},
+    handlers::{desktop_client_mfa, enrollment, password_reset},
     proto::proxy_server,
     ProxyServer,
 };
@@ -103,6 +103,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             Router::new()
                 .nest("/enrollment", enrollment::router())
                 .nest("/password-reset", password_reset::router())
+                .nest("/client-mfa", desktop_client_mfa::router())
                 .route("/health", get(healthcheck))
                 .route("/info", get(app_info)),
         )
