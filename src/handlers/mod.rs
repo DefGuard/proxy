@@ -1,14 +1,13 @@
+pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
 pub(crate) mod password_reset;
 
-use crate::error::ApiError;
-use crate::proto::core_response::Payload;
+use crate::{error::ApiError, proto::core_response::Payload};
 use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
 use axum_extra::{headers::UserAgent, TypedHeader};
 use std::time::Duration;
-use tokio::sync::oneshot::Receiver;
-use tokio::time::timeout;
+use tokio::{sync::oneshot::Receiver, time::timeout};
 use tracing::error;
 
 use super::proto::DeviceInfo;
