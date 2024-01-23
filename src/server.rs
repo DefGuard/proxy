@@ -1,39 +1,45 @@
-use crate::handlers::ApiResult;
-use crate::{
-    config::Config,
-    grpc::{enrollment::proto::enrollment_service_client::EnrollmentServiceClient, setup_client},
-    handlers::enrollment,
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
 use anyhow::Context;
-use axum::routing::get;
 use axum::{
+    extract::FromRef,
     handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
-    Json, Router,
+    routing::get,
+    serve, Json, Router,
 };
+use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use once_cell::sync::OnceCell;
 use serde::Serialize;
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::Arc,
-};
-use tokio::sync::Mutex;
-use tonic::transport::Channel;
-use tower_cookies::{CookieManagerLayer, Key};
+use tokio::{net::TcpListener, task::JoinSet};
+use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
 use tracing::{debug, info, info_span, Level};
 
-pub const COOKIE_NAME: &str = "defguard_proxy";
-pub static SECRET_KEY: OnceCell<Key> = OnceCell::new();
+use crate::{
+    config::Config,
+    error::ApiError,
+    handlers::{desktop_client_mfa, enrollment, password_reset},
+    proto::proxy_server,
+    ProxyServer,
+};
+
+pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 
 #[derive(Clone)]
-pub struct AppState {
-    pub config: Arc<Config>,
-    pub client: Arc<Mutex<EnrollmentServiceClient<Channel>>>,
+pub(crate) struct AppState {
+    pub(crate) grpc_server: ProxyServer,
+    key: Key,
+}
+
+impl FromRef<AppState> for Key {
+    fn from_ref(state: &AppState) -> Self {
+        state.key.clone()
+    }
 }
 
 async fn handle_404() -> (StatusCode, &'static str) {
@@ -41,12 +47,12 @@ async fn handle_404() -> (StatusCode, &'static str) {
 }
 
 #[derive(Serialize)]
-struct AppInfo {
-    version: String,
+struct AppInfo<'a> {
+    version: &'a str,
 }
 
-async fn app_info() -> ApiResult<Json<AppInfo>> {
-    let version = crate_version!().to_string();
+async fn app_info<'a>() -> Result<Json<AppInfo<'a>>, ApiError> {
+    let version = crate_version!();
     Ok(Json(AppInfo { version }))
 }
 
@@ -57,22 +63,37 @@ async fn healthcheck() -> &'static str {
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
 
+    let mut tasks = JoinSet::new();
+
     // connect to upstream gRPC server
-    let client = setup_client(&config).context("Failed to setup gRPC client")?;
-
-    // store port before moving config
-    let http_port = config.http_port;
-
-    // generate secret key for encrypting cookies
-    SECRET_KEY.set(Key::generate()).ok();
+    let grpc_server = ProxyServer::new();
 
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
-        config: Arc::new(config),
-        client: Arc::new(Mutex::new(client)),
+        grpc_server: grpc_server.clone(),
+        // Generate secret key for encrypting cookies.
+        key: Key::generate(),
     };
-    // serving static frontend files
+
+    // Start gRPC server.
+    tasks.spawn(async move {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
+        info!("gRPC server is listening on {addr}");
+        let mut builder = if let (Some(cert), Some(key)) = (config.grpc_cert, config.grpc_key) {
+            let identity = Identity::from_pem(cert, key);
+            Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?
+        } else {
+            Server::builder()
+        };
+        builder
+            .add_service(proxy_server::ProxyServer::new(grpc_server))
+            .serve(addr)
+            .await
+            .context("Error running RPC server")
+    });
+
+    // Serve static frontend files.
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
@@ -81,13 +102,14 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             "/api/v1",
             Router::new()
                 .nest("/enrollment", enrollment::router())
+                .nest("/password-reset", password_reset::router())
+                .nest("/client-mfa", desktop_client_mfa::router())
                 .route("/health", get(healthcheck))
                 .route("/info", get(app_info)),
         )
         .nest_service("/svg", serve_images)
         .fallback_service(serve_web_dir)
         .with_state(shared_state)
-        .layer(CookieManagerLayer::new())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
@@ -100,11 +122,22 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
 
-    // run server
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), http_port);
-    info!("Listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+    // Start web server.
+    tasks.spawn(async move {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
+        let listener = TcpListener::bind(&addr).await?;
+        info!("Web server is listening on {addr}");
+        serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
         .await
         .context("Error running HTTP server")
+    });
+
+    while let Some(Ok(result)) = tasks.join_next().await {
+        result?;
+    }
+
+    Ok(())
 }

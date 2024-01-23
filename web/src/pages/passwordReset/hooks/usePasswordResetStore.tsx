@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 
+import { AdminInfo, UserInfo } from '../../../shared/hooks/api/types';
+
 const defaultValues: StoreValues = {
+  loading: false,
   step: 0,
+  sessionEnd: undefined,
+  userInfo: undefined,
 };
 
 export const usePasswordResetStore = create<Store>((set) => ({
@@ -14,7 +19,12 @@ export const usePasswordResetStore = create<Store>((set) => ({
 type Store = StoreValues & StoreMethods;
 
 type StoreValues = {
+  loading: boolean;
   step: number;
+  sessionStart?: string;
+  sessionEnd?: string;
+  userInfo?: UserInfo;
+  adminInfo?: AdminInfo;
 };
 
 type StoreMethods = {

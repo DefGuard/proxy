@@ -17,6 +17,8 @@ const defaultValues: StoreValues = {
   sessionEnd: undefined,
   userInfo: undefined,
   nextSubject: new Subject<void>(),
+  userPassword: undefined,
+  deviceState: undefined,
 };
 
 const persistKeys: Array<keyof StoreValues> = [

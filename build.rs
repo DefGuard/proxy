@@ -7,8 +7,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]");
     tonic_build::configure().compile_with_config(
         config,
-        &["proto/enrollment/enrollment.proto"],
-        &["proto/enrollment"],
+        &["proto/core/proxy.proto"],
+        &["proto/core"],
     )?;
+    println!("cargo:rerun-if-changed=proto");
     Ok(())
 }

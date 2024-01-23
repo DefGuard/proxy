@@ -5,7 +5,6 @@
     box-sizing: border-box;
     padding: 50px 40px;
     width: 100%;
-    max-width: 660px;
 
     & > h2 {
       @include typography(app-body-1);
