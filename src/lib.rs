@@ -126,7 +126,7 @@ impl proxy_server::Proxy for ProxyServer {
                             }
                         }
                     }
-                    Err(err) => info!("RPC client error: {err}"),
+                    Err(err) => error!("RPC client error: {err}"),
                 }
             }
             debug!("client disconnected {address}");
