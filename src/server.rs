@@ -1,4 +1,7 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    fs::read_to_string,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 
 use anyhow::Context;
 use axum::{
@@ -76,11 +79,21 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         key: Key::generate(),
     };
 
+    // read gRPC TLS cert and key
+    let grpc_cert = config
+        .grpc_cert
+        .as_ref()
+        .and_then(|path| read_to_string(path).ok());
+    let grpc_key = config
+        .grpc_key
+        .as_ref()
+        .and_then(|path| read_to_string(path).ok());
+
     // Start gRPC server.
     tasks.spawn(async move {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
         info!("gRPC server is listening on {addr}");
-        let mut builder = if let (Some(cert), Some(key)) = (config.grpc_cert, config.grpc_key) {
+        let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
             let identity = Identity::from_pem(cert, key);
             Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?
         } else {
