@@ -50,12 +50,12 @@ jobs:
 #          cache-from: type=gha
 #          cache-to: type=gha,mode=max
 
-  release:
+  create-release:
     runs-on: self-hosted
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
-      - name: Create release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
