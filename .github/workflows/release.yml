@@ -51,6 +51,7 @@ jobs:
 #          cache-to: type=gha,mode=max
 
   create-release:
+    name: create-release
     runs-on: self-hosted
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
