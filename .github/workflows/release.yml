@@ -140,3 +140,21 @@ jobs:
           asset_path: defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
           asset_name: defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
           asset_content_type: application/octet-stream
+
+      - name: Build DEB package
+        if: matrix.build != 'freebsd'
+        uses: bpicode/github-action-fpm@master
+        with:
+          fpm_args: "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/sbin/defguard-proxy defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service example-config.toml=/etc/defguard/proxy.toml"
+          fpm_opts: "--debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb"
+
+      - name: Upload DEB
+        if: matrix.build != 'freebsd'
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb
+          asset_name: defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb
+          asset_content_type: application/octet-stream
