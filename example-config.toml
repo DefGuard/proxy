@@ -1,0 +1,14 @@
+# This is an example config file for defguard proxy
+# To use it fill in actual values for your deployment below
+
+# port the API server will listen on
+http_port = 8080
+# port the API server will listen on
+grpc_port = 50051
+
+# gRPC SSL configuration
+# provide certificate and key to connect to gRPC server with HTTPS
+# Optional: path to cert file
+# grpc_cert: proxy.crt
+# Optional: path to key file
+# grpc_key: proxy.key

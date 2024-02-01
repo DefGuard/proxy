@@ -1,5 +1,5 @@
-use clap::Parser;
-use defguard_proxy::{config::Config, server::run_server};
+use defguard_proxy::config::get_config;
+use defguard_proxy::server::run_server;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // read config from env
-    let config = Config::parse();
+    let config = get_config()?;
 
     // run API server
     run_server(config).await?;

@@ -1,6 +1,9 @@
 use clap::Parser;
+use serde::Deserialize;
+use std::{fs, io::Error as IoError};
+use tracing::info;
 
-#[derive(Parser)]
+#[derive(Parser, Deserialize)]
 #[command(version)]
 pub struct Config {
     // port the API server will listen on
@@ -21,4 +24,32 @@ pub struct Config {
 
     #[arg(long, env = "DEFGUARD_PROXY_GRPC_KEY")]
     pub grpc_key: Option<String>,
+
+    /// Configuration file path
+    #[arg(long = "config", short)]
+    #[serde(skip)]
+    config_path: Option<std::path::PathBuf>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConfigError {
+    #[error("Failed to read config file")]
+    IoError(#[from] IoError),
+    #[error("Failed to parse config file")]
+    ParseError(#[from] toml::de::Error),
+}
+
+pub fn get_config() -> Result<Config, ConfigError> {
+    // parse CLI arguments to get config file path
+    let cli_config = Config::parse();
+
+    // load config from file if one was specified
+    if let Some(config_path) = cli_config.config_path {
+        info!("Reading configuration from config file: {config_path:?}");
+        let config_toml = fs::read_to_string(config_path)?;
+        let file_config: Config = toml::from_str(&config_toml)?;
+        return Ok(file_config);
+    }
+
+    Ok(cli_config)
 }
