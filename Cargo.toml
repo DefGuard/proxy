@@ -19,6 +19,7 @@ axum-extra = { version = "0.9", features = [
 time = { version = "0.3", default-features = false }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tokio-stream = { version = "0.1" }
+tower = { version = "0.4", default-features = false, features = ["buffer", "limit"] }
 tower-http = { version = "0.5", features = ["fs", "trace"] }
 # logging/tracing
 tracing = "0.1"

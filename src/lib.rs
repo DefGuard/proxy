@@ -45,7 +45,7 @@ impl ProxyServer {
         }
     }
 
-    /// Sends message to the other side of RPC, with given `payload` and optional 'device_info`.
+    /// Sends message to the other side of RPC, with given `payload` and optional `device_info`.
     /// Returns `tokio::sync::oneshot::Reveicer` to let the caller await reply.
     pub fn send(
         &self,

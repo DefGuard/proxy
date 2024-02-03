@@ -1,3 +1,12 @@
+use std::time::Duration;
+
+use axum::{
+    error_handling::HandleErrorLayer, extract::State, http::StatusCode, routing::post, BoxError,
+    Json, Router,
+};
+use tower::{buffer::BufferLayer, limit::RateLimitLayer, ServiceBuilder};
+use tracing::{error, info};
+
 use crate::{
     error::ApiError,
     handlers::get_core_response,
@@ -7,13 +16,24 @@ use crate::{
     },
     server::AppState,
 };
-use axum::{extract::State, routing::post, Json, Router};
-use tracing::{error, info};
 
-pub fn router() -> Router<AppState> {
+pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
         .route("/finish", post(finish_client_mfa))
+        // `RateLimitLayer` does not implement `Clone`.
+        // See: https://github.com/tokio-rs/axum/discussions/987
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|err: BoxError| async move {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unhandled error: {err}"),
+                    )
+                }))
+                .layer(BufferLayer::new(1024))
+                .layer(RateLimitLayer::new(5, Duration::from_secs(10))),
+        )
 }
 
 async fn start_client_mfa(
@@ -27,12 +47,11 @@ async fn start_client_mfa(
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::ClientMfaStart(response) => Ok(Json(response)),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::ClientMfaStart(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
@@ -47,11 +66,10 @@ async fn finish_client_mfa(
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::ClientMfaFinish(response) => Ok(Json(response)),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::ClientMfaFinish(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }

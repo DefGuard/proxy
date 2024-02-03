@@ -40,18 +40,15 @@ pub async fn start_enrollment_process(
         .grpc_server
         .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::EnrollmentStart(response) => {
-            // set session cookie
-            let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
-                .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
+    if let core_response::Payload::EnrollmentStart(response) = payload {
+        // set session cookie
+        let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
+            .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-            Ok((private_cookies.add(cookie), Json(response)))
-        }
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+        Ok((private_cookies.add(cookie), Json(response)))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
@@ -72,19 +69,16 @@ pub async fn activate_user(
         .grpc_server
         .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::Empty(_) => {
-            if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
-                debug!("Enrollment finished. Removing session cookie");
-                private_cookies = private_cookies.remove(cookie);
-            }
+    if let core_response::Payload::Empty(()) = payload {
+        if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
+            debug!("Enrollment finished. Removing session cookie");
+            private_cookies = private_cookies.remove(cookie);
+        }
 
-            Ok(private_cookies)
-        }
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+        Ok(private_cookies)
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
@@ -105,12 +99,11 @@ pub async fn create_device(
         .grpc_server
         .send(Some(core_request::Payload::NewDevice(req)), device_info)?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::DeviceConfig(response) => Ok(Json(response)),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::DeviceConfig(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
@@ -130,11 +123,10 @@ pub async fn get_network_info(
         .grpc_server
         .send(Some(core_request::Payload::ExistingDevice(req)), None)?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::DeviceConfig(response) => Ok(Json(response)),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::DeviceConfig(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
