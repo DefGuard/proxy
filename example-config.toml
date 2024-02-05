@@ -8,6 +8,7 @@ grpc_port = 50051
 
 # gRPC SSL configuration
 # provide certificate and key to connect to gRPC server with HTTPS
+# https://defguard.gitbook.io/defguard/features/setting-up-your-instance/docker-compose#grpc-ssl-setup
 # Optional: path to cert file
 # grpc_cert: proxy.crt
 # Optional: path to key file
