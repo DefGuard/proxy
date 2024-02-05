@@ -47,18 +47,14 @@ where
 ///
 /// Waits for core response with a given timeout and returns the response payload.
 async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
-    match timeout(Duration::from_secs(CORE_RESPONSE_TIMEOUT), rx).await {
-        Ok(core_response) => {
-            if let Ok(Payload::CoreError(core_error)) = core_response {
-                return Err(core_error.into());
-            };
-            core_response.map_err(|err| {
-                ApiError::Unexpected(format!("Failed to receive core response: {err}"))
-            })
-        }
-        Err(_) => {
-            error!("Did not receive core response within {CORE_RESPONSE_TIMEOUT} seconds");
-            Err(ApiError::CoreTimeout)
-        }
+    if let Ok(core_response) = timeout(Duration::from_secs(CORE_RESPONSE_TIMEOUT), rx).await {
+        if let Ok(Payload::CoreError(core_error)) = core_response {
+            return Err(core_error.into());
+        };
+        core_response
+            .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
+    } else {
+        error!("Did not receive core response within {CORE_RESPONSE_TIMEOUT} seconds");
+        Err(ApiError::CoreTimeout)
     }
 }
