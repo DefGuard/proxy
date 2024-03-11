@@ -7,9 +7,20 @@ async fn main() -> anyhow::Result<()> {
     // initialize tracing
     tracing_subscriber::registry()
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "defguard_proxy=debug,tower_http=debug,axum::rejection=trace".into()
+            // "defguard_proxy=debug,tower_http=debug,axum::rejection=trace".into()
+            "debug".into()
         }))
-        .with(fmt::layer())
+        .with(
+            fmt::layer()
+        // Include span context with each log message
+        .with_span_events(fmt::format::FmtSpan::NEW)
+        // Use default field formatting, ensuring context variables are logged
+        .fmt_fields(fmt::format::PrettyFields::default())
+                // // Enable full logging of spans, including entering, exiting, and closing spans
+                // .with_span_events(fmt::format::FmtSpan::FULL)
+                // // // Optionally, customize the format to include more span information
+                // // .fmt_fields(fmt::format::debug)
+        )
         .init();
 
     // load .env

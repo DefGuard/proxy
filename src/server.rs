@@ -20,7 +20,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
-use tracing::{debug, info, info_span, Level};
+use tracing::{debug, info, debug_span, Level};
 
 use crate::{
     config::Config,
@@ -126,10 +126,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
-                    info_span!(
+                    debug_span!(
                         "http_request",
                         method = ?request.method(),
                         path = ?request.uri(),
+                        headers = ?request.headers(),
                     )
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
