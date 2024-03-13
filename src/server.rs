@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Context;
 use axum::{
-    extract::FromRef,
+    extract::{ConnectInfo, FromRef},
     handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
     routing::get,
@@ -20,7 +20,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
-use tracing::{debug, info, debug_span, Level};
+use tracing::{debug, info, info_span, Level};
 
 use crate::{
     config::Config,
@@ -126,11 +126,18 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
-                    debug_span!(
+                    // extract client address
+                    let addr = request
+                        .extensions()
+                        .get::<ConnectInfo<SocketAddr>>()
+                        .map(|addr| addr.0.to_string())
+                        .unwrap_or_else(|| "unknown".to_string());
+                    info_span!(
                         "http_request",
                         method = ?request.method(),
                         path = ?request.uri(),
                         headers = ?request.headers(),
+                        client_addr = addr,
                     )
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
