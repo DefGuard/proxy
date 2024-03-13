@@ -25,8 +25,9 @@ use tracing::{info_span, Level};
 use crate::{
     config::Config,
     error::ApiError,
+    grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset},
-    proto::proxy_server, grpc::ProxyServer,
+    proto::proxy_server,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";

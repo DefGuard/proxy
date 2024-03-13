@@ -11,4 +11,3 @@ pub(crate) mod proto {
 
 #[macro_use]
 extern crate tracing as rust_tracing;
-

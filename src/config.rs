@@ -1,5 +1,5 @@
-use tracing::log::LevelFilter;
 use clap::Parser;
+use tracing::log::LevelFilter;
 
 #[derive(Parser)]
 #[command(version)]

@@ -12,7 +12,9 @@ use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 
 use crate::error::ApiError;
-use crate::proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo};
+use crate::proto::{
+    core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo,
+};
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
