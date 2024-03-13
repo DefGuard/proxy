@@ -5,11 +5,11 @@ use time::OffsetDateTime;
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::{AppState, ENROLLMENT_COOKIE_NAME},
     proto::{
         core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
         EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
     },
-    server::{AppState, ENROLLMENT_COOKIE_NAME},
 };
 
 pub fn router() -> Router<AppState> {

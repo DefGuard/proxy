@@ -5,11 +5,11 @@ use time::OffsetDateTime;
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::{AppState, PASSWORD_RESET_COOKIE_NAME},
     proto::{
         core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
         PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
     },
-    server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
 
 pub fn router() -> Router<AppState> {

@@ -1,11 +1,11 @@
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::AppState,
     proto::{
         core_request, core_response, ClientMfaFinishRequest, ClientMfaFinishResponse,
         ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
     },
-    server::AppState,
 };
 use axum::{extract::State, routing::post, Json, Router};
 

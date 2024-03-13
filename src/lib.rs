@@ -2,7 +2,7 @@ pub mod config;
 mod error;
 mod grpc;
 mod handlers;
-pub mod server;
+pub mod http;
 pub mod tracing;
 
 pub(crate) mod proto {

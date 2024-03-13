@@ -1,7 +1,7 @@
 use clap::Parser;
 use tracing::log::LevelFilter;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(version)]
 pub struct Config {
     // port the API server will listen on

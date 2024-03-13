@@ -1,5 +1,5 @@
 use clap::Parser;
-use defguard_proxy::{config::Config, server::run_server, tracing::init_tracing};
+use defguard_proxy::{config::Config, http::run_server, tracing::init_tracing};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
