@@ -1,7 +1,6 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{span, Level};
 
 use crate::{
     error::ApiError,
@@ -26,7 +25,6 @@ pub async fn start_enrollment_process(
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
 ) -> Result<(PrivateCookieJar, Json<EnrollmentStartResponse>), ApiError> {
-    span!(Level::INFO, "start_enrollment", context="test");
     info!("Starting enrollment process");
 
     // clear session cookies if already populated

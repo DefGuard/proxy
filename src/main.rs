@@ -15,7 +15,6 @@ async fn main() -> anyhow::Result<()> {
 
     // initialize tracing
     tracing_subscriber::registry()
-        // TODO: log both cases
         .with(EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER").unwrap_or_else(|_| {
             let filter = format!(
                 "defguard_proxy={level},tower_http={level},axum={level}",
