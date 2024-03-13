@@ -154,8 +154,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Spawning API web server");
     tasks.spawn(async move {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
-        info!("API web server is listening on {addr}");
         let listener = TcpListener::bind(&addr).await?;
+        info!("API web server is listening on {addr}");
         serve(
             listener,
             app.into_make_service_with_connect_info::<SocketAddr>(),
