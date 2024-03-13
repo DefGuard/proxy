@@ -11,9 +11,9 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 
-use crate::error::ApiError;
-use crate::proto::{
-    core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo,
+use crate::{
+    error::ApiError,
+    proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
 };
 
 // connected clients
@@ -39,6 +39,7 @@ impl ProxyServer {
 
     /// Sends message to the other side of RPC, with given `payload` and optional 'device_info`.
     /// Returns `tokio::sync::oneshot::Reveicer` to let the caller await reply.
+    #[instrument(name = "send_grpc_message", level = "debug", skip(self))]
     pub fn send(
         &self,
         payload: Option<core_request::Payload>,
@@ -51,20 +52,18 @@ impl ProxyServer {
                 device_info,
                 payload,
             };
-            if client_tx.send(Ok(res)).is_ok() {
-                let (tx, rx) = oneshot::channel();
-                if let Ok(mut results) = self.results.lock() {
-                    results.insert(id, tx);
-                    return Ok(rx);
-                }
-            }
-
-            debug!("Failed to send CoreRequest");
+            if let Err(err) = client_tx.send(Ok(res)) {
+                error!("Failed to send CoreRequest: {err}");
+                return Err(ApiError::Unexpected("Failed to send CoreRequest".into()));
+            };
+            let (tx, rx) = oneshot::channel();
+            let mut results = self.results.lock().unwrap();
+            results.insert(id, tx);
+            Ok(rx)
+        } else {
+            error!("Defguard core is disconnected");
+            Err(ApiError::Unexpected("Defguard core is disconnected".into()))
         }
-
-        Err(ApiError::Unexpected(
-            "Failed to communicate with Defguard core".into(),
-        ))
     }
 }
 
@@ -83,14 +82,16 @@ impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
 
     /// Handle bidirectional communication with Defguard core.
+    #[instrument(name = "bidirectional_communication", level = "debug", skip(self))]
     async fn bidi(
         &self,
         request: Request<Streaming<CoreResponse>>,
     ) -> Result<Response<Self::BidiStream>, Status> {
         let Some(address) = request.remote_addr() else {
-            return Err(Status::internal("failed to determine client address"));
+            error!("Failed to determine client address for request: {request:?}");
+            return Err(Status::internal("Failed to determine client address"));
         };
-        info!("RPC client connected from: {address}");
+        info!("Defguard core RPC client connected from: {address}");
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients.lock().unwrap().insert(address, tx);
@@ -102,31 +103,23 @@ impl proxy_server::Proxy for ProxyServer {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(response) => {
-                        debug!("RPC message received {response:?}");
+                        debug!("Received message from Defguard core {response:?}");
                         // Discard empty payloads.
                         if let Some(payload) = response.payload {
-                            if let Ok(mut results) = results.lock() {
-                                if let Some(rx) = results.remove(&response.id) {
-                                    if rx.send(payload).is_err() {
-                                        debug!("failed to send to rx");
-                                    }
-                                } else {
-                                    debug!("missing receiver for response #{}", response.id);
+                            if let Some(rx) = results.lock().unwrap().remove(&response.id) {
+                                if let Err(err) = rx.send(payload) {
+                                    error!("Failed to send message to rx: {err:?}");
                                 }
                             } else {
-                                error!("failed to obtain mutex on results");
+                                error!("Missing receiver for response #{}", response.id);
                             }
                         }
                     }
                     Err(err) => error!("RPC client error: {err}"),
                 }
             }
-            debug!("client disconnected {address}");
-            if let Ok(mut clients) = clients.lock() {
-                clients.remove(&address);
-            } else {
-                error!("failed to obtain mutex on clients");
-            }
+            info!("Defguard core client disconnected: {address}");
+            clients.lock().unwrap().remove(&address);
         });
 
         Ok(Response::new(UnboundedReceiverStream::new(rx)))

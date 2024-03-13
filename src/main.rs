@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::parse();
     init_tracing(&config.log_level);
 
-    // run API server
+    // run API web server
     run_server(config).await?;
 
     Ok(())

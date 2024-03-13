@@ -103,7 +103,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             .add_service(proxy_server::ProxyServer::new(grpc_server))
             .serve(addr)
             .await
-            .context("Error running RPC server")
+            .context("Error running gRPC server")
     });
 
     // Serve static frontend files.
