@@ -1,14 +1,13 @@
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::AppState,
     proto::{
         core_request, core_response, ClientMfaFinishRequest, ClientMfaFinishResponse,
         ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
     },
-    server::AppState,
 };
 use axum::{extract::State, routing::post, Json, Router};
-use tracing::{error, info};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -16,6 +15,7 @@ pub fn router() -> Router<AppState> {
         .route("/finish", post(finish_client_mfa))
 }
 
+#[instrument(level = "debug", skip(state))]
 async fn start_client_mfa(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -30,12 +30,13 @@ async fn start_client_mfa(
     match payload {
         core_response::Payload::ClientMfaStart(response) => Ok(Json(response)),
         _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
+            error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
         }
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 async fn finish_client_mfa(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -50,7 +51,7 @@ async fn finish_client_mfa(
     match payload {
         core_response::Payload::ClientMfaFinish(response) => Ok(Json(response)),
         _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
+            error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
         }
     }

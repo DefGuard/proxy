@@ -1,16 +1,15 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{debug, error, info};
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::{AppState, PASSWORD_RESET_COOKIE_NAME},
     proto::{
         core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
         PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
     },
-    server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
 
 pub fn router() -> Router<AppState> {
@@ -20,6 +19,7 @@ pub fn router() -> Router<AppState> {
         .route("/reset", post(reset_password))
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn request_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -35,12 +35,13 @@ pub async fn request_password_reset(
     match payload {
         core_response::Payload::Empty(_) => Ok(()),
         _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
+            error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
         }
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn start_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -71,12 +72,13 @@ pub async fn start_password_reset(
             Ok((private_cookies.add(cookie), Json(response)))
         }
         _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
+            error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
         }
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn reset_password(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -103,7 +105,7 @@ pub async fn reset_password(
             Ok(private_cookies)
         }
         _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
+            error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
         }
     }
