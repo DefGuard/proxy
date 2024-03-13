@@ -26,8 +26,7 @@ use crate::{
     config::Config,
     error::ApiError,
     handlers::{desktop_client_mfa, enrollment, password_reset},
-    proto::proxy_server,
-    ProxyServer,
+    proto::proxy_server, grpc::ProxyServer,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";

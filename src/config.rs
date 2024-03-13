@@ -1,3 +1,4 @@
+use tracing::log::LevelFilter;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -22,6 +23,6 @@ pub struct Config {
     #[arg(long, env = "DEFGUARD_PROXY_GRPC_KEY")]
     pub grpc_key: Option<String>,
 
-    #[arg(long, env = "DEFGUARD_PROXY_LOG_LEVEL", default_value = "info")]
-    pub log_level: String,
+    #[arg(long, env = "DEFGUARD_PROXY_LOG_LEVEL", default_value_t = LevelFilter::Info)]
+    pub log_level: LevelFilter,
 }
