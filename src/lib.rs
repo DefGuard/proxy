@@ -1,7 +1,8 @@
 pub mod config;
-pub mod error;
+mod error;
 mod handlers;
 pub mod server;
+pub mod tracing;
 
 pub(crate) mod proto {
     tonic::include_proto!("defguard.proxy");
@@ -24,7 +25,7 @@ use crate::error::ApiError;
 use proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo};
 
 #[macro_use]
-extern crate tracing;
+extern crate tracing as rust_tracing;
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;

@@ -12,8 +12,6 @@ use tonic::{Code, Status};
 pub enum ApiError {
     #[error("Unauthorized")]
     Unauthorized,
-    #[error("Session cookie not found")]
-    CookieNotFound,
     #[error("Unexpected error: {0}")]
     Unexpected(String),
     #[error(transparent)]
