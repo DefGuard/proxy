@@ -8,7 +8,6 @@ use crate::{
     server::AppState,
 };
 use axum::{extract::State, routing::post, Json, Router};
-use tracing::{error, info};
 
 pub fn router() -> Router<AppState> {
     Router::new()

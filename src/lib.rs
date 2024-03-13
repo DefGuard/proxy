@@ -19,10 +19,12 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
-use tracing::{debug, error, info};
 
 use crate::error::ApiError;
 use proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo};
+
+#[macro_use]
+extern crate tracing;
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;

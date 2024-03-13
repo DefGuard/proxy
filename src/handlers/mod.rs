@@ -8,7 +8,6 @@ use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
 use axum_extra::{headers::UserAgent, TypedHeader};
 use std::time::Duration;
 use tokio::{sync::oneshot::Receiver, time::timeout};
-use tracing::error;
 
 use super::proto::DeviceInfo;
 

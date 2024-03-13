@@ -1,7 +1,6 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{debug, error, info};
 
 use crate::{
     error::ApiError,

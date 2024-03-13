@@ -20,7 +20,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
-use tracing::{debug, info, info_span, Level};
+use tracing::{info_span, Level};
 
 use crate::{
     config::Config,
@@ -136,7 +136,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                         "http_request",
                         method = ?request.method(),
                         path = ?request.uri(),
-                        headers = ?request.headers(),
+                        // TODO: headers only in debug logs
+                        // headers = ?request.headers(),
                         client_addr = addr,
                     )
                 })

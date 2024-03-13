@@ -7,7 +7,6 @@ use axum::{
 use serde_json::json;
 use tonic::metadata::errors::InvalidMetadataValue;
 use tonic::{Code, Status};
-use tracing::error;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
