@@ -103,7 +103,7 @@ impl proxy_server::Proxy for ProxyServer {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(response) => {
-                        debug!("Received message from Defguard core {response:?}");
+                        debug!("Received message from Defguard core: {response:?}");
                         // Discard empty payloads.
                         if let Some(payload) = response.payload {
                             if let Some(rx) = results.lock().unwrap().remove(&response.id) {
