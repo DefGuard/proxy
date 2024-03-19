@@ -43,6 +43,7 @@ pub async fn start_enrollment_process(
     match payload {
         core_response::Payload::EnrollmentStart(response) => {
             // set session cookie
+            info!("Started enrollment process: {response:?}");
             let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
                 .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 

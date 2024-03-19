@@ -5,9 +5,10 @@ use std::{
 
 use anyhow::Context;
 use axum::{
+    body::Body,
     extract::{ConnectInfo, FromRef},
     handler::HandlerWithoutStateExt,
-    http::{Request, StatusCode},
+    http::{header, Request, StatusCode},
     routing::get,
     serve, Json, Router,
 };
@@ -130,13 +131,17 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<_>| {
-                    // extract client address
-                    let addr = request
-                        .extensions()
-                        .get::<ConnectInfo<SocketAddr>>()
-                        .map(|addr| addr.0.to_string())
-                        .unwrap_or_else(|| "unknown".to_string());
+                .make_span_with(|request: &Request<Body>| {
+                    let addr = match request.headers().get(header::FORWARDED) {
+                        // extract client address from x-forwarded-for header
+                        Some(addr) => addr.to_str().map(|s| s.to_string()).ok(),
+                        // use TCP/IP client address
+                        None => request
+                            .extensions()
+                            .get::<ConnectInfo<SocketAddr>>()
+                            .map(|addr| addr.0.to_string()),
+                    };
+                    let addr = addr.unwrap_or_else(|| "unknown".to_string());
                     info_span!(
                         "http_request",
                         method = ?request.method(),
