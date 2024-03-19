@@ -1,6 +1,7 @@
 use clap::Parser;
+use tracing::log::LevelFilter;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(version)]
 pub struct Config {
     // port the API server will listen on
@@ -21,4 +22,7 @@ pub struct Config {
 
     #[arg(long, env = "DEFGUARD_PROXY_GRPC_KEY")]
     pub grpc_key: Option<String>,
+
+    #[arg(long, env = "DEFGUARD_PROXY_LOG_LEVEL", default_value_t = LevelFilter::Info)]
+    pub log_level: LevelFilter,
 }

@@ -1,26 +1,16 @@
 use clap::Parser;
-use defguard_proxy::{config::Config, server::run_server};
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use defguard_proxy::{config::Config, http::run_server, tracing::init_tracing};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // initialize tracing
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "defguard_proxy=debug,tower_http=debug,axum::rejection=trace".into()
-        }))
-        .with(fmt::layer())
-        .init();
-
-    // load .env
+    // configuration
     if dotenvy::from_filename(".env.local").is_err() {
         dotenvy::dotenv().ok();
     }
-
-    // read config from env
     let config = Config::parse();
+    init_tracing(&config.log_level);
 
-    // run API server
+    // run API web server
     run_server(config).await?;
 
     Ok(())
