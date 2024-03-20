@@ -12,6 +12,7 @@ import { Card } from '../../../../../../../../shared/components/layout/Card/Card
 import { useTheme } from '../../../../../../../../shared/components/layout/hooks/theme/useTheme';
 import { Input } from '../../../../../../../../shared/components/layout/Input/Input';
 import { MessageBox } from '../../../../../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxType } from '../../../../../../../../shared/components/layout/MessageBox/types';
 import { Select } from '../../../../../../../../shared/components/layout/Select/Select';
 import { SelectOption } from '../../../../../../../../shared/components/layout/Select/types';
 import SvgIconHamburger from '../../../../../../../../shared/components/svg/IconHamburger';
@@ -42,7 +43,7 @@ export const DeviceConfiguration = () => {
       })) ?? [],
     [deviceState?.configs],
   );
-
+  const networksAvailable = deviceState?.configs?.length > 0 ?? false;
   const preparedConfig = useMemo(() => {
     if (deviceState?.device?.privateKey) {
       return selected?.config.replace('YOUR_PRIVATE_KEY', deviceState.device.privateKey);
@@ -76,65 +77,73 @@ export const DeviceConfiguration = () => {
           return;
         }}
       />
-
-      <div className="qr-info">
-        <p>{cardLL.cardTitle()}</p>
-      </div>
-
-      <Card id="device-config-card">
-        <div className="top">
-          <SvgIconHamburger />
-          <label>{cardLL.card.selectLabel()}:</label>
-          <Select<DeviceConfig>
-            identify={networkIdentifier}
-            options={selectOptions}
-            onChangeSingle={(config) => setSelected(config)}
-            selected={selected}
-          />
-          <div className="actions">
-            <ActionButton variant={ActionButtonVariant.QRCODE} active />
-            <ActionButton
-              variant={ActionButtonVariant.COPY}
-              disabled={isUndefined(selected) || !window.isSecureContext}
-              onClick={() => {
-                if (selected && window.isSecureContext) {
-                  if (deviceState?.device?.privateKey && preparedConfig) {
-                    navigator.clipboard
-                      .writeText(preparedConfig)
-                      .catch((e) => console.error(e));
-                  } else {
-                    navigator.clipboard
-                      .writeText(selected.config)
-                      .catch((e) => console.error(e));
-                  }
-                }
-              }}
-            />
-            <ActionButton
-              disabled={isUndefined(selected)}
-              variant={ActionButtonVariant.DOWNLOAD}
-              onClick={() => {
-                if (preparedConfig && selected) {
-                  downloadWGConfig(
-                    deviceState?.device?.privateKey ? preparedConfig : selected.config,
-                    `${selected.network_name.toLowerCase().replace(/\s+/g, '-')}`,
-                  );
-                }
-              }}
-            />
+      {networksAvailable && (
+        <>
+          <div className="qr-info">
+            <p>{cardLL.cardTitle()}</p>
           </div>
-        </div>
-        <div className="qr">
-          {!isUndefined(preparedConfig) && (
-            <QRCode
-              size={275}
-              value={preparedConfig}
-              bgColor={colors.surfaceDefaultModal}
-              fgColor={colors.textBodyPrimary}
-            />
-          )}
-        </div>
-      </Card>
+
+          <Card id="device-config-card">
+            <div className="top">
+              <SvgIconHamburger />
+              <label>{cardLL.card.selectLabel()}:</label>
+              <Select<DeviceConfig>
+                identify={networkIdentifier}
+                options={selectOptions}
+                onChangeSingle={(config) => setSelected(config)}
+                selected={selected}
+              />
+              <div className="actions">
+                <ActionButton variant={ActionButtonVariant.QRCODE} active />
+                <ActionButton
+                  variant={ActionButtonVariant.COPY}
+                  disabled={isUndefined(selected) || !window.isSecureContext}
+                  onClick={() => {
+                    if (selected && window.isSecureContext) {
+                      if (deviceState?.device?.privateKey && preparedConfig) {
+                        navigator.clipboard
+                          .writeText(preparedConfig)
+                          .catch((e) => console.error(e));
+                      } else {
+                        navigator.clipboard
+                          .writeText(selected.config)
+                          .catch((e) => console.error(e));
+                      }
+                    }
+                  }}
+                />
+                <ActionButton
+                  disabled={isUndefined(selected)}
+                  variant={ActionButtonVariant.DOWNLOAD}
+                  onClick={() => {
+                    if (preparedConfig && selected) {
+                      downloadWGConfig(
+                        deviceState?.device?.privateKey
+                          ? preparedConfig
+                          : selected.config,
+                        `${selected.network_name.toLowerCase().replace(/\s+/g, '-')}`,
+                      );
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="qr">
+              {!isUndefined(preparedConfig) && (
+                <QRCode
+                  size={275}
+                  value={preparedConfig}
+                  bgColor={colors.surfaceDefaultModal}
+                  fgColor={colors.textBodyPrimary}
+                />
+              )}
+            </div>
+          </Card>
+        </>
+      )}
+      {!networksAvailable && (
+        <MessageBox message={cardLL.noNetworksMessage()} type={MessageBoxType.WARNING} />
+      )}
     </>
   );
 };

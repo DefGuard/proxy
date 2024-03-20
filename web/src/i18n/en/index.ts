@@ -134,7 +134,6 @@ If you have any questions, please consult your assigned admin.All necessary info
                   },
                 },
               },
-              noNetworksMessage: "You don't have access to any networks",
               config: {
                 messageBox: {
                   auto: `
@@ -152,6 +151,7 @@ If you have any questions, please consult your assigned admin.All necessary info
 `,
                 },
                 deviceNameLabel: 'My Device Name',
+                noNetworksMessage: "You don't have access to any networks",
                 cardTitle:
                   'Use provided configuration file below by scanning QR Code or importing it as file on your devices WireGuard app.',
                 card: {
