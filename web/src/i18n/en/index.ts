@@ -134,6 +134,7 @@ If you have any questions, please consult your assigned admin.All necessary info
                   },
                 },
               },
+              noNetworksMessage: "You don't have access to any networks",
               config: {
                 messageBox: {
                   auto: `

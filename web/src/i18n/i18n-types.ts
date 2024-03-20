@@ -293,6 +293,10 @@ type RootTranslation = {
 									}
 								}
 							}
+							/**
+							 * Y​o​u​ ​d​o​n​'​t​ ​h​a​v​e​ ​a​c​c​e​s​s​ ​t​o​ ​a​n​y​ ​n​e​t​w​o​r​k​s
+							 */
+							noNetworksMessage: string
 							config: {
 								messageBox: {
 									/**
@@ -851,6 +855,10 @@ export type TranslationFunctions = {
 									}
 								}
 							}
+							/**
+							 * You don't have access to any networks
+							 */
+							noNetworksMessage: () => LocalizedString
 							config: {
 								messageBox: {
 									/**
