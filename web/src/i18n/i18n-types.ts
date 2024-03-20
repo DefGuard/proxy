@@ -320,6 +320,10 @@ type RootTranslation = {
 								 */
 								deviceNameLabel: string
 								/**
+								 * Y​o​u​ ​d​o​n​'​t​ ​h​a​v​e​ ​a​c​c​e​s​s​ ​t​o​ ​a​n​y​ ​n​e​t​w​o​r​k​s
+								 */
+								noNetworksMessage: string
+								/**
 								 * U​s​e​ ​p​r​o​v​i​d​e​d​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​i​l​e​ ​b​e​l​o​w​ ​b​y​ ​s​c​a​n​n​i​n​g​ ​Q​R​ ​C​o​d​e​ ​o​r​ ​i​m​p​o​r​t​i​n​g​ ​i​t​ ​a​s​ ​f​i​l​e​ ​o​n​ ​y​o​u​r​ ​d​e​v​i​c​e​s​ ​W​i​r​e​G​u​a​r​d​ ​a​p​p​.
 								 */
 								cardTitle: string
@@ -877,6 +881,10 @@ export type TranslationFunctions = {
 								 * My Device Name
 								 */
 								deviceNameLabel: () => LocalizedString
+								/**
+								 * You don't have access to any networks
+								 */
+								noNetworksMessage: () => LocalizedString
 								/**
 								 * Use provided configuration file below by scanning QR Code or importing it as file on your devices WireGuard app.
 								 */
