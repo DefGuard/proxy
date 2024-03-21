@@ -4,14 +4,16 @@ use std::{
 };
 
 use anyhow::Context;
+use axum::{extract::FromRequestParts};
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRef},
     handler::HandlerWithoutStateExt,
-    http::{header, Request, StatusCode},
+    http::{header, Request, StatusCode, request::Parts},
     routing::get,
     serve, Json, Router,
 };
+use axum_client_ip::LeftmostXForwardedFor;
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use serde::Serialize;
@@ -28,7 +30,7 @@ use crate::{
     error::ApiError,
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset},
-    proto::proxy_server,
+    proto::{proxy_server, DeviceInfo},
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -132,6 +134,13 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
+                    // Adam pomusz!!! :)
+                    let r = (*request).clone();
+                    let (mut parts, body) = r.into_parts();
+                    let none: Option<String> = None;
+                    let device_info = DeviceInfo::from_request_parts(&mut parts, &none);
+                    // let forwarded_for = LeftmostXForwardedFor::from_request_parts(&mut parts, &sth);
+
                     let addr = match request.headers().get(header::FORWARDED) {
                         // extract client address from x-forwarded-for header
                         Some(addr) => addr.to_str().map(|s| s.to_string()).ok(),
