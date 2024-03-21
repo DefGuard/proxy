@@ -8,7 +8,7 @@ use axum::{
     body::Body,
     extract::{ConnectInfo, FromRef},
     handler::HandlerWithoutStateExt,
-    http::{header, Request, StatusCode},
+    http::{Request, StatusCode},
     routing::get,
     serve, Json, Router,
 };
@@ -132,7 +132,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
-                    let addr = match request.headers().get(header::FORWARDED) {
+                    let addr = match request.headers().get("x-forwarded-for") {
                         // extract client address from x-forwarded-for header
                         Some(addr) => addr.to_str().map(|s| s.to_string()).ok(),
                         // use TCP/IP client address
