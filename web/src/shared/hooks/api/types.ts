@@ -27,7 +27,7 @@ export type EnrollmentStartResponse = {
 };
 
 export type ActivateUserRequest = {
-  phone_number: string;
+  phone_number?: string;
   password: string;
 };
 

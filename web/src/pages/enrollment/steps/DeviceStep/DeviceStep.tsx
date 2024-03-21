@@ -49,7 +49,7 @@ export const DeviceStep = () => {
   });
 
   useEffect(() => {
-    if (userPhone && userPassword) {
+    if (userPassword) {
       const sub = nextSubject.subscribe(() => {
         if ((deviceState && deviceState.device && deviceState.configs) || vpnOptional) {
           setStore({
