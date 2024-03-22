@@ -3,6 +3,7 @@ mod error;
 mod grpc;
 mod handlers;
 pub mod http;
+mod http_tracing_formatter;
 pub mod tracing;
 
 pub(crate) mod proto {
