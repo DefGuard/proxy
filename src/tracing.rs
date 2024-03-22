@@ -83,7 +83,7 @@ pub fn init_tracing(level: &LevelFilter) {
             EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER")
                 .unwrap_or_else(|_| level.to_string().into()),
         )
-        .with(fmt::layer().event_format(HttpFormatter))
+        .with(fmt::layer().event_format(HttpFormatter::default()))
         // .with(HttpLayer::new())
         .init();
     info!("Tracing initialized");
