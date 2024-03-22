@@ -1,14 +1,35 @@
+use rust_tracing::{Event, Subscriber};
 use std::fmt;
-use rust_tracing::{Subscriber, Event};
-// use tracing_core::{Subscriber, Event};
-use tracing_subscriber::fmt::{
-    format::{self, FormatEvent, FormatFields},
-    FmtContext,
-    FormattedFields,
+use tracing_subscriber::{
+    fmt::{
+        format::{self, FormatEvent, FormatFields},
+        FmtContext, FormattedFields,
+    },
+    registry::LookupSpan,
 };
-use tracing_subscriber::registry::LookupSpan;
 
-pub(crate) struct HttpFormatter;
+// pub(crate) struct HttpFormatter<S, N = format::DefaultFields, E = format::Format<format::Full>> {
+pub(crate) struct HttpFormatter<E = format::Format<format::Full>> {
+    inner: E,
+}
+
+impl Default for HttpFormatter {
+    fn default() -> Self {
+        // only enable ANSI when the feature is enabled, and the NO_COLOR
+        // environment variable is unset or empty.
+        // let ansi = cfg!(feature = "ansi") && env::var("NO_COLOR").map_or(true, |v| v.is_empty());
+
+        HttpFormatter {
+            // fmt_fields: format::DefaultFields::default(),
+            inner: format::Format::default(),
+            // fmt_span: format::FmtSpanConfig::default(),
+            // make_writer: io::stdout,
+            // is_ansi: ansi,
+            // log_internal_errors: false,
+            // _inner: PhantomData,
+        }
+    }
+}
 
 impl<S, N> FormatEvent<S, N> for HttpFormatter
 where
@@ -61,3 +82,5 @@ where
 
 // let _span = tracing::info_span!("my_span", answer = 42).entered();
 // tracing::info!(question = "life, the universe, and everything", "hello world");
+
+
