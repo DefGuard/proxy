@@ -64,6 +64,23 @@ async fn healthcheck() -> &'static str {
     "I'm alive!"
 }
 
+// Retrieves client address from the request. Uses either the left most x-forwarded-for
+// header value, or socket address if the header is not present.
+fn get_client_addr(request: &Request<Body>) -> String {
+    request
+        .headers()
+        .get("X-Forwarded-For")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.split(',').next())
+        .map(|ip| ip.trim().to_string())
+        .unwrap_or_else(|| {
+            request
+                .extensions()
+                .get::<ConnectInfo<SocketAddr>>()
+                .map_or("unknown".to_string(), |addr| addr.0.to_string())
+        })
+}
+
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
     debug!("Using config: {config:?}");
@@ -132,16 +149,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
-                    let addr = match request.headers().get("x-forwarded-for") {
-                        // extract client address from x-forwarded-for header
-                        Some(addr) => addr.to_str().map(|s| s.to_string()).ok(),
-                        // use TCP/IP client address
-                        None => request
-                            .extensions()
-                            .get::<ConnectInfo<SocketAddr>>()
-                            .map(|addr| addr.0.to_string()),
-                    };
-                    let addr = addr.unwrap_or_else(|| "unknown".to_string());
+                    let addr = get_client_addr(request);
                     info_span!(
                         "http_request",
                         method = ?request.method(),
