@@ -86,11 +86,14 @@ where
         };
 
         for log in http_logs {
-            write!(writer, "HTTP_LINE: {}", log)?;
-            let mut split = log.split(['=', ' ']);
-            split.next();
-            let fields = split.step_by(2).map(|s| s.trim()).collect::<Vec<&str>>().join(" ");
-            write!(writer, "HTTP: {}", fields)?
+            let split: Vec<&str> = log.split(['=', ' ']).collect();
+            let method = split.get(1).unwrap_or(&"unknown");
+            let path = split.get(3).unwrap_or(&"unknown");
+            let ip = split.get(5).unwrap_or(&"unknown").replace('"', "");
+            write!(writer, "{} {} {}", ip, method, path)?;
+            // split.next();
+            // let fields = split.step_by(2).map(|s| s.trim()).collect::<Vec<&str>>().join(" ");
+            // write!(writer, "HTTP: {}", fields)?
         }
         for log in logs {
             write!(writer, "{}", log)?
