@@ -1,4 +1,4 @@
-use rust_tracing::{field::Field, Event, Level, Subscriber};
+use rust_tracing::{Event, Subscriber};
 use std::fmt;
 use tracing_subscriber::{
     fmt::{
@@ -6,14 +6,13 @@ use tracing_subscriber::{
         time::{FormatTime, SystemTime},
         FmtContext, FormattedFields,
     },
-    registry::{LookupSpan, Scope},
+    registry::LookupSpan,
 };
 
 const HTTP_SPAN_NAME: &str = "http_request";
 
 #[derive(Default)]
-pub(crate) struct HttpFormatter<F = format::Format<format::Full>> {
-    inner: F,
+pub(crate) struct HttpFormatter {
     timer: SystemTime,
 }
 
@@ -24,12 +23,6 @@ impl HttpFormatter {
         }
         writer.write_char(' ')
     }
-
-    // // Checks if http_request span is present in the scope
-    // // If present, logs scope variables in fail2ban-friendly format
-    // fn write_http_span<S: Subscriber + for<'a> LookupSpan<'a>>(&self, scope: &Scope<S>) {
-    //     let span = scope.cloned().from_root();
-    // }
 }
 
 impl<S, N> FormatEvent<S, N> for HttpFormatter
@@ -51,23 +44,15 @@ where
 
         let mut logs: Vec<String> = Vec::new();
         let mut http_logs: Vec<String> = Vec::new();
-        // let mut http_fields: Option<&FormattedFields<N>> = None;
         if let Some(scope) = ctx.event_scope() {
-            // let http_span = scope.from_root().filter(|span| span.metadata().name() == HTTP_SPAN_NAME);
             let mut seen = false;
-            // let ext;
             for span in scope.from_root() {
-                // write!(writer, "{}", span.metadata().name())?;
                 let span_name = span.metadata().name();
                 logs.push(format!("{}", span_name));
                 seen = true;
 
-                // let ext = span.extensions();
-                // let fields = ext.get::<FormattedFields<N>>();
-                // span.get(&tracing::field::Field::display(HTTP_SPAN_NAME));
                 if let Some(fields) = span.extensions().get::<FormattedFields<N>>() {
                     if !fields.is_empty() {
-                        // write!(writer, "{{{}}}", fields)?;
                         if span_name == HTTP_SPAN_NAME {
                             http_logs.push(format!("{}", fields));
                             continue;
@@ -75,12 +60,10 @@ where
                         logs.push(format!("{{{}}}", fields));
                     }
                 }
-                // write!(writer, ":")?;
                 logs.push(":".into());
             }
 
             if seen {
-                // writer.write_char(' ')?;
                 logs.push(' '.into());
             }
         };
@@ -90,18 +73,14 @@ where
             let method = split.get(1).unwrap_or(&"unknown");
             let path = split.get(3).unwrap_or(&"unknown");
             let ip = split.get(5).unwrap_or(&"unknown").replace('"', "");
-            write!(writer, "{} {} {}", ip, method, path)?;
-            // split.next();
-            // let fields = split.step_by(2).map(|s| s.trim()).collect::<Vec<&str>>().join(" ");
-            // write!(writer, "HTTP: {}", fields)?
+            write!(writer, "{} {} {} ", ip, method, path)?;
         }
         for log in logs {
             write!(writer, "{}", log)?
         }
 
-        write!(&mut writer, "HTTP_FORMATTER END")?;
-
-        self.inner.format_event(ctx, writer, event)?;
-        Ok(())
+        // self.inner.format_event(ctx, writer, event)?;
+        ctx.format_fields(writer.by_ref(), event)?;
+        writeln!(writer)
     }
 }
