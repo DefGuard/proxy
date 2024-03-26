@@ -1,4 +1,4 @@
-use rust_tracing::{Event, Subscriber};
+use rust_tracing::{Event, Subscriber, Level};
 use std::fmt;
 use tracing_subscriber::{
     fmt::{
@@ -12,6 +12,7 @@ use tracing_subscriber::{
 pub(crate) struct HttpFormatter<F = format::Format<format::Full>> {
     inner: F,
     timer: SystemTime,
+    display_level: bool,
 }
 
 // impl Default for HttpFormatter {
@@ -24,42 +25,22 @@ pub(crate) struct HttpFormatter<F = format::Format<format::Full>> {
 // }
 
 impl HttpFormatter {
-
-    fn format_timestamp(&self, writer: &mut Writer<'_>) -> fmt::Result
-    // where
-    //     T: FormatTime,
-    {
-        // // If timestamps are disabled, do nothing.
-        // if !self.display_timestamp {
-        //     return Ok(());
-        // }
-
-        // // If ANSI color codes are enabled, format the timestamp with ANSI
-        // // colors.
-        // #[cfg(feature = "ansi")]
-        // {
-        //     if writer.has_ansi_escapes() {
-        //         // let style = Style::new().dimmed();
-        //         // write!(writer, "{}", style.prefix())?;
-
-        //         // If getting the timestamp failed, don't bail --- only bail on
-        //         // formatting errors.
-        //         if self.timer.format_time(writer).is_err() {
-        //             writer.write_str("<unknown time>")?;
-        //         }
-
-        //         write!(writer, "{} ", style.suffix())?;
-        //         return Ok(());
-        //     }
-        // }
-
-        // Otherwise, just format the timestamp without ANSI formatting.
-        // If getting the timestamp failed, don't bail --- only bail on
-        // formatting errors.
+    fn format_timestamp(&self, writer: &mut Writer<'_>) -> fmt::Result {
         if self.timer.format_time(writer).is_err() {
             writer.write_str("<unknown time>")?;
         }
         writer.write_char(' ')
+    }
+}
+
+struct FmtLevel<'a> {
+    level: &'a Level,
+}
+
+impl<'a> FmtLevel<'a> {
+    #[cfg(not(feature = "ansi"))]
+    pub(crate) fn new(level: &'a Level) -> Self {
+        Self { level }
     }
 }
 
@@ -74,41 +55,41 @@ where
         mut writer: format::Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
+        let meta = event.metadata();
+
         // Format values from the event's's metadata:
-        let metadata = event.metadata();
         self.format_timestamp(&mut writer);
-        write!(&mut writer, "HTTP_FORMATTER");
-        // write!(&mut writer, "{} {}: ", metadata.level(), metadata.target())?;
+        write!(writer, "{} ", meta.level().to_string())?;
 
-        // Format all the spans in the event's span context.
-        let sc = ctx.clone();
+        if let Some(scope) = ctx.event_scope() {
+            // let bold = writer.bold();
+
+            let mut seen = false;
+
+            for span in scope.from_root() {
+                write!(writer, "{}", span.metadata().name())?;
+                seen = true;
+
+                let ext = span.extensions();
+                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, "{{{}}}", fields)?;
+                    }
+                }
+                write!(writer, ":")?;
+            }
+
+            if seen {
+                writer.write_char(' ')?;
+            }
+        };
+
+        write!(&mut writer, "HTTP_FORMATTER END");
+
+        // let fmt_level = FmtLevel::new(meta.level());
+
+
         self.inner.format_event(ctx, writer, event);
-        // if let Some(scope) = ctx.event_scope() {
-        //     for span in scope.from_root() {
-        //         write!(writer, "{}", span.name())?;
-
-        //         // `FormattedFields` is a formatted representation of the span's
-        //         // fields, which is stored in its extensions by the `fmt` layer's
-        //         // `new_span` method. The fields will have been formatted
-        //         // by the same field formatter that's provided to the event
-        //         // formatter in the `FmtContext`.
-        //         let ext = span.extensions();
-        //         let fields = &ext
-        //             .get::<FormattedFields<N>>()
-        //             .expect("will never be `None`");
-
-        //         // Skip formatting the fields if the span had no fields.
-        //         if !fields.is_empty() {
-        //             write!(writer, "{{{}}}", fields)?;
-        //         }
-        //         write!(writer, ": ")?;
-        //     }
-        // }
-
-        // // Write fields on the event
-        // ctx.field_format().format_fields(writer.by_ref(), event)?;
-
-        // writeln!(writer)
         Ok(())
     }
 }
