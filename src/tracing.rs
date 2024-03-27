@@ -99,7 +99,11 @@ where
             let split: Vec<&str> = log.split(['=', ' ']).collect();
             let method = split.get(1).unwrap_or(&"unknown");
             let path = split.get(3).unwrap_or(&"unknown");
-            let ip = split.get(5).unwrap_or(&"unknown").replace('"', "");
+
+            let addr = split.get(5).and_then(|s| Some(s.replace('"', "")));
+            let ip = addr
+                .and_then(|s| s.split(":").next().map(|s| s.to_string()))
+                .unwrap_or("unknown".to_string());
             write!(writer, "{ip} {method} {path} ")?;
         }
 
