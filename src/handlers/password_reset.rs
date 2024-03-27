@@ -28,12 +28,15 @@ pub async fn request_password_reset(
     info!("Starting password reset request for {}", req.email);
 
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::PasswordResetInit(req)),
+        Some(core_request::Payload::PasswordResetInit(req.clone())),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
     match payload {
-        core_response::Payload::Empty(_) => Ok(()),
+        core_response::Payload::Empty(_) => {
+            info!("Started password reset request for {}", req.email);
+            Ok(())
+        }
         _ => {
             error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
@@ -69,6 +72,7 @@ pub async fn start_password_reset(
             let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
                 .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
+            info!("Started password reset process");
             Ok((private_cookies.add(cookie), Json(response)))
         }
         _ => {
@@ -99,7 +103,7 @@ pub async fn reset_password(
     match payload {
         core_response::Payload::Empty(_) => {
             if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
-                debug!("Password reset finished. Removing session cookie");
+                info!("Password reset finished. Removing session cookie");
                 private_cookies = private_cookies.remove(cookie);
             }
             Ok(private_cookies)
