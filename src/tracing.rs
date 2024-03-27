@@ -101,9 +101,9 @@ where
             let method = split.get(1).unwrap_or(&"unknown");
             let path = split.get(3).unwrap_or(&"unknown");
 
-            let addr = split.get(5).and_then(|s| Some(s.replace('"', "")));
+            let addr = split.get(5).map(|s| s.replace('"', ""));
             let ip = addr
-                .and_then(|s| s.split(":").next().map(|s| s.to_string()))
+                .and_then(|s| s.split(':').next().map(|s| s.to_string()))
                 .unwrap_or("unknown".to_string());
             write!(writer, "{ip} {method} {path} ")?;
         }
