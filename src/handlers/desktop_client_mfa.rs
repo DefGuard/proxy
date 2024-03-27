@@ -21,14 +21,17 @@ async fn start_client_mfa(
     device_info: Option<DeviceInfo>,
     Json(req): Json<ClientMfaStartRequest>,
 ) -> Result<Json<ClientMfaStartResponse>, ApiError> {
-    info!("Starting desktop client authorization");
+    info!("Starting desktop client authorization {req:?}");
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::ClientMfaStart(req)),
+        Some(core_request::Payload::ClientMfaStart(req.clone())),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
     match payload {
-        core_response::Payload::ClientMfaStart(response) => Ok(Json(response)),
+        core_response::Payload::ClientMfaStart(response) => {
+            info!("Started desktop client authorization {req:?}");
+            Ok(Json(response))
+        }
         _ => {
             error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
@@ -49,7 +52,10 @@ async fn finish_client_mfa(
     )?;
     let payload = get_core_response(rx).await?;
     match payload {
-        core_response::Payload::ClientMfaFinish(response) => Ok(Json(response)),
+        core_response::Payload::ClientMfaFinish(response) => {
+            info!("Finished desktop client authorization");
+            Ok(Json(response))
+        }
         _ => {
             error!("Received invalid gRPC response type: {payload:?}");
             Err(ApiError::InvalidResponseType)
