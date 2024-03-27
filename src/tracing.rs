@@ -65,9 +65,10 @@ where
     ) -> std::fmt::Result {
         let meta = event.metadata();
 
-        // timestamp & level
+        // timestamp, level & target
         self.format_timestamp(&mut writer)?;
         write!(writer, "{} ", meta.level())?;
+        write!(writer, "{}: ", meta.target(),)?;
 
         // iterate and accumulate spans storing our special span in separate variable if encountered
         let mut context_logs: String = "".to_string();
@@ -76,21 +77,21 @@ where
             let mut seen = false;
             for span in scope.from_root() {
                 let span_name = span.metadata().name();
-                context_logs = format!("{context_logs} {span_name}");
+                context_logs.push_str(&format!(" {span_name}"));
                 seen = true;
 
                 if let Some(fields) = span.extensions().get::<FormattedFields<N>>() {
                     if !fields.is_empty() {
                         match span_name {
                             x if x == self.span => http_log = Some(format!("{fields}")),
-                            _ => context_logs = format!("{context_logs} {{{fields}}}")
+                            _ => context_logs.push_str(&format!(" {{{fields}}}")),
                         }
                     }
                 }
-                context_logs = format!("{context_logs}:");
+                context_logs.push(':');
             }
             if seen {
-                context_logs.push(' '.into());
+                context_logs.push(' ');
             }
         };
 
