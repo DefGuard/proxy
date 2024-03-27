@@ -70,24 +70,24 @@ where
         write!(writer, "{} ", meta.level())?;
 
         // iterate and accumulate spans storing our special span in separate variable if encountered
-        let mut context_logs: Vec<String> = Vec::new();
+        let mut context_logs: String = "".to_string();
         let mut http_log: Option<String> = None;
         if let Some(scope) = ctx.event_scope() {
             let mut seen = false;
             for span in scope.from_root() {
                 let span_name = span.metadata().name();
-                context_logs.push(span_name.to_string());
+                context_logs = format!("{context_logs} {span_name}");
                 seen = true;
 
                 if let Some(fields) = span.extensions().get::<FormattedFields<N>>() {
                     if !fields.is_empty() {
                         match span_name {
                             x if x == self.span => http_log = Some(format!("{fields}")),
-                            _ => context_logs.push(format!("{{{fields}}}")),
+                            _ => context_logs = format!("{context_logs} {{{fields}}}")
                         }
                     }
                 }
-                context_logs.push(":".into());
+                context_logs = format!("{context_logs}:");
             }
             if seen {
                 context_logs.push(' '.into());
@@ -112,10 +112,7 @@ where
 
         // write span context
         if !context_logs.is_empty() {
-            write!(writer, " || Tracing data: ")?;
-            for log in context_logs {
-                write!(writer, "{log}")?
-            }
+            write!(writer, " || Tracing data: {context_logs}")?;
         }
         writeln!(writer)
     }
