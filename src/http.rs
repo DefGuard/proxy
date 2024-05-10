@@ -21,7 +21,8 @@ use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower_governor::{
     governor::{self, GovernorConfig, GovernorConfigBuilder},
-    key_extractor::{KeyExtractor, PeerIpKeyExtractor, SmartIpKeyExtractor}, GovernorLayer,
+    key_extractor::{KeyExtractor, PeerIpKeyExtractor, SmartIpKeyExtractor},
+    GovernorLayer,
 };
 use tower_http::{
     services::{ServeDir, ServeFile},
@@ -141,28 +142,38 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
 
     // Setup tower_governor rate-limiter
-    debug!("Configuring rate limiter");
-    let governor_conf = Arc::new(
-        GovernorConfigBuilder::default()
-            .key_extractor(SmartIpKeyExtractor)
-            .per_second(1)
-            .burst_size(1)
-            .finish()
-            .unwrap(),
+    debug!(
+        "Configuring rate limiter, per_second: {}, burst: {}",
+        config.rate_limit_per_second, config.rate_limit_burst
     );
-    let governor_limiter = governor_conf.limiter().clone();
-    let interval = Duration::from_secs(60); // cleanup every 60 seconds
-                                            // a separate background task to clean up
-                                            // Start background task to cleanup rate-limiter data
-    std::thread::spawn(move || loop {
-        std::thread::sleep(interval);
-        tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
-        governor_limiter.retain_recent();
-    });
-    debug!("Configured rate limiter");
+    let governor_conf = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
+        .per_second(config.rate_limit_per_second)
+        .burst_size(config.rate_limit_burst)
+        .finish();
+
+    let governor_conf = if let Some(conf) = governor_conf {
+        let governor_limiter = conf.limiter().clone();
+        let interval = Duration::from_secs(60); // cleanup every 60 seconds
+
+        // Start background task to cleanup rate-limiter data
+        std::thread::spawn(move || loop {
+            std::thread::sleep(interval);
+            tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
+            governor_limiter.retain_recent();
+        });
+        info!(
+            "Configured rate limiter, per_second: {}, burst: {}",
+            config.rate_limit_per_second, config.rate_limit_burst
+        );
+        Some(conf)
+    } else {
+        info!("Skipping rate limiter setup");
+        None
+    };
 
     // Build axum app
-    let app = Router::new()
+    let mut app = Router::new()
         .nest(
             "/api/v1",
             Router::new()
@@ -189,10 +200,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                     )
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
-        )
-        .layer(GovernorLayer {
-            config: governor_conf,
+        );
+    if let Some(conf) = governor_conf {
+        app = app.layer(GovernorLayer {
+            config: conf.into(),
         });
+    }
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
