@@ -151,13 +151,15 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     let governor_conf = if let Some(conf) = governor_conf {
         let governor_limiter = conf.limiter().clone();
-        let interval = Duration::from_secs(60); // cleanup every 60 seconds
 
         // Start background task to cleanup rate-limiter data
-        std::thread::spawn(move || loop {
-            std::thread::sleep(interval);
-            tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
-            governor_limiter.retain_recent();
+        tokio::spawn(async move {
+            let interval = Duration::from_secs(60); // cleanup every 60 seconds
+            loop {
+                std::thread::sleep(interval);
+                tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
+                governor_limiter.retain_recent();
+            }
         });
         info!(
             "Configured rate limiter, per_second: {}, burst: {}",
