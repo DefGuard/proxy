@@ -41,10 +41,10 @@ pub async fn start_enrollment_process(
         .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::EnrollmentStart(response) = payload {
-            info!(
-                "Started enrollment process for user {:?} by admin {:?}",
-                response.user, response.admin
-            );
+        info!(
+            "Started enrollment process for user {:?} by admin {:?}",
+            response.user, response.admin
+        );
         // set session cookie
         let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
             .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
