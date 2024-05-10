@@ -1,6 +1,7 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::Duration,
 };
 
 use anyhow::Context;
@@ -17,6 +18,9 @@ use clap::crate_version;
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
+use tower_governor::{
+    governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
+};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
@@ -33,6 +37,7 @@ use crate::{
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -133,7 +138,44 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
-    let app = Router::new()
+
+    // Setup tower_governor rate-limiter
+    debug!(
+        "Configuring rate limiter, per_second: {}, burst: {}",
+        config.rate_limit_per_second, config.rate_limit_burst
+    );
+    let governor_conf = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
+        .per_second(config.rate_limit_per_second)
+        .burst_size(config.rate_limit_burst)
+        .finish();
+
+    let governor_conf = if let Some(conf) = governor_conf {
+        let governor_limiter = conf.limiter().clone();
+
+        // Start background task to cleanup rate-limiter data
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD).await;
+                tracing::debug!(
+                    "Cleaning-up rate limiter storage, current size: {}",
+                    governor_limiter.len()
+                );
+                governor_limiter.retain_recent();
+            }
+        });
+        info!(
+            "Configured rate limiter, per_second: {}, burst: {}",
+            config.rate_limit_per_second, config.rate_limit_burst
+        );
+        Some(conf)
+    } else {
+        info!("Skipping rate limiter setup");
+        None
+    };
+
+    // Build axum app
+    let mut app = Router::new()
         .nest(
             "/api/v1",
             Router::new()
@@ -161,6 +203,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
+    if let Some(conf) = governor_conf {
+        app = app.layer(GovernorLayer {
+            config: conf.into(),
+        });
+    }
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
