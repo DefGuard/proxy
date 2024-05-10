@@ -87,31 +87,6 @@ fn get_client_addr(request: &Request<Body>) -> String {
         })
 }
 
-// // fn configure_rate_limiter(per_second: u64, burst_size: u32) -> Arc<GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware<QuantaInstant>>> {
-// fn configure_rate_limiter<K, M>(per_second: u64, burst_size: u32) -> Arc<GovernorConfig<K, M>>
-// where
-//     K: KeyExtractor,
-//     M: tower_governor::governor::RateLimitingMiddleware<governor::clock::quanta::QuantaInstant>
-// {
-//     let governor_conf = Arc::new(
-//         GovernorConfigBuilder::default()
-//             .key_extractor(SmartIpKeyExtractor)
-//             .per_second(per_second)
-//             .burst_size(burst_size)
-//             .finish()
-//             .unwrap(),
-//     );
-//     let governor_limiter = governor_conf.limiter().clone();
-//     let interval = Duration::from_secs(60); // cleanup every 60 seconds
-//                                             // a separate background task to clean up
-//     std::thread::spawn(move || loop {
-//         std::thread::sleep(interval);
-//         tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
-//         governor_limiter.retain_recent();
-//     });
-//     governor_conf
-// }
-
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
     debug!("Using config: {config:?}");
