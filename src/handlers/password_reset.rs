@@ -1,16 +1,15 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{debug, error, info};
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::{AppState, PASSWORD_RESET_COOKIE_NAME},
     proto::{
         core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
         PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
     },
-    server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
 
 pub fn router() -> Router<AppState> {
@@ -20,6 +19,7 @@ pub fn router() -> Router<AppState> {
         .route("/reset", post(reset_password))
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn request_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -28,11 +28,12 @@ pub async fn request_password_reset(
     info!("Starting password reset request for {}", req.email);
 
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::PasswordResetInit(req)),
+        Some(core_request::Payload::PasswordResetInit(req.clone())),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::Empty(()) = payload {
+        info!("Started password reset request for {}", req.email);
         Ok(())
     } else {
         error!("Received invalid gRPC response type: {payload:#?}");
@@ -40,6 +41,7 @@ pub async fn request_password_reset(
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn start_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -66,6 +68,7 @@ pub async fn start_password_reset(
         let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
             .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
+        info!("Started password reset process");
         Ok((private_cookies.add(cookie), Json(response)))
     } else {
         error!("Received invalid gRPC response type: {payload:#?}");
@@ -73,6 +76,7 @@ pub async fn start_password_reset(
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn reset_password(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -92,7 +96,7 @@ pub async fn reset_password(
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::Empty(()) = payload {
         if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
-            debug!("Password reset finished. Removing session cookie");
+            info!("Password reset finished. Removing session cookie");
             private_cookies = private_cookies.remove(cookie);
         }
         Ok(private_cookies)

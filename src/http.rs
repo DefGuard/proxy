@@ -5,7 +5,8 @@ use std::{
 
 use anyhow::Context;
 use axum::{
-    extract::FromRef,
+    body::Body,
+    extract::{ConnectInfo, FromRef},
     handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
     routing::get,
@@ -20,14 +21,14 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
 };
-use tracing::{debug, info, info_span, Level};
+use tracing::{info_span, Level};
 
 use crate::{
     config::Config,
     error::ApiError,
+    grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset},
     proto::proxy_server,
-    ProxyServer,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -63,8 +64,26 @@ async fn healthcheck() -> &'static str {
     "I'm alive!"
 }
 
+// Retrieves client address from the request. Uses either the left most x-forwarded-for
+// header value, or socket address if the header is not present.
+fn get_client_addr(request: &Request<Body>) -> String {
+    request
+        .headers()
+        .get("X-Forwarded-For")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.split(',').next())
+        .map(|ip| ip.trim().to_string())
+        .unwrap_or_else(|| {
+            request
+                .extensions()
+                .get::<ConnectInfo<SocketAddr>>()
+                .map_or("unknown".to_string(), |addr| addr.0.to_string())
+        })
+}
+
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
+    debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
 
@@ -80,6 +99,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     };
 
     // read gRPC TLS cert and key
+    debug!("Configuring grpc certificates");
     let grpc_cert = config
         .grpc_cert
         .as_ref()
@@ -88,8 +108,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .grpc_key
         .as_ref()
         .and_then(|path| read_to_string(path).ok());
+    debug!("Configured grpc certificates, cert: {grpc_cert:?}, key: {grpc_key:?}");
 
     // Start gRPC server.
+    debug!("Spawning gRPC server");
     tasks.spawn(async move {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
         info!("gRPC server is listening on {addr}");
@@ -103,10 +125,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             .add_service(proxy_server::ProxyServer::new(grpc_server))
             .serve(addr)
             .await
-            .context("Error running RPC server")
+            .context("Error running gRPC server")
     });
 
     // Serve static frontend files.
+    debug!("Configuring API server routing");
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
@@ -125,21 +148,27 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<_>| {
+                .make_span_with(|request: &Request<Body>| {
+                    let addr = get_client_addr(request);
                     info_span!(
                         "http_request",
                         method = ?request.method(),
                         path = ?request.uri(),
+                        // TODO: headers only in debug logs
+                        // headers = ?request.headers(),
+                        client_addr = addr,
                     )
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
+    debug!("Configured API server routing: {app:?}");
 
     // Start web server.
+    debug!("Spawning API web server");
     tasks.spawn(async move {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
         let listener = TcpListener::bind(&addr).await?;
-        info!("Web server is listening on {addr}");
+        info!("API web server is listening on {addr}");
         serve(
             listener,
             app.into_make_service_with_connect_info::<SocketAddr>(),
@@ -148,6 +177,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .context("Error running HTTP server")
     });
 
+    info!("Defguard proxy server initialization complete");
     while let Some(Ok(result)) = tasks.join_next().await {
         result?;
     }
