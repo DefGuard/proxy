@@ -1,7 +1,6 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::Arc,
     time::Duration,
 };
 
@@ -20,9 +19,7 @@ use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower_governor::{
-    governor::{self, GovernorConfig, GovernorConfigBuilder},
-    key_extractor::{KeyExtractor, PeerIpKeyExtractor, SmartIpKeyExtractor},
-    GovernorLayer,
+    governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
 use tower_http::{
     services::{ServeDir, ServeFile},

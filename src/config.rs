@@ -26,17 +26,9 @@ pub struct Config {
     #[arg(long, env = "DEFGUARD_PROXY_LOG_LEVEL", default_value_t = LevelFilter::Info)]
     pub log_level: LevelFilter,
 
-    #[arg(
-        long,
-        env = "DEFGUARD_PROXY_RATELIMIT_PERSECOND",
-        default_value_t = 0,
-    )]
+    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_PERSECOND", default_value_t = 0)]
     pub rate_limit_per_second: u64,
 
-    #[arg(
-        long,
-        env = "DEFGUARD_PROXY_RATELIMIT_BURST",
-        default_value_t = 0,
-    )]
+    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_BURST", default_value_t = 0)]
     pub rate_limit_burst: u32,
 }
