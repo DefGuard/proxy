@@ -38,6 +38,7 @@ clap = { version = "4.4", features = ["derive", "env", "cargo"] }
 # other utils
 dotenvy = "0.15"
 url = "2.4"
+tower_governor = "0.4.2"
 
 [build-dependencies]
 tonic-build = { version = "0.10" }

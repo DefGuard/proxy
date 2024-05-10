@@ -1,6 +1,8 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+    time::Duration,
 };
 
 use anyhow::Context;
@@ -17,6 +19,10 @@ use clap::crate_version;
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
+use tower_governor::{
+    governor::{self, GovernorConfig, GovernorConfigBuilder},
+    key_extractor::{KeyExtractor, PeerIpKeyExtractor, SmartIpKeyExtractor}, GovernorLayer,
+};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::{self, TraceLayer},
@@ -81,6 +87,31 @@ fn get_client_addr(request: &Request<Body>) -> String {
         })
 }
 
+// // fn configure_rate_limiter(per_second: u64, burst_size: u32) -> Arc<GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware<QuantaInstant>>> {
+// fn configure_rate_limiter<K, M>(per_second: u64, burst_size: u32) -> Arc<GovernorConfig<K, M>>
+// where
+//     K: KeyExtractor,
+//     M: tower_governor::governor::RateLimitingMiddleware<governor::clock::quanta::QuantaInstant>
+// {
+//     let governor_conf = Arc::new(
+//         GovernorConfigBuilder::default()
+//             .key_extractor(SmartIpKeyExtractor)
+//             .per_second(per_second)
+//             .burst_size(burst_size)
+//             .finish()
+//             .unwrap(),
+//     );
+//     let governor_limiter = governor_conf.limiter().clone();
+//     let interval = Duration::from_secs(60); // cleanup every 60 seconds
+//                                             // a separate background task to clean up
+//     std::thread::spawn(move || loop {
+//         std::thread::sleep(interval);
+//         tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
+//         governor_limiter.retain_recent();
+//     });
+//     governor_conf
+// }
+
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard proxy server");
     debug!("Using config: {config:?}");
@@ -133,6 +164,29 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
     let serve_images =
         ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
+
+    // Setup tower_governor rate-limiter
+    debug!("Configuring rate limiter");
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .key_extractor(SmartIpKeyExtractor)
+            .per_second(1)
+            .burst_size(1)
+            .finish()
+            .unwrap(),
+    );
+    let governor_limiter = governor_conf.limiter().clone();
+    let interval = Duration::from_secs(60); // cleanup every 60 seconds
+                                            // a separate background task to clean up
+                                            // Start background task to cleanup rate-limiter data
+    std::thread::spawn(move || loop {
+        std::thread::sleep(interval);
+        tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
+        governor_limiter.retain_recent();
+    });
+    debug!("Configured rate limiter");
+
+    // Build axum app
     let app = Router::new()
         .nest(
             "/api/v1",
@@ -160,7 +214,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                     )
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
-        );
+        )
+        .layer(GovernorLayer {
+            config: governor_conf,
+        });
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
