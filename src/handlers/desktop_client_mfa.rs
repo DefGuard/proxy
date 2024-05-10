@@ -1,10 +1,4 @@
-use std::time::Duration;
-
-use axum::{
-    error_handling::HandleErrorLayer, extract::State, http::StatusCode, routing::post, BoxError,
-    Json, Router,
-};
-use tower::{buffer::BufferLayer, limit::RateLimitLayer, ServiceBuilder};
+use axum::{extract::State, routing::post, Json, Router};
 use tracing::{error, info};
 
 use crate::{
@@ -21,19 +15,6 @@ pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
         .route("/finish", post(finish_client_mfa))
-        // `RateLimitLayer` does not implement `Clone`.
-        // See: https://github.com/tokio-rs/axum/discussions/987
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|err: BoxError| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled error: {err}"),
-                    )
-                }))
-                .layer(BufferLayer::new(1024))
-                .layer(RateLimitLayer::new(5, Duration::from_secs(10))),
-        )
 }
 
 #[instrument(level = "debug", skip(state))]
