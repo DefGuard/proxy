@@ -37,6 +37,7 @@ use crate::{
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -154,10 +155,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
         // Start background task to cleanup rate-limiter data
         tokio::spawn(async move {
-            let interval = Duration::from_secs(60); // cleanup every 60 seconds
             loop {
-                std::thread::sleep(interval);
-                tracing::info!("Rate limiter storage size: {}", governor_limiter.len());
+                tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD).await;
+                tracing::debug!(
+                    "Cleaning-up rate limiter storage, current size: {}",
+                    governor_limiter.len()
+                );
                 governor_limiter.retain_recent();
             }
         });
