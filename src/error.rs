@@ -22,6 +22,8 @@ pub enum ApiError {
     CoreTimeout,
     #[error("Invalid core gRPC response type received")]
     InvalidResponseType,
+    #[error("PermissionDenied")]
+    PermissionDenied,
 }
 
 impl IntoResponse for ApiError {
@@ -30,6 +32,7 @@ impl IntoResponse for ApiError {
         let (status, error_message) = match self {
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            Self::PermissionDenied => (StatusCode::FORBIDDEN, self.to_string()),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
@@ -51,6 +54,7 @@ impl From<CoreError> for ApiError {
         match status.code() {
             Code::Unauthenticated => ApiError::Unauthorized,
             Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
+            Code::PermissionDenied => ApiError::PermissionDenied,
             _ => ApiError::Unexpected(status.to_string()),
         }
     }
