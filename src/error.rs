@@ -22,7 +22,7 @@ pub enum ApiError {
     CoreTimeout,
     #[error("Invalid core gRPC response type received")]
     InvalidResponseType,
-    #[error("PermissionDenied")]
+    #[error("Permission denied")]
     PermissionDenied,
 }
 
