@@ -2,8 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { shallow } from 'zustand/shallow';
 
 import { Card } from '../../shared/components/layout/Card/Card';
-import EnrollmentSelectGraphic from '../../shared/components/svg/EnrollmentSelectGraphic';
-import PasswordResetSelectGraphic from '../../shared/components/svg/PasswordResetSelectGraphic';
+import SvgEnrollmentSelectGraphic from '../../shared/components/svg/EnrollmentSelectGraphic';
+import SvgPasswordResetSelectGraphic from '../../shared/components/svg/PasswordResetSelectGraphic';
 import { routes } from '../../shared/routes';
 import { usePasswordResetStore } from '../passwordReset/hooks/usePasswordResetStore';
 import { PathSelectCard } from './DeviceSetupMethodCard/DeviceSetupMethodCard';
@@ -19,7 +19,7 @@ export const SelectPath = () => {
         onSelect={() => navigate(routes.token)}
         title="Enrollment process"
         subtitle="Confirm your new account"
-        logo={<EnrollmentSelectGraphic />}
+        logo={<SvgEnrollmentSelectGraphic />}
       />
 
       <PathSelectCard
@@ -30,7 +30,7 @@ export const SelectPath = () => {
         }}
         title="Password reset"
         subtitle="Reset password for existing account"
-        logo={<PasswordResetSelectGraphic />}
+        logo={<SvgPasswordResetSelectGraphic />}
       />
     </Card>
   );
