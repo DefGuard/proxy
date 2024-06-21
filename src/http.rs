@@ -8,7 +8,6 @@ use anyhow::Context;
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRef},
-    handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
     routing::get,
     serve, Json, Router,
@@ -21,13 +20,11 @@ use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
-use tower_http::{
-    services::{ServeDir, ServeFile},
-    trace::{self, TraceLayer},
-};
+use tower_http::trace::{self, TraceLayer};
 use tracing::{info_span, Level};
 
 use crate::{
+    assets::{index, svg, web_asset},
     config::Config,
     error::ApiError,
     grpc::ProxyServer,
@@ -133,12 +130,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             .context("Error running gRPC server")
     });
 
-    // Serve static frontend files.
-    debug!("Configuring API server routing");
-    let serve_web_dir = ServeDir::new("web/dist").fallback(ServeFile::new("web/dist/index.html"));
-    let serve_images =
-        ServeDir::new("web/src/shared/images/svg").not_found_service(handle_404.into_service());
-
     // Setup tower_governor rate-limiter
     debug!(
         "Configuring rate limiter, per_second: {}, burst: {}",
@@ -176,6 +167,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     // Build axum app
     let mut app = Router::new()
+        .route("/", get(index))
+        .route("/*path", get(index))
+        .route("/assets/*path", get(web_asset))
+        .route("/svg/*path", get(svg))
         .nest(
             "/api/v1",
             Router::new()
@@ -185,8 +180,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .route("/health", get(healthcheck))
                 .route("/info", get(app_info)),
         )
-        .nest_service("/svg", serve_images)
-        .fallback_service(serve_web_dir)
+        .fallback_service(get(handle_404))
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()

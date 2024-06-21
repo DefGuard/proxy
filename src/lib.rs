@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod config;
 mod error;
 mod grpc;

@@ -39,9 +39,6 @@ pub struct Config {
     #[arg(long = "config", short)]
     #[serde(skip)]
     config_path: Option<std::path::PathBuf>,
-
-    #[arg(long = "webpath", short)]
-    web_path: Option<std::path::PathBuf>,
 }
 
 #[derive(thiserror::Error, Debug)]

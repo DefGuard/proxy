@@ -5,6 +5,8 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
+DynamicUser=yes
+User=defguard
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStart=/usr/sbin/defguard-proxy --config /etc/defguard/proxy.toml
 KillMode=process
