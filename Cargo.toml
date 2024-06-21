@@ -1,6 +1,6 @@
 [package]
 name = "defguard-proxy"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 license = "Apache-2.0"
 homepage = "https://github.com/DefGuard/proxy"
@@ -38,6 +38,7 @@ clap = { version = "4.4", features = ["derive", "env", "cargo"] }
 # other utils
 dotenvy = "0.15"
 url = "2.4"
+tower_governor = "0.4"
 
 [build-dependencies]
 tonic-build = { version = "0.10" }

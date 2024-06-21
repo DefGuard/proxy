@@ -2,8 +2,9 @@ use clap::Parser;
 use serde::Deserialize;
 use std::{fs, io::Error as IoError};
 use tracing::info;
+use tracing::log::LevelFilter;
 
-#[derive(Parser, Deserialize)]
+#[derive(Parser, Debug, Deserialize)]
 #[command(version)]
 pub struct Config {
     // port the API server will listen on
@@ -25,10 +26,22 @@ pub struct Config {
     #[arg(long, env = "DEFGUARD_PROXY_GRPC_KEY")]
     pub grpc_key: Option<String>,
 
+    #[arg(long, env = "DEFGUARD_PROXY_LOG_LEVEL", default_value_t = LevelFilter::Info)]
+    pub log_level: LevelFilter,
+
+    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_PERSECOND", default_value_t = 0)]
+    pub rate_limit_per_second: u64,
+
+    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_BURST", default_value_t = 0)]
+    pub rate_limit_burst: u32,
+
     /// Configuration file path
     #[arg(long = "config", short)]
     #[serde(skip)]
     config_path: Option<std::path::PathBuf>,
+
+    #[arg(long = "webpath", short)]
+    web_path: Option<std::path::PathBuf>,
 }
 
 #[derive(thiserror::Error, Debug)]

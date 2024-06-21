@@ -1,16 +1,15 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
-use tracing::{debug, error, info};
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::{AppState, PASSWORD_RESET_COOKIE_NAME},
     proto::{
         core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
         PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
     },
-    server::{AppState, PASSWORD_RESET_COOKIE_NAME},
 };
 
 pub fn router() -> Router<AppState> {
@@ -20,6 +19,7 @@ pub fn router() -> Router<AppState> {
         .route("/reset", post(reset_password))
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn request_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -28,19 +28,20 @@ pub async fn request_password_reset(
     info!("Starting password reset request for {}", req.email);
 
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::PasswordResetInit(req)),
+        Some(core_request::Payload::PasswordResetInit(req.clone())),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::Empty(_) => Ok(()),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::Empty(()) = payload {
+        info!("Started password reset request for {}", req.email);
+        Ok(())
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn start_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -62,21 +63,20 @@ pub async fn start_password_reset(
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::PasswordResetStart(response) => {
-            // set session cookie
-            let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
-                .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
+    if let core_response::Payload::PasswordResetStart(response) = payload {
+        // set session cookie
+        let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
+            .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
 
-            Ok((private_cookies.add(cookie), Json(response)))
-        }
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+        info!("Started password reset process");
+        Ok((private_cookies.add(cookie), Json(response)))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 pub async fn reset_password(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -94,17 +94,14 @@ pub async fn reset_password(
         .grpc_server
         .send(Some(core_request::Payload::PasswordReset(req)), device_info)?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::Empty(_) => {
-            if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
-                debug!("Password reset finished. Removing session cookie");
-                private_cookies = private_cookies.remove(cookie);
-            }
-            Ok(private_cookies)
+    if let core_response::Payload::Empty(()) = payload {
+        if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
+            info!("Password reset finished. Removing session cookie");
+            private_cookies = private_cookies.remove(cookie);
         }
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+        Ok(private_cookies)
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }

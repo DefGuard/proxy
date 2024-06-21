@@ -1,41 +1,45 @@
+use axum::{extract::State, routing::post, Json, Router};
+use tracing::{error, info};
+
 use crate::{
     error::ApiError,
     handlers::get_core_response,
+    http::AppState,
     proto::{
         core_request, core_response, ClientMfaFinishRequest, ClientMfaFinishResponse,
         ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
     },
-    server::AppState,
 };
-use axum::{extract::State, routing::post, Json, Router};
-use tracing::{error, info};
 
-pub fn router() -> Router<AppState> {
+pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
         .route("/finish", post(finish_client_mfa))
 }
 
+#[instrument(level = "debug", skip(state))]
 async fn start_client_mfa(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
     Json(req): Json<ClientMfaStartRequest>,
 ) -> Result<Json<ClientMfaStartResponse>, ApiError> {
-    info!("Starting desktop client authorization");
+    info!("Starting desktop client authorization {req:?}");
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::ClientMfaStart(req)),
+        Some(core_request::Payload::ClientMfaStart(req.clone())),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::ClientMfaStart(response) => Ok(Json(response)),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+
+    if let core_response::Payload::ClientMfaStart(response) = payload {
+        info!("Started desktop client authorization {req:?}");
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
+#[instrument(level = "debug", skip(state))]
 async fn finish_client_mfa(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
@@ -47,11 +51,11 @@ async fn finish_client_mfa(
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::ClientMfaFinish(response) => Ok(Json(response)),
-        _ => {
-            error!("Received invalid gRPC response type: {payload:#?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::ClientMfaFinish(response) = payload {
+        info!("Finished desktop client authorization");
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
