@@ -1,5 +1,13 @@
-const EnrollmentSelectGraphic = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={215} height={214} fill="none">
+import type { SVGProps } from 'react';
+const SvgEnrollmentSelectGraphic = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={215}
+    height={214}
+    fill="none"
+    viewBox="0 0 215 214"
+    {...props}
+  >
     <path
       fill="#CBD3D8"
       d="M56.255 98.95h22.9v8.18h-22.9v-8.18ZM50.345 55.06l4.74-5.55 31.28 26.71-4.74 5.55-31.28-26.71ZM137.925 98.95h22.9v8.18h-22.9v-8.18ZM129.365 75.75l30.6-26.25 4.76 5.55-30.6 26.25-4.76-5.55ZM54.805 149.44l26.94-26.94 5.17 5.17-26.94 26.94-5.17-5.17ZM129.235 127.69l5.14-5.19 27.85 27.62-5.14 5.19-27.85-27.62Z"
@@ -57,4 +65,4 @@ const EnrollmentSelectGraphic = () => (
     />
   </svg>
 );
-export default EnrollmentSelectGraphic;
+export default SvgEnrollmentSelectGraphic;
