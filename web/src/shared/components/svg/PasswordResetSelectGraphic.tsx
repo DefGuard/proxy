@@ -1,5 +1,13 @@
-const PasswordResetSelectGraphic = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={215} height={214} fill="none">
+import type { SVGProps } from 'react';
+const SvgPasswordResetSelectGraphic = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={215}
+    height={214}
+    fill="none"
+    viewBox="0 0 215 214"
+    {...props}
+  >
     <g clipPath="url(#a)">
       <path
         fill="#CBD3D8"
@@ -152,4 +160,4 @@ const PasswordResetSelectGraphic = () => (
     </defs>
   </svg>
 );
-export default PasswordResetSelectGraphic;
+export default SvgPasswordResetSelectGraphic;
