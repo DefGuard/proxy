@@ -72,20 +72,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [ linux, linux-arm, linux-arm64, freebsd ]
+        # build: [ linux, linux-arm, linux-arm64, freebsd ]
+        build: [ linux ]
         include:
           - build: linux
             os: Linux
             target: x86_64-unknown-linux-gnu
-          - build: linux-arm
-            os: Linux
-            target: armv7-unknown-linux-gnueabihf
-          - build: linux-arm64
-            os: Linux
-            target: aarch64-unknown-linux-gnu
-          - build: freebsd
-            os: Linux
-            target: x86_64-unknown-freebsd
+          # - build: linux-arm
+          #   os: Linux
+          #   target: armv7-unknown-linux-gnueabihf
+          # - build: linux-arm64
+          #   os: Linux
+          #   target: aarch64-unknown-linux-gnu
+          # - build: freebsd
+          #   os: Linux
+          #   target: x86_64-unknown-freebsd
     steps:
       # Store the version, stripping any v-prefix
       - name: Write release version
@@ -112,6 +113,26 @@ jobs:
           config-inline: |
             [registry."docker.io"]
               mirrors = ["dockerhub-proxy.teonite.net"]
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: ./web/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: pnpm install --ignore-scripts --frozen-lockfile
+        working-directory: web
+
+      - name: Build frontend
+        run: pnpm build
+        working-directory: web
 
       - name: Build release binary
         uses: actions-rs/cargo@v1
