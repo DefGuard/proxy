@@ -13,3 +13,5 @@ grpc_port = 50051
 # grpc_cert: proxy.crt
 # Optional: path to key file
 # grpc_key: proxy.key
+
+log_level = "info"
