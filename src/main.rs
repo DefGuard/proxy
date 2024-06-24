@@ -1,5 +1,4 @@
-use defguard_proxy::config::get_config;
-use defguard_proxy::{http::run_server, tracing::init_tracing};
+use defguard_proxy::{config::get_config, http::run_server, tracing::init_tracing};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
