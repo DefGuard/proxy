@@ -1,3 +1,6 @@
+use axum::{extract::State, routing::post, Json, Router};
+use tracing::{error, info};
+
 use crate::{
     error::ApiError,
     handlers::get_core_response,
@@ -7,9 +10,8 @@ use crate::{
         ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
     },
 };
-use axum::{extract::State, routing::post, Json, Router};
 
-pub fn router() -> Router<AppState> {
+pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
         .route("/finish", post(finish_client_mfa))
@@ -27,15 +29,13 @@ async fn start_client_mfa(
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::ClientMfaStart(response) => {
-            info!("Started desktop client authorization {req:?}");
-            Ok(Json(response))
-        }
-        _ => {
-            error!("Received invalid gRPC response type: {payload:?}");
-            Err(ApiError::InvalidResponseType)
-        }
+
+    if let core_response::Payload::ClientMfaStart(response) = payload {
+        info!("Started desktop client authorization {req:?}");
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
@@ -51,14 +51,11 @@ async fn finish_client_mfa(
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
-    match payload {
-        core_response::Payload::ClientMfaFinish(response) => {
-            info!("Finished desktop client authorization");
-            Ok(Json(response))
-        }
-        _ => {
-            error!("Received invalid gRPC response type: {payload:?}");
-            Err(ApiError::InvalidResponseType)
-        }
+    if let core_response::Payload::ClientMfaFinish(response) = payload {
+        info!("Finished desktop client authorization");
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
     }
 }

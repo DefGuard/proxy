@@ -1,5 +1,4 @@
-use clap::Parser;
-use defguard_proxy::{config::Config, http::run_server, tracing::init_tracing};
+use defguard_proxy::{config::get_config, http::run_server, tracing::init_tracing};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -7,7 +6,9 @@ async fn main() -> anyhow::Result<()> {
     if dotenvy::from_filename(".env.local").is_err() {
         dotenvy::dotenv().ok();
     }
-    let config = Config::parse();
+
+    // read config from env
+    let config = get_config()?;
     init_tracing(&config.log_level);
 
     // run API web server
