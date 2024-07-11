@@ -84,7 +84,7 @@ fn get_client_addr(request: &Request<Body>) -> String {
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
-    info!("Starting Defguard proxy server");
+    info!("Starting Defguard proxy server v{}", crate_version!());
     debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
