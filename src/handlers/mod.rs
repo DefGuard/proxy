@@ -50,7 +50,7 @@ async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
         debug!("Got gRPC response from Defguard core: {core_response:?}");
         if let Ok(Payload::CoreError(core_error)) = core_response {
             error!("{:?}", core_error);
-            return Err(ApiError::BadRequest("Token has expired, please contact your administrator to issue a new enrollment token".to_string()));
+            return Err(ApiError::BadRequest("Token has expired".to_string()));
         };
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
