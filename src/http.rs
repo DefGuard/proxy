@@ -1,13 +1,14 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::atomic::Ordering,
     time::Duration,
 };
 
 use anyhow::Context;
 use axum::{
     body::Body,
-    extract::{ConnectInfo, FromRef},
+    extract::{ConnectInfo, FromRef, State},
     http::{Request, StatusCode},
     routing::get,
     serve, Json, Router,
@@ -64,6 +65,14 @@ async fn app_info<'a>() -> Result<Json<AppInfo<'a>>, ApiError> {
 
 async fn healthcheck() -> &'static str {
     "I'm alive!"
+}
+
+async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static str) {
+    if state.grpc_server.connected.load(Ordering::Relaxed) {
+        (StatusCode::OK, "Alive")
+    } else {
+        (StatusCode::SERVICE_UNAVAILABLE, "Not connected to store")
+    }
 }
 
 // Retrieves client address from the request. Uses either the left most x-forwarded-for
@@ -178,6 +187,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .nest("/password-reset", password_reset::router())
                 .nest("/client-mfa", desktop_client_mfa::router())
                 .route("/health", get(healthcheck))
+                .route("/health-grpc", get(healthcheckgrpc))
                 .route("/info", get(app_info)),
         )
         .fallback_service(get(handle_404))

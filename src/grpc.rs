@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
 };
@@ -24,6 +24,7 @@ pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
     results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
+    pub(crate) connected: Arc<AtomicBool>,
 }
 
 impl ProxyServer {
@@ -34,6 +35,7 @@ impl ProxyServer {
             current_id: Arc::new(AtomicU64::new(1)),
             clients: Arc::new(Mutex::new(HashMap::new())),
             results: Arc::new(Mutex::new(HashMap::new())),
+            connected: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -59,9 +61,11 @@ impl ProxyServer {
             let (tx, rx) = oneshot::channel();
             let mut results = self.results.lock().unwrap();
             results.insert(id, tx);
+            self.connected.store(true, Ordering::Relaxed);
             Ok(rx)
         } else {
             error!("Defguard core is disconnected");
+            self.connected.store(false, Ordering::Relaxed);
             Err(ApiError::Unexpected("Defguard core is disconnected".into()))
         }
     }
@@ -73,6 +77,7 @@ impl Clone for ProxyServer {
             current_id: Arc::clone(&self.current_id),
             clients: Arc::clone(&self.clients),
             results: Arc::clone(&self.results),
+            connected: Arc::clone(&self.connected),
         }
     }
 }
@@ -95,15 +100,18 @@ impl proxy_server::Proxy for ProxyServer {
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients.lock().unwrap().insert(address, tx);
+        self.connected.store(true, Ordering::Relaxed);
 
         let clients = Arc::clone(&self.clients);
         let results = Arc::clone(&self.results);
+        let connected = Arc::clone(&self.connected);
         let mut in_stream = request.into_inner();
         tokio::spawn(async move {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(response) => {
                         debug!("Received message from Defguard core: {response:?}");
+                        connected.store(true, Ordering::Relaxed);
                         // Discard empty payloads.
                         if let Some(payload) = response.payload {
                             if let Some(rx) = results.lock().unwrap().remove(&response.id) {
@@ -119,6 +127,7 @@ impl proxy_server::Proxy for ProxyServer {
                 }
             }
             info!("Defguard core client disconnected: {address}");
+            connected.store(false, Ordering::Relaxed);
             clients.lock().unwrap().remove(&address);
         });
 
