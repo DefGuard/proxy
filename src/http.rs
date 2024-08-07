@@ -71,7 +71,7 @@ async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static
     if state.grpc_server.connected.load(Ordering::Relaxed) {
         (StatusCode::OK, "Alive")
     } else {
-        (StatusCode::SERVICE_UNAVAILABLE, "Not connected to store")
+        (StatusCode::SERVICE_UNAVAILABLE, "Not connected to core")
     }
 }
 
