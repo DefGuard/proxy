@@ -29,6 +29,7 @@ pub async fn start_enrollment_process(
     info!("Starting enrollment process");
 
     // clear session cookies if already populated
+    debug!("Try to remove previous session cookie if it still exists.");
     if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
         debug!("Removing previous session cookie");
         private_cookies = private_cookies.remove(cookie);
@@ -36,10 +37,12 @@ pub async fn start_enrollment_process(
 
     let token = req.token.clone();
 
+    debug!("Sending the enrollment process request to core service.");
     let rx = state
         .grpc_server
         .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
     let payload = get_core_response(rx).await?;
+    debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process for user {:?} by admin {:?}.", response.user, response.admin);
     if let core_response::Payload::EnrollmentStart(response) = payload {
         info!(
             "Started enrollment process for user {:?} by admin {:?}",
@@ -67,14 +70,17 @@ pub async fn activate_user(
     info!("Activating user - phone number {phone:?}");
 
     // set auth info
+    debug!("Set private cookie for the request.");
     req.token = private_cookies
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string());
 
+    debug!("Sending the activate user request to core service.");
     let rx = state
         .grpc_server
         .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
     let payload = get_core_response(rx).await?;
+    debug!("Receving payload from the core service. Try remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
         if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
             info!("Activated user - phone number {phone:?}");
