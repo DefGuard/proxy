@@ -1,15 +1,17 @@
-use rust_tracing::{Event, Subscriber};
+use log::LevelFilter;
+use tracing::{Event, Subscriber};
 use tracing_subscriber::{
     fmt::{
+        self,
         format::{self, FormatEvent, FormatFields, Writer},
         time::{FormatTime, SystemTime},
         FmtContext, FormattedFields,
     },
+    layer::SubscriberExt,
     registry::LookupSpan,
+    util::SubscriberInitExt,
+    EnvFilter,
 };
-
-use tracing::log::LevelFilter;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 // Initializes tracing with the specified log level.
 // Allows fine-grained filtering with `EnvFilter` directives.
@@ -71,7 +73,7 @@ where
         write!(writer, "{}: ", meta.target(),)?;
 
         // iterate and accumulate spans storing our special span in separate variable if encountered
-        let mut context_logs: String = "".to_string();
+        let mut context_logs = String::new();
         let mut http_log: Option<String> = None;
         if let Some(scope) = ctx.event_scope() {
             let mut seen = false;
@@ -103,7 +105,7 @@ where
 
             let addr = split.get(5).map(|s| s.replace('"', ""));
             let ip = addr
-                .and_then(|s| s.split(':').next().map(|s| s.to_string()))
+                .and_then(|s| s.split(':').next().map(ToString::to_string))
                 .unwrap_or("unknown".to_string());
             write!(writer, "{ip} {method} {path} ")?;
         }

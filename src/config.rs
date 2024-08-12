@@ -1,8 +1,9 @@
-use clap::Parser;
-use serde::Deserialize;
 use std::{fs, io::Error as IoError};
+
+use clap::Parser;
+use log::LevelFilter;
+use serde::Deserialize;
 use tracing::info;
-use tracing::log::LevelFilter;
 
 #[derive(Parser, Debug, Deserialize)]
 #[command(version)]
