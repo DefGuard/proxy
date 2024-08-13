@@ -42,7 +42,7 @@ pub async fn start_enrollment_process(
         .grpc_server
         .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
     let payload = get_core_response(rx).await?;
-    debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process for user {:?} by admin {:?}.", response.user, response.admin);
+    debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process.");
     if let core_response::Payload::EnrollmentStart(response) = payload {
         info!(
             "Started enrollment process for user {:?} by admin {:?}",
