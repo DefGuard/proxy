@@ -29,7 +29,7 @@ pub async fn start_enrollment_process(
     info!("Starting enrollment process");
 
     // clear session cookies if already populated
-    debug!("Try to remove previous session cookie if it still exists.");
+    debug!("Trying to remove previous session cookie if it still exists.");
     if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
         debug!("Removing previous session cookie");
         private_cookies = private_cookies.remove(cookie);
@@ -80,7 +80,7 @@ pub async fn activate_user(
         .grpc_server
         .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
     let payload = get_core_response(rx).await?;
-    debug!("Receving payload from the core service. Try remove private cookie...");
+    debug!("Receving payload from the core service. Trying to remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
         if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
             info!("Activated user - phone number {phone:?}");
