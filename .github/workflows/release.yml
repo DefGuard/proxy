@@ -65,25 +65,25 @@ jobs:
           generate_release_notes: true
 
   build-binaries:
-    needs: [ "create-release" ]
+    needs: ["create-release"]
     runs-on:
       - self-hosted
       - ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        build: [ linux, linux-arm, linux-arm64, freebsd ]
+        build: [linux, linux-arm, linux-arm64, freebsd]
         include:
           - build: linux
+            arch: amd64
             os: Linux
             target: x86_64-unknown-linux-gnu
-          - build: linux-arm
-            os: Linux
-            target: armv7-unknown-linux-gnueabihf
           - build: linux-arm64
+            arch: arm64
             os: Linux
             target: aarch64-unknown-linux-gnu
           - build: freebsd
+            arch: amd64
             os: Linux
             target: x86_64-unknown-freebsd
     steps:
@@ -122,7 +122,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: "pnpm"
           cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Install frontend dependencies
@@ -166,7 +166,7 @@ jobs:
         uses: bpicode/github-action-fpm@master
         with:
           fpm_args: "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/bin/defguard-proxy defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb"
+          fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb"
 
       - name: Upload DEB
         if: matrix.build == 'linux'
@@ -184,7 +184,7 @@ jobs:
         uses: bpicode/github-action-fpm@master
         with:
           fpm_args: "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/bin/defguard-proxy defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm"
+          fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm"
 
       - name: Upload RPM
         if: matrix.build == 'linux'
