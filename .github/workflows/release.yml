@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [linux, linux-arm, linux-arm64, freebsd]
+        build: [linux, linux-arm64, freebsd]
         include:
           - build: linux
             arch: amd64
