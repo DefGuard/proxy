@@ -1,6 +1,5 @@
 -s dir
 --name defguard-proxy
---architecture x86_64
 --description "defguard proxy service"
 --url "https://defguard.net/"
 --maintainer "teonite"
