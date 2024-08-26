@@ -1,7 +1,3 @@
-pub(crate) mod desktop_client_mfa;
-pub(crate) mod enrollment;
-pub(crate) mod password_reset;
-
 use crate::{error::ApiError, proto::core_response::Payload};
 use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
@@ -10,6 +6,11 @@ use std::time::Duration;
 use tokio::{sync::oneshot::Receiver, time::timeout};
 
 use super::proto::DeviceInfo;
+
+pub(crate) mod desktop_client_mfa;
+pub(crate) mod enrollment;
+pub(crate) mod info;
+pub(crate) mod password_reset;
 
 // timeout in seconds for awaiting core response
 const CORE_RESPONSE_TIMEOUT: u64 = 5;
