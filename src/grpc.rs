@@ -8,7 +8,7 @@ use std::{
 };
 
 use tokio::sync::{mpsc, oneshot};
-use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 
 use crate::{
@@ -105,11 +105,11 @@ impl proxy_server::Proxy for ProxyServer {
         let clients = Arc::clone(&self.clients);
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
-        let mut in_stream = request.into_inner();
+        let mut stream = request.into_inner();
         tokio::spawn(async move {
-            while let Some(result) = in_stream.next().await {
-                match result {
-                    Ok(response) => {
+            loop {
+                match stream.message().await {
+                    Ok(Some(response)) => {
                         debug!("Received message from Defguard core: {response:?}");
                         connected.store(true, Ordering::Relaxed);
                         // Discard empty payloads.
@@ -123,7 +123,14 @@ impl proxy_server::Proxy for ProxyServer {
                             }
                         }
                     }
-                    Err(err) => error!("RPC client error: {err}"),
+                    Ok(None) => {
+                        info!("gRPC stream has been closed");
+                        break;
+                    }
+                    Err(err) => {
+                        error!("gRPC client error: {err}");
+                        break;
+                    }
                 }
             }
             info!("Defguard core client disconnected: {address}");
