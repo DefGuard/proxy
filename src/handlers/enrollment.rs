@@ -7,8 +7,9 @@ use crate::{
     handlers::get_core_response,
     http::{AppState, ENROLLMENT_COOKIE_NAME},
     proto::{
-        core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
-        EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
+        core_request, core_response, ActivateUserRequest, ActivateUserResponse,
+        DeviceConfigResponse, DeviceInfo, EnrollmentStartRequest, EnrollmentStartResponse,
+        ExistingDevice, NewDevice,
     },
 };
 
@@ -65,7 +66,7 @@ pub async fn activate_user(
     device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
     Json(mut req): Json<ActivateUserRequest>,
-) -> Result<PrivateCookieJar, ApiError> {
+) -> Result<(PrivateCookieJar, Json<ActivateUserResponse>), ApiError> {
     let phone = req.phone_number.clone();
     info!("Activating user - phone number {phone:?}");
 
@@ -81,14 +82,13 @@ pub async fn activate_user(
         .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
     let payload = get_core_response(rx).await?;
     debug!("Receving payload from the core service. Trying to remove private cookie...");
-    if let core_response::Payload::Empty(()) = payload {
+    if let core_response::Payload::ActivateUserResponse(response) = payload {
+        info!("Activated user - phone number {phone:?}");
         if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
-            info!("Activated user - phone number {phone:?}");
             debug!("Enrollment finished. Removing session cookie");
             private_cookies = private_cookies.remove(cookie);
         }
-
-        Ok(private_cookies)
+        Ok((private_cookies, Json(response)))
     } else {
         error!("Received invalid gRPC response type: {payload:#?}");
         Err(ApiError::InvalidResponseType)
