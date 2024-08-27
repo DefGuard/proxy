@@ -1,13 +1,14 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::atomic::Ordering,
     time::Duration,
 };
 
 use anyhow::Context;
 use axum::{
     body::Body,
-    extract::{ConnectInfo, FromRef},
+    extract::{ConnectInfo, FromRef, State},
     http::{Request, StatusCode},
     routing::get,
     serve, Json, Router,
@@ -66,6 +67,14 @@ async fn healthcheck() -> &'static str {
     "I'm alive!"
 }
 
+async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static str) {
+    if state.grpc_server.connected.load(Ordering::Relaxed) {
+        (StatusCode::OK, "Alive")
+    } else {
+        (StatusCode::SERVICE_UNAVAILABLE, "Not connected to core")
+    }
+}
+
 // Retrieves client address from the request. Uses either the left most x-forwarded-for
 // header value, or socket address if the header is not present.
 fn get_client_addr(request: &Request<Body>) -> String {
@@ -74,13 +83,15 @@ fn get_client_addr(request: &Request<Body>) -> String {
         .get("X-Forwarded-For")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.split(',').next())
-        .map(|ip| ip.trim().to_string())
-        .unwrap_or_else(|| {
-            request
-                .extensions()
-                .get::<ConnectInfo<SocketAddr>>()
-                .map_or("unknown".to_string(), |addr| addr.0.to_string())
-        })
+        .map_or_else(
+            || {
+                request
+                    .extensions()
+                    .get::<ConnectInfo<SocketAddr>>()
+                    .map_or("unknown".to_string(), |addr| addr.0.to_string())
+            },
+            |ip| ip.trim().to_string(),
+        )
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
@@ -101,7 +112,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     };
 
     // read gRPC TLS cert and key
-    debug!("Configuring grpc certificates");
+    debug!("Configuring certificates for gRPC");
     let grpc_cert = config
         .grpc_cert
         .as_ref()
@@ -110,7 +121,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .grpc_key
         .as_ref()
         .and_then(|path| read_to_string(path).ok());
-    debug!("Configured grpc certificates, cert: {grpc_cert:?}, key: {grpc_key:?}");
+    debug!("Configured certificates for gRPC, cert: {grpc_cert:?}");
 
     // Start gRPC server.
     debug!("Spawning gRPC server");
@@ -178,6 +189,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .nest("/password-reset", password_reset::router())
                 .nest("/client-mfa", desktop_client_mfa::router())
                 .route("/health", get(healthcheck))
+                .route("/health-grpc", get(healthcheckgrpc))
                 .route("/info", get(app_info)),
         )
         .fallback_service(get(handle_404))

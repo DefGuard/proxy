@@ -1,0 +1,22 @@
+name: Build current image
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-current:
+    uses: ./.github/workflows/build-docker.yml
+    with:
+      tags: |
+        type=raw,value=current
+        type=ref,event=branch
+        type=sha
