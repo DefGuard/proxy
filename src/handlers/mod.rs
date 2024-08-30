@@ -9,8 +9,8 @@ use super::proto::DeviceInfo;
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
-pub(crate) mod info;
 pub(crate) mod password_reset;
+pub(crate) mod polling;
 
 // timeout in seconds for awaiting core response
 const CORE_RESPONSE_TIMEOUT: u64 = 5;

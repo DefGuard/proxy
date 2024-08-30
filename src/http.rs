@@ -10,7 +10,7 @@ use axum::{
     body::Body,
     extract::{ConnectInfo, FromRef, State},
     http::{Request, StatusCode},
-    routing::get,
+    routing::{get, post},
     serve, Json, Router,
 };
 use axum_extra::extract::cookie::Key;
@@ -29,7 +29,7 @@ use crate::{
     config::Config,
     error::ApiError,
     grpc::ProxyServer,
-    handlers::{desktop_client_mfa, enrollment, password_reset},
+    handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
 };
 
@@ -188,6 +188,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .nest("/enrollment", enrollment::router())
                 .nest("/password-reset", password_reset::router())
                 .nest("/client-mfa", desktop_client_mfa::router())
+                .route("/poll", post(polling::info))
                 .route("/health", get(healthcheck))
                 .route("/health-grpc", get(healthcheckgrpc))
                 .route("/info", get(app_info)),
