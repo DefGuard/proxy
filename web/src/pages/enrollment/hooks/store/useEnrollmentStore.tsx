@@ -7,6 +7,7 @@ import {
   AdminInfo,
   Device,
   DeviceConfig,
+  EnrollmentSettings,
   UserInfo,
 } from '../../../../shared/hooks/api/types';
 
@@ -30,7 +31,7 @@ const persistKeys: Array<keyof StoreValues> = [
   'adminInfo',
   'deviceState',
   'endContent',
-  'vpnOptional',
+  'enrollmentSettings',
 ];
 
 export const useEnrollmentStore = createWithEqualityFn<Store>()(
@@ -82,7 +83,7 @@ type StoreValues = {
   userInfo?: UserInfo;
   userPassword?: string;
   adminInfo?: AdminInfo;
-  vpnOptional?: boolean;
+  enrollmentSettings?: EnrollmentSettings;
   // Markdown content for final step card
   endContent?: string;
   deviceState?: {

@@ -73,7 +73,7 @@ export const TokenCard = () => {
         adminInfo: res.admin,
         sessionStart,
         sessionEnd,
-        vpnOptional: res.vpn_setup_optional,
+        enrollmentSettings: res.settings,
         endContent: res.final_page_content,
       });
       navigate(routes.enrollment, { replace: true });

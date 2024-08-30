@@ -14,7 +14,9 @@ import { TimeLeft } from '../TimeLeft/TimeLeft';
 export const EnrollmentSideBar = () => {
   const { LL } = useI18nContext();
 
-  const vpnOptional = useEnrollmentStore((state) => state.vpnOptional);
+  const vpnOptional = useEnrollmentStore(
+    (state) => state.enrollmentSettings?.vpn_setup_optional,
+  );
   const [currentStep, stepsMax] = useEnrollmentStore((state) => [
     state.step,
     state.stepsMax,

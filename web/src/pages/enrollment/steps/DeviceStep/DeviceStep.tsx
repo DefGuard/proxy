@@ -13,6 +13,7 @@ import { useApi } from '../../../../shared/hooks/api/useApi';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 import { ConfigureDeviceCard } from './components/ConfigureDeviceCard/ConfigureDeviceCard';
 import { QuickGuideCard } from './components/QuickGuideCard/QuickGuideCard';
+import useEffectOnce from '../../../../shared/hooks/api/utils';
 
 export const DeviceStep = () => {
   const {
@@ -21,7 +22,7 @@ export const DeviceStep = () => {
   const { LL } = useI18nContext();
   const setStore = useEnrollmentStore((state) => state.setState);
   const deviceState = useEnrollmentStore((state) => state.deviceState);
-  const vpnOptional = useEnrollmentStore((state) => state.vpnOptional);
+  const settings = useEnrollmentStore((state) => state.enrollmentSettings);
   const [userPhone, userPassword] = useEnrollmentStore(
     (state) => [state.userInfo?.phone_number, state.userPassword],
     shallow,
@@ -32,8 +33,8 @@ export const DeviceStep = () => {
   );
 
   const cn = classNames({
-    required: !vpnOptional,
-    optional: vpnOptional,
+    required: !settings?.vpn_setup_optional,
+    optional: settings?.vpn_setup_optional,
   });
 
   const { mutate } = useMutation({
@@ -51,7 +52,10 @@ export const DeviceStep = () => {
   useEffect(() => {
     if (userPassword) {
       const sub = nextSubject.subscribe(() => {
-        if ((deviceState && deviceState.device && deviceState.configs) || vpnOptional) {
+        if (
+          (deviceState && deviceState.device && deviceState.configs) ||
+          settings?.vpn_setup_optional
+        ) {
           setStore({
             loading: true,
           });
@@ -66,11 +70,26 @@ export const DeviceStep = () => {
         sub.unsubscribe();
       };
     }
-  }, [deviceState, nextSubject, vpnOptional, setStore, userPhone, userPassword, mutate]);
+  }, [
+    deviceState,
+    nextSubject,
+    settings?.vpn_setup_optional,
+    setStore,
+    userPhone,
+    userPassword,
+    mutate,
+  ]);
+
+  // useEffectOnce(() => {
+  //   if (settings?.only_client_activation) {
+  //     nextSubject.next();
+  //     next();
+  //   }
+  // });
 
   return (
     <div id="enrollment-device-step" className={cn}>
-      {vpnOptional && (
+      {settings?.vpn_setup_optional && (
         <MessageBox
           type={MessageBoxType.WARNING}
           message={LL.pages.enrollment.steps.deviceSetup.optionalMessage()}
