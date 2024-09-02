@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const removeNulls = (obj: any) => {
@@ -18,7 +18,7 @@ export default function useEffectOnce(fn: () => void) {
   const isMounted = useRef(false);
   useEffect(() => {
     if (isMounted.current) {
-        return;
+      return;
     }
 
     fn();
