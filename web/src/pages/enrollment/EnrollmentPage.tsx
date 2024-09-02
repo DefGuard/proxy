@@ -39,7 +39,6 @@ export const EnrollmentPage = () => {
   const currentStep = useEnrollmentStore((state) => state.step);
   const stepsMax = useEnrollmentStore((state) => state.stepsMax);
   const loading = useEnrollmentStore((state) => state.loading);
-  const settings = useEnrollmentStore((state) => state.enrollmentSettings);
 
   const [setEnrollmentState, back, reset, nextSubject] = useEnrollmentStore(
     (state) => [state.setState, state.perviousStep, state.reset, state.nextSubject],
