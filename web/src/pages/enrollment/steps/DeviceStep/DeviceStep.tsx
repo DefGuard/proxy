@@ -14,6 +14,7 @@ import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 import { ConfigureDeviceCard } from './components/ConfigureDeviceCard/ConfigureDeviceCard';
 import { QuickGuideCard } from './components/QuickGuideCard/QuickGuideCard';
 import useEffectOnce from '../../../../shared/hooks/api/utils';
+import { LoaderSpinner } from '../../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
 
 export const DeviceStep = () => {
   const {
@@ -54,7 +55,8 @@ export const DeviceStep = () => {
       const sub = nextSubject.subscribe(() => {
         if (
           (deviceState && deviceState.device && deviceState.configs) ||
-          settings?.vpn_setup_optional
+          settings?.vpn_setup_optional ||
+          settings?.only_client_activation
         ) {
           setStore({
             loading: true,
@@ -80,25 +82,33 @@ export const DeviceStep = () => {
     mutate,
   ]);
 
-  // useEffectOnce(() => {
-  //   if (settings?.only_client_activation) {
-  //     nextSubject.next();
-  //     next();
-  //   }
-  // });
+  // If only client activation is enabled, skip manual wireguard setup
+  useEffectOnce(() => {
+    if (settings?.only_client_activation) {
+      nextSubject.next();
+    }
+  });
 
   return (
     <div id="enrollment-device-step" className={cn}>
-      {settings?.vpn_setup_optional && (
-        <MessageBox
-          type={MessageBoxType.WARNING}
-          message={LL.pages.enrollment.steps.deviceSetup.optionalMessage()}
-        />
+      {!settings?.only_client_activation ? (
+        <>
+          {settings?.vpn_setup_optional && (
+            <MessageBox
+              type={MessageBoxType.WARNING}
+              message={LL.pages.enrollment.steps.deviceSetup.optionalMessage()}
+            />
+          )}
+          <div className="cards">
+            <ConfigureDeviceCard />
+            <QuickGuideCard />
+          </div>
+        </>
+      ) : (
+        <div id="loader">
+          <LoaderSpinner size={80} />
+        </div>
       )}
-      <div className="cards">
-        <ConfigureDeviceCard />
-        <QuickGuideCard />
-      </div>
     </div>
   );
 };

@@ -21,6 +21,7 @@ export const EnrollmentSideBar = () => {
     state.step,
     state.stepsMax,
   ]);
+  const enrollmentSettings = useEnrollmentStore((state) => state.enrollmentSettings);
 
   // fetch app version
   const { getAppInfo } = useApi();
@@ -39,16 +40,20 @@ export const EnrollmentSideBar = () => {
   }, []);
 
   const steps = useMemo((): LocalizedString[] => {
-    const steps = LL.pages.enrollment.sideBar.steps;
-    const vpnStep = vpnOptional ? `${steps.vpn()}*` : steps.vpn();
-    return [
-      steps.welcome(),
-      steps.verification(),
-      steps.password(),
-      vpnStep as LocalizedString,
-      steps.finish(),
+    const stepsLL = LL.pages.enrollment.sideBar.steps;
+    const vpnStep = (
+      vpnOptional ? `${stepsLL.vpn()}*` : stepsLL.vpn()
+    ) as LocalizedString;
+    const steps = [
+      stepsLL.welcome(),
+      stepsLL.verification(),
+      stepsLL.password(),
+      ...(!enrollmentSettings?.only_client_activation
+        ? [vpnStep, stepsLL.finish()]
+        : [stepsLL.finish()]),
     ];
-  }, [LL.pages.enrollment.sideBar.steps, vpnOptional]);
+    return steps;
+  }, [LL.pages.enrollment.sideBar.steps, vpnOptional, enrollmentSettings]);
 
   return (
     <div id="enrollment-side-bar">
