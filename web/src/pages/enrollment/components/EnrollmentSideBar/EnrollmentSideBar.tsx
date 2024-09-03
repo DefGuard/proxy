@@ -14,11 +14,14 @@ import { TimeLeft } from '../TimeLeft/TimeLeft';
 export const EnrollmentSideBar = () => {
   const { LL } = useI18nContext();
 
-  const vpnOptional = useEnrollmentStore((state) => state.vpnOptional);
+  const vpnOptional = useEnrollmentStore(
+    (state) => state.enrollmentSettings?.vpn_setup_optional,
+  );
   const [currentStep, stepsMax] = useEnrollmentStore((state) => [
     state.step,
     state.stepsMax,
   ]);
+  const enrollmentSettings = useEnrollmentStore((state) => state.enrollmentSettings);
 
   // fetch app version
   const { getAppInfo } = useApi();
@@ -37,16 +40,20 @@ export const EnrollmentSideBar = () => {
   }, []);
 
   const steps = useMemo((): LocalizedString[] => {
-    const steps = LL.pages.enrollment.sideBar.steps;
-    const vpnStep = vpnOptional ? `${steps.vpn()}*` : steps.vpn();
-    return [
-      steps.welcome(),
-      steps.verification(),
-      steps.password(),
-      vpnStep as LocalizedString,
-      steps.finish(),
+    const stepsLL = LL.pages.enrollment.sideBar.steps;
+    const vpnStep = (
+      vpnOptional ? `${stepsLL.vpn()}*` : stepsLL.vpn()
+    ) as LocalizedString;
+    const steps = [
+      stepsLL.welcome(),
+      stepsLL.verification(),
+      stepsLL.password(),
+      ...(!enrollmentSettings?.only_client_activation
+        ? [vpnStep, stepsLL.finish()]
+        : [stepsLL.finish()]),
     ];
-  }, [LL.pages.enrollment.sideBar.steps, vpnOptional]);
+    return steps;
+  }, [LL.pages.enrollment.sideBar.steps, vpnOptional, enrollmentSettings]);
 
   return (
     <div id="enrollment-side-bar">
