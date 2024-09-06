@@ -82,12 +82,11 @@ pub async fn activate_user(
     let payload = get_core_response(rx).await?;
     debug!("Receving payload from the core service. Trying to remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
+        info!("Activated user - phone number {phone:?}");
         if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
-            info!("Activated user - phone number {phone:?}");
             debug!("Enrollment finished. Removing session cookie");
             private_cookies = private_cookies.remove(cookie);
         }
-
         Ok(private_cookies)
     } else {
         error!("Received invalid gRPC response type: {payload:#?}");
