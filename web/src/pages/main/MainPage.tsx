@@ -40,8 +40,8 @@ export const MainPage = () => {
             adminInfo: res.admin,
             sessionStart,
             sessionEnd,
-            vpnOptional: res.vpn_setup_optional,
             endContent: res.final_page_content,
+            enrollmentSettings: res.settings,
           });
           navigate(routes.enrollment, { replace: true });
         })

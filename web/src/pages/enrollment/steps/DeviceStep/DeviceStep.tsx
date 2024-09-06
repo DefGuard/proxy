@@ -7,9 +7,11 @@ import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
+import { LoaderSpinner } from '../../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
 import { MessageBox } from '../../../../shared/components/layout/MessageBox/MessageBox';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
 import { useApi } from '../../../../shared/hooks/api/useApi';
+import useEffectOnce from '../../../../shared/hooks/api/utils';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 import { ConfigureDeviceCard } from './components/ConfigureDeviceCard/ConfigureDeviceCard';
 import { QuickGuideCard } from './components/QuickGuideCard/QuickGuideCard';
@@ -21,7 +23,7 @@ export const DeviceStep = () => {
   const { LL } = useI18nContext();
   const setStore = useEnrollmentStore((state) => state.setState);
   const deviceState = useEnrollmentStore((state) => state.deviceState);
-  const vpnOptional = useEnrollmentStore((state) => state.vpnOptional);
+  const settings = useEnrollmentStore((state) => state.enrollmentSettings);
   const [userPhone, userPassword] = useEnrollmentStore(
     (state) => [state.userInfo?.phone_number, state.userPassword],
     shallow,
@@ -32,8 +34,8 @@ export const DeviceStep = () => {
   );
 
   const cn = classNames({
-    required: !vpnOptional,
-    optional: vpnOptional,
+    required: !settings?.vpn_setup_optional,
+    optional: settings?.vpn_setup_optional,
   });
 
   const { mutate } = useMutation({
@@ -51,7 +53,11 @@ export const DeviceStep = () => {
   useEffect(() => {
     if (userPassword) {
       const sub = nextSubject.subscribe(() => {
-        if ((deviceState && deviceState.device && deviceState.configs) || vpnOptional) {
+        if (
+          (deviceState && deviceState.device && deviceState.configs) ||
+          settings?.vpn_setup_optional ||
+          settings?.only_client_activation
+        ) {
           setStore({
             loading: true,
           });
@@ -66,20 +72,44 @@ export const DeviceStep = () => {
         sub.unsubscribe();
       };
     }
-  }, [deviceState, nextSubject, vpnOptional, setStore, userPhone, userPassword, mutate]);
+  }, [
+    deviceState,
+    nextSubject,
+    settings?.vpn_setup_optional,
+    setStore,
+    userPhone,
+    userPassword,
+    mutate,
+    settings?.only_client_activation,
+  ]);
+
+  // If only client activation is enabled, skip manual wireguard setup
+  useEffectOnce(() => {
+    if (settings?.only_client_activation) {
+      nextSubject.next();
+    }
+  });
 
   return (
     <div id="enrollment-device-step" className={cn}>
-      {vpnOptional && (
-        <MessageBox
-          type={MessageBoxType.WARNING}
-          message={LL.pages.enrollment.steps.deviceSetup.optionalMessage()}
-        />
+      {!settings?.only_client_activation ? (
+        <>
+          {settings?.vpn_setup_optional && (
+            <MessageBox
+              type={MessageBoxType.WARNING}
+              message={LL.pages.enrollment.steps.deviceSetup.optionalMessage()}
+            />
+          )}
+          <div className="cards">
+            <ConfigureDeviceCard />
+            <QuickGuideCard />
+          </div>
+        </>
+      ) : (
+        <div id="loader">
+          <LoaderSpinner size={80} />
+        </div>
       )}
-      <div className="cards">
-        <ConfigureDeviceCard />
-        <QuickGuideCard />
-      </div>
     </div>
   );
 };
