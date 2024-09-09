@@ -1,5 +1,4 @@
 use axum::{extract::State, routing::post, Json, Router};
-use tracing::{error, info};
 
 use crate::{
     error::ApiError,
