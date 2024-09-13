@@ -10,7 +10,9 @@ export const LogoContainer = () => {
     <div className="logo-container">
       <SvgDefguardLogoText className="defguard" />
       <Divider direction={DividerDirection.VERTICAL} />
-      <SvgTeoniteLogo className="teonite" />
+      <a href="https://teonite.com" target="_blank">
+        <SvgTeoniteLogo className="teonite" />
+      </a>
     </div>
   );
 };
