@@ -1,11 +1,12 @@
-use crate::{error::ApiError, proto::core_response::Payload};
+use std::time::Duration;
+
 use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
 use axum_extra::{headers::UserAgent, TypedHeader};
-use std::time::Duration;
 use tokio::{sync::oneshot::Receiver, time::timeout};
 
 use super::proto::DeviceInfo;
+use crate::{error::ApiError, proto::core_response::Payload};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
