@@ -13,13 +13,13 @@
     height: 100%;
   }
 
-  & > .defguard {
+  & > a > .defguard {
     path {
       fill: var(--text-body-primary);
     }
   }
 
-  & > .teonite {
+  & > a > .teonite {
     path {
       fill: var(--surface-teonite-logo);
     }
