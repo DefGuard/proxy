@@ -8,9 +8,13 @@ import SvgTeoniteLogo from '../../shared/components/svg/TeoniteLogo';
 export const LogoContainer = () => {
   return (
     <div className="logo-container">
-      <SvgDefguardLogoText className="defguard" />
+      <a href="https://defguard.net/" target="_blank" rel="noreferrer">
+        <SvgDefguardLogoText className="defguard" />
+      </a>
       <Divider direction={DividerDirection.VERTICAL} />
-      <SvgTeoniteLogo className="teonite" />
+      <a href="https://teonite.com" target="_blank" rel="noreferrer">
+        <SvgTeoniteLogo className="teonite" />
+      </a>
     </div>
   );
 };
