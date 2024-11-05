@@ -538,7 +538,7 @@ dependencies = [
 
 [[package]]
 name = "defguard-proxy"
-version = "0.5.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "axum",
