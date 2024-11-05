@@ -35,6 +35,8 @@ COPY --from=web /app/dist ./web/dist
 COPY web/src/shared/images/svg ./web/src/shared/images/svg
 RUN apt-get update && apt-get -y install protobuf-compiler libprotobuf-dev
 COPY Cargo.toml Cargo.lock build.rs ./
+# for vergen
+COPY .git .git
 COPY src src
 COPY proto proto
 RUN cargo install --locked --path . --root /build

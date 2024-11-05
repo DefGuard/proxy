@@ -1,6 +1,6 @@
 [package]
 name = "defguard-proxy"
-version = "0.5.1"
+version = "1.0.0"
 edition = "2021"
 license = "Apache-2.0"
 homepage = "https://github.com/DefGuard/proxy"
@@ -47,6 +47,7 @@ mime_guess = "2.0"
 [build-dependencies]
 tonic-build = { version = "0.12" }
 prost-build = { version = "0.13" }
+vergen-git2 = { version = "1.0", features = ["build"] }
 
 [profile.release]
 lto = "thin"

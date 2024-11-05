@@ -18,12 +18,17 @@ export type EnrollmentStartRequest = {
   token: string;
 };
 
+export type EnrollmentSettings = {
+  vpn_setup_optional: boolean;
+  only_client_activation: boolean;
+};
+
 export type EnrollmentStartResponse = {
   admin: AdminInfo;
   user: UserInfo;
   deadline_timestamp: number;
   final_page_content: string;
-  vpn_setup_optional: boolean;
+  settings: EnrollmentSettings;
 };
 
 export type ActivateUserRequest = {

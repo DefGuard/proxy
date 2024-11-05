@@ -1,12 +1,12 @@
-use crate::proto::CoreError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
 use serde_json::json;
-use tonic::metadata::errors::InvalidMetadataValue;
-use tonic::{Code, Status};
+use tonic::{metadata::errors::InvalidMetadataValue, Code, Status};
+
+use crate::proto::CoreError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
@@ -24,6 +24,8 @@ pub enum ApiError {
     InvalidResponseType,
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
+    #[error("Enterprise not enabled")]
+    EnterpriseNotEnabled,
 }
 
 impl IntoResponse for ApiError {
@@ -33,6 +35,10 @@ impl IntoResponse for ApiError {
             Self::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::PermissionDenied(msg) => (StatusCode::FORBIDDEN, msg),
+            Self::EnterpriseNotEnabled => (
+                StatusCode::PAYMENT_REQUIRED,
+                "Enterprise features are not enabled".to_string(),
+            ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
@@ -55,6 +61,11 @@ impl From<CoreError> for ApiError {
             Code::Unauthenticated => ApiError::Unauthorized(status.message().to_string()),
             Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
             Code::PermissionDenied => ApiError::PermissionDenied(status.message().to_string()),
+            Code::FailedPrecondition => match status.message().to_lowercase().as_str() {
+                // TODO: find a better way than matching on the error message
+                "no valid license" => ApiError::EnterpriseNotEnabled,
+                _ => ApiError::Unexpected(status.to_string()),
+            },
             _ => ApiError::Unexpected(status.to_string()),
         }
     }
