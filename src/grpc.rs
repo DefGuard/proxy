@@ -30,7 +30,7 @@ pub(crate) struct ProxyServer {
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             current_id: Arc::new(AtomicU64::new(1)),
             clients: Arc::new(Mutex::new(HashMap::new())),
@@ -42,7 +42,7 @@ impl ProxyServer {
     /// Sends message to the other side of RPC, with given `payload` and optional `device_info`.
     /// Returns `tokio::sync::oneshot::Reveicer` to let the caller await reply.
     #[instrument(name = "send_grpc_message", level = "debug", skip(self))]
-    pub fn send(
+    pub(crate) fn send(
         &self,
         payload: Option<core_request::Payload>,
         device_info: Option<DeviceInfo>,
@@ -64,9 +64,11 @@ impl ProxyServer {
             self.connected.store(true, Ordering::Relaxed);
             Ok(rx)
         } else {
-            error!("Defguard core is disconnected");
+            error!("Defguard Core is not connected");
             self.connected.store(false, Ordering::Relaxed);
-            Err(ApiError::Unexpected("Defguard core is disconnected".into()))
+            Err(ApiError::Unexpected(
+                "Defguard Core is not connected".into(),
+            ))
         }
     }
 }
@@ -96,7 +98,7 @@ impl proxy_server::Proxy for ProxyServer {
             error!("Failed to determine client address for request: {request:?}");
             return Err(Status::internal("Failed to determine client address"));
         };
-        info!("Defguard core RPC client connected from: {address}");
+        info!("Defguard Core gRPC client connected from: {address}");
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients.lock().unwrap().insert(address, tx);

@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-pub fn router() -> Router<AppState> {
+pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/request", post(request_password_reset))
         .route("/start", post(start_password_reset))
@@ -20,7 +20,7 @@ pub fn router() -> Router<AppState> {
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn request_password_reset(
+async fn request_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
     Json(req): Json<PasswordResetInitializeRequest>,
@@ -42,7 +42,7 @@ pub async fn request_password_reset(
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn start_password_reset(
+async fn start_password_reset(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
@@ -77,7 +77,7 @@ pub async fn start_password_reset(
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn reset_password(
+async fn reset_password(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,

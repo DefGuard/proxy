@@ -10,11 +10,12 @@ use crate::{error::ApiError, proto::core_response::Payload};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
+pub(crate) mod openid_login;
 pub(crate) mod password_reset;
 pub(crate) mod polling;
 
-// timeout in seconds for awaiting core response
-const CORE_RESPONSE_TIMEOUT: u64 = 5;
+// Timeout for awaiting response from Defguard Core.
+const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[tonic::async_trait]
 impl<S> FromRequestParts<S> for DeviceInfo
@@ -49,7 +50,7 @@ where
 /// Waits for core response with a given timeout and returns the response payload.
 async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
     debug!("Fetching core response...");
-    if let Ok(core_response) = timeout(Duration::from_secs(CORE_RESPONSE_TIMEOUT), rx).await {
+    if let Ok(core_response) = timeout(CORE_RESPONSE_TIMEOUT, rx).await {
         debug!("Got gRPC response from Defguard core: {core_response:?}");
         if let Ok(Payload::CoreError(core_error)) = core_response {
             error!(
@@ -61,7 +62,7 @@ async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
     } else {
-        error!("Did not receive core response within {CORE_RESPONSE_TIMEOUT} seconds");
+        error!("Did not receive core response within {CORE_RESPONSE_TIMEOUT:?}");
         Err(ApiError::CoreTimeout)
     }
 }

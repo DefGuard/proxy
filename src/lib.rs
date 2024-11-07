@@ -13,4 +13,4 @@ pub(crate) mod proto {
 #[macro_use]
 extern crate tracing;
 
-pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("VERGEN_GIT_SHA"));
+pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("VERGEN_GIT_SHA"));
