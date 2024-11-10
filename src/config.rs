@@ -35,6 +35,13 @@ pub struct Config {
     #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_BURST", default_value_t = 0)]
     pub rate_limit_burst: u32,
 
+    #[arg(
+        long,
+        env = "DEFGUARD_PROXY_URL",
+        default_value = "http://localhost:8080"
+    )]
+    pub url: String,
+
     /// Configuration file path
     #[arg(long = "config", short)]
     #[serde(skip)]

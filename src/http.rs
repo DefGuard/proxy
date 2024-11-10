@@ -41,6 +41,7 @@ const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
     key: Key,
+    pub(crate) url: String,
 }
 
 impl FromRef<AppState> for Key {
@@ -112,6 +113,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         grpc_server: grpc_server.clone(),
         // Generate secret key for encrypting cookies.
         key: Key::generate(),
+        url: config.url.clone(),
     };
 
     // Read gRPC TLS certificate and key.

@@ -1,16 +1,20 @@
-use axum::{extract::State, routing::get, Json, Router};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use axum_extra::extract::{
     cookie::{Cookie, SameSite},
     PrivateCookieJar,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use time::Duration;
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
-    proto::{core_request, core_response},
+    proto::{core_request, core_response, AuthInfoRequest},
 };
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
@@ -18,7 +22,9 @@ static CSRF_COOKIE_NAME: &str = "csrf";
 static NONCE_COOKIE_NAME: &str = "nonce";
 
 pub(crate) fn router() -> Router<AppState> {
-    Router::new().route("/auth_info", get(auth_info))
+    Router::new()
+        .route("/auth_info", get(auth_info))
+        .route("/callback", post(auth_callback))
 }
 
 #[derive(Serialize)]
@@ -41,9 +47,13 @@ async fn auth_info(
 ) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
     debug!("Getting auth info for OAuth2/OpenID login");
 
+    let mut redirect_url = state.url.clone();
+    redirect_url.push_str("/openid/callback");
+    let request = AuthInfoRequest { redirect_url };
+
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::AuthInfo(())), None)?;
+        .send(Some(core_request::Payload::AuthInfo(request)), None)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::AuthInfo(response) = payload {
         debug!("Got auth info {response:?}");
@@ -72,4 +82,19 @@ async fn auth_info(
         error!("Received invalid gRPC response type: {payload:#?}");
         Err(ApiError::InvalidResponseType)
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuthenticationResponse {
+    id_token: String,
+    state: String,
+}
+
+#[instrument(level = "debug", skip(state))]
+async fn auth_callback(
+    State(state): State<AppState>,
+    private_cookies: PrivateCookieJar,
+    Json(payload): Json<AuthenticationResponse>,
+) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
+    Err(ApiError::InvalidResponseType)
 }
