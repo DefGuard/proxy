@@ -47,9 +47,9 @@ async fn auth_info(
 ) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
     debug!("Getting auth info for OAuth2/OpenID login");
 
-    let mut redirect_url = state.url.clone();
-    redirect_url.push_str("/openid/callback");
-    let request = AuthInfoRequest { redirect_url };
+    let request = AuthInfoRequest {
+        redirect_url: state.callback_url().to_string(),
+    };
 
     let rx = state
         .grpc_server
@@ -115,12 +115,10 @@ async fn auth_callback(
         .remove(Cookie::from(NONCE_COOKIE_NAME))
         .remove(Cookie::from(CSRF_COOKIE_NAME));
 
-    let mut callback_url = state.url.clone();
-    callback_url.push_str("/openid/callback");
     let request = AuthCallbackRequest {
         id_token: payload.id_token,
         nonce,
-        callback_url,
+        callback_url: state.callback_url().to_string(),
     };
 
     let rx = state

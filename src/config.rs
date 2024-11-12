@@ -3,6 +3,7 @@ use std::{fs::read_to_string, path::PathBuf};
 use clap::Parser;
 use log::LevelFilter;
 use serde::Deserialize;
+use url::Url;
 
 #[derive(Parser, Debug, Deserialize)]
 #[command(version)]
@@ -38,9 +39,10 @@ pub struct Config {
     #[arg(
         long,
         env = "DEFGUARD_PROXY_URL",
+        value_parser = Url::parse,
         default_value = "http://localhost:8080"
     )]
-    pub url: String,
+    pub url: Url,
 
     /// Configuration file path
     #[arg(long = "config", short)]

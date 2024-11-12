@@ -23,6 +23,7 @@ use tower_governor::{
 };
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info_span, Level};
+use url::Url;
 
 use crate::{
     assets::{index, svg, web_asset},
@@ -41,7 +42,20 @@ const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
     key: Key,
-    pub(crate) url: String,
+    url: Url,
+}
+
+impl AppState {
+    /// Returns configured URL with "auth/callback" appended to the path.
+    #[must_use]
+    pub(crate) fn callback_url(&self) -> Url {
+        let mut url = self.url.clone();
+        // Append "/api/v1/openid/callback" to the URL.
+        if let Ok(mut path_segments) = url.path_segments_mut() {
+            path_segments.extend(&["api", "v1", "openid", "callback"]);
+        }
+        url
+    }
 }
 
 impl FromRef<AppState> for Key {
