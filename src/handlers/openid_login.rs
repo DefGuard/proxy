@@ -14,7 +14,7 @@ use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
-    proto::{core_request, core_response, AuthInfoRequest},
+    proto::{core_request, core_response, AuthCallbackRequest, AuthInfoRequest},
 };
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
@@ -56,11 +56,11 @@ async fn auth_info(
         .send(Some(core_request::Payload::AuthInfo(request)), None)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::AuthInfo(response) = payload {
-        debug!("Got auth info {response:?}");
+        debug!("Received auth info {response:?}");
 
         let nonce_cookie = Cookie::build((NONCE_COOKIE_NAME, response.nonce))
             // .domain(cookie_domain)
-            // .path("/api/v1/openid/callback")
+            .path("/api/v1/openid/callback")
             .http_only(true)
             .same_site(SameSite::Strict)
             .secure(true)
@@ -68,7 +68,7 @@ async fn auth_info(
             .build();
         let csrf_cookie = Cookie::build((CSRF_COOKIE_NAME, response.csrf_token))
             // .domain(cookie_domain)
-            // .path("/api/v1/openid/callback")
+            .path("/api/v1/openid/callback")
             .http_only(true)
             .same_site(SameSite::Strict)
             .secure(true)
@@ -93,8 +93,45 @@ pub struct AuthenticationResponse {
 #[instrument(level = "debug", skip(state))]
 async fn auth_callback(
     State(state): State<AppState>,
-    private_cookies: PrivateCookieJar,
+    mut private_cookies: PrivateCookieJar,
     Json(payload): Json<AuthenticationResponse>,
-) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
-    Err(ApiError::InvalidResponseType)
+) -> Result<PrivateCookieJar, ApiError> {
+    let nonce = private_cookies
+        .get(NONCE_COOKIE_NAME)
+        .ok_or(ApiError::Unauthorized("Nonce cookie not found".into()))?
+        .value_trimmed()
+        .to_string();
+    let csrf = private_cookies
+        .get(CSRF_COOKIE_NAME)
+        .ok_or(ApiError::Unauthorized("CSRF cookie not found".into()))?
+        .value_trimmed()
+        .to_string();
+
+    if payload.state != csrf {
+        return Err(ApiError::Unauthorized("CSRF token mismatch".into()));
+    }
+
+    private_cookies = private_cookies
+        .remove(Cookie::from(NONCE_COOKIE_NAME))
+        .remove(Cookie::from(CSRF_COOKIE_NAME));
+
+    let mut callback_url = state.url.clone();
+    callback_url.push_str("/openid/callback");
+    let request = AuthCallbackRequest {
+        id_token: payload.id_token,
+        nonce,
+        callback_url,
+    };
+
+    let rx = state
+        .grpc_server
+        .send(Some(core_request::Payload::AuthCallback(request)), None)?;
+    let payload = get_core_response(rx).await?;
+    if let core_response::Payload::Empty(()) = payload {
+        debug!("Received auth callback response (empty message)");
+        Ok(private_cookies)
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
+    }
 }
