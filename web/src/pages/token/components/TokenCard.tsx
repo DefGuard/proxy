@@ -1,9 +1,9 @@
 import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from 'use-breakpoint';
@@ -28,6 +28,9 @@ import { deviceBreakpoints } from '../../../shared/constants';
 import { useApi } from '../../../shared/hooks/api/useApi';
 import { routes } from '../../../shared/routes';
 import { useEnrollmentStore } from '../../enrollment/hooks/store/useEnrollmentStore';
+import { BigInfoBox } from '../../../shared/components/layout/BigInfoBox/BigInfoBox';
+import { LoaderSpinner } from '../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
+import { OpenIdLoginButton } from './OIDCButtons';
 
 type FormFields = {
   token: string;
@@ -37,6 +40,7 @@ export const TokenCard = () => {
   const navigate = useNavigate();
   const {
     enrollment: { start: startEnrollment },
+    getOpenIDAuthInfo,
   } = useApi();
   const { breakpoint } = useBreakpoint(deviceBreakpoints);
   const { LL } = useI18nContext();
@@ -53,6 +57,7 @@ export const TokenCard = () => {
         .required(),
     [LL.pages.token.card.form.errors.token],
   );
+  const [openIDUrl, setOpenIDUrl] = useState(null);
 
   const { control, handleSubmit, setError } = useForm<FormFields>({
     mode: 'all',
@@ -61,6 +66,23 @@ export const TokenCard = () => {
     },
     resolver: zodResolver(schema),
   });
+
+  // useEffect(() => {
+  //   getOpenIDAuthInfo().then((res) => {
+  //     console.log(res);
+  //   });
+  // });
+
+  const { isLoading: openidLoading, data: openidData } = useQuery(
+    [],
+    () => getOpenIDAuthInfo(),
+    {
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    },
+  );
+
+  console.log(openidLoading);
 
   const { isLoading, mutate } = useMutation({
     mutationFn: startEnrollment,
@@ -100,42 +122,19 @@ export const TokenCard = () => {
     }
   };
 
+  if (openidLoading) {
+    return (
+      <div className="loader-container">
+        <LoaderSpinner size={100} />
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="controls">
-        <Button
-          size={ButtonSize.LARGE}
-          styleVariant={ButtonStyleVariant.LINK}
-          text={LL.common.controls.back()}
-          icon={
-            <ArrowSingle
-              size={ArrowSingleSize.SMALL}
-              direction={ArrowSingleDirection.LEFT}
-            />
-          }
-          onClick={() => navigate(routes.main)}
-        />
-        <Button
-          data-testid="enrollment-token-submit-button"
-          size={ButtonSize.LARGE}
-          styleVariant={ButtonStyleVariant.PRIMARY}
-          text={LL.pages.resetPassword.steps.email.controls.send()}
-          rightIcon={
-            <ArrowSingle
-              size={ArrowSingleSize.SMALL}
-              direction={ArrowSingleDirection.RIGHT}
-            />
-          }
-          onClick={handleSubmit(handleValidSubmit)}
-        />
-      </div>
       <Card shaded={breakpoint !== 'mobile'} className="token-card">
         <h2>{LL.pages.token.card.title()}</h2>
-        <MessageBox
-          message={LL.pages.token.card.messageBox.email()}
-          type={MessageBoxType.INFO}
-          dismissId="token-page-card-email"
-        />
+        <BigInfoBox message={LL.pages.token.card.messageBox.email()} />
         <form
           data-testid="enrollment-token-form"
           onSubmit={handleSubmit(handleValidSubmit)}
@@ -146,6 +145,46 @@ export const TokenCard = () => {
             required
           />
         </form>
+        {openidData?.url && (
+          <>
+            <h2 className="openid-heading">Or Sign In with External SSO</h2>
+            <BigInfoBox
+              message={
+                'If you would like to initiate the enrollment process using External SSO, please click the link below to sign in and start the process.'
+              }
+            />
+            <div className="openid-button">
+              <OpenIdLoginButton url={openidData.url} />
+            </div>
+          </>
+        )}
+        <div className="controls">
+          <Button
+            size={ButtonSize.LARGE}
+            styleVariant={ButtonStyleVariant.LINK}
+            text={LL.common.controls.back()}
+            icon={
+              <ArrowSingle
+                size={ArrowSingleSize.SMALL}
+                direction={ArrowSingleDirection.LEFT}
+              />
+            }
+            onClick={() => navigate(routes.main)}
+          />
+          <Button
+            data-testid="enrollment-token-submit-button"
+            size={ButtonSize.LARGE}
+            styleVariant={ButtonStyleVariant.PRIMARY}
+            text={LL.pages.resetPassword.steps.email.controls.send()}
+            rightIcon={
+              <ArrowSingle
+                size={ArrowSingleSize.SMALL}
+                direction={ArrowSingleDirection.RIGHT}
+              />
+            }
+            onClick={handleSubmit(handleValidSubmit)}
+          />
+        </div>
       </Card>
     </>
   );

@@ -4,6 +4,7 @@ use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
 use axum_extra::{headers::UserAgent, TypedHeader};
 use tokio::{sync::oneshot::Receiver, time::timeout};
+use tonic::Code;
 
 use super::proto::DeviceInfo;
 use crate::{error::ApiError, proto::core_response::Payload};
@@ -53,6 +54,12 @@ async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
     if let Ok(core_response) = timeout(CORE_RESPONSE_TIMEOUT, rx).await {
         debug!("Got gRPC response from Defguard core: {core_response:?}");
         if let Ok(Payload::CoreError(core_error)) = core_response {
+            if core_error.status_code == Code::FailedPrecondition as i32
+                && core_error.message == "no valid license"
+            {
+                debug!("Tried to get core response related to an enterprise feature but the enterprise is not enabled, ignoring it...");
+                return Err(ApiError::EnterpriseNotEnabled);
+            }
             error!(
                 "Received an error response from the core service. | status code: {} message: {}",
                 core_error.status_code, core_error.message

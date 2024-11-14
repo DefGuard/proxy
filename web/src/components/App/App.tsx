@@ -22,6 +22,7 @@ import { PasswordResetPage } from '../../pages/passwordReset/PasswordResetPage';
 import { SessionTimeoutPage } from '../../pages/sessionTimeout/SessionTimeoutPage';
 import { TokenPage } from '../../pages/token/TokenPage';
 import { routes } from '../../shared/routes';
+import { OpenIDCallbackPage } from '../../pages/openidCallback/OpenIDCallback';
 
 dayjs.extend(duration);
 dayjs.extend(utc);
@@ -51,6 +52,10 @@ const router = createBrowserRouter([
   {
     path: routes.passwordReset,
     element: <PasswordResetPage />,
+  },
+  {
+    path: routes.openidCallback,
+    element: <OpenIDCallbackPage />,
   },
   {
     path: '/*',

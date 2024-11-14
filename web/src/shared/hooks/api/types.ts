@@ -93,4 +93,9 @@ export type UseApi = {
     reset: (data: PasswordResetRequest) => Promise<EmptyApiResponse>;
   };
   getAppInfo: () => Promise<AppInfo>;
+  getOpenIDAuthInfo: () => Promise<{ url: string }>;
+  openIDCallback: (data: { id_token: string; state: string }) => Promise<{
+    token: string;
+    url: string;
+  }>;
 };

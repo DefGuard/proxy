@@ -219,4 +219,25 @@
     text-decoration: underline;
     font-weight: 500;
   }
+
+  @if $value ==infobox-message {
+    font-family: 'Poppins';
+    font-size: 15px;
+    line-height: 23px;
+    font-weight: 400;
+  }
+
+  @if $value ==openidcallback-steps {
+    font-family: 'Poppins';
+    font-size: 15px;
+    line-height: 23px;
+    font-weight: 400;
+  }
+
+  @if $value ==client-download-button {
+    font-family: 'Poppins';
+    font-size: 15px;
+    line-height: normal;
+    font-weight: 600;
+  }
 }

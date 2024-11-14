@@ -4,4 +4,5 @@ export const routes = {
   token: '/token',
   timeout: '/timeout',
   passwordReset: '/password-reset',
+  openidCallback: '/openid/callback',
 };

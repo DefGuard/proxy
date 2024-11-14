@@ -50,9 +50,9 @@ impl AppState {
     #[must_use]
     pub(crate) fn callback_url(&self) -> Url {
         let mut url = self.url.clone();
-        // Append "/api/v1/openid/callback" to the URL.
+        // Append "/openid/callback" to the URL.
         if let Ok(mut path_segments) = url.path_segments_mut() {
-            path_segments.extend(&["api", "v1", "openid", "callback"]);
+            path_segments.extend(&["openid", "callback"]);
         }
         url
     }

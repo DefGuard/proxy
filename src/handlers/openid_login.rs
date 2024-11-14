@@ -14,7 +14,9 @@ use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
-    proto::{core_request, core_response, AuthCallbackRequest, AuthInfoRequest},
+    proto::{
+        core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthInfoRequest,
+    },
 };
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
@@ -30,12 +32,16 @@ pub(crate) fn router() -> Router<AppState> {
 #[derive(Serialize)]
 struct AuthInfo {
     url: String,
+    button_display_name: Option<String>,
 }
 
 impl AuthInfo {
     #[must_use]
-    fn new(url: String) -> Self {
-        Self { url }
+    fn new(url: String, button_display_name: Option<String>) -> Self {
+        Self {
+            url,
+            button_display_name,
+        }
     }
 }
 
@@ -76,7 +82,7 @@ async fn auth_info(
             .build();
         let private_cookies = private_cookies.add(nonce_cookie).add(csrf_cookie);
 
-        let auth_info = AuthInfo::new(response.url);
+        let auth_info = AuthInfo::new(response.url, response.button_display_name);
         Ok((private_cookies, Json(auth_info)))
     } else {
         error!("Received invalid gRPC response type: {payload:#?}");
@@ -86,8 +92,14 @@ async fn auth_info(
 
 #[derive(Debug, Deserialize)]
 pub struct AuthenticationResponse {
-    id_token: String,
+    code: String,
     state: String,
+}
+
+#[derive(Serialize)]
+struct CallbackResponseData {
+    url: String,
+    token: String,
 }
 
 #[instrument(level = "debug", skip(state))]
@@ -95,7 +107,7 @@ async fn auth_callback(
     State(state): State<AppState>,
     mut private_cookies: PrivateCookieJar,
     Json(payload): Json<AuthenticationResponse>,
-) -> Result<PrivateCookieJar, ApiError> {
+) -> Result<(PrivateCookieJar, Json<CallbackResponseData>), ApiError> {
     let nonce = private_cookies
         .get(NONCE_COOKIE_NAME)
         .ok_or(ApiError::Unauthorized("Nonce cookie not found".into()))?
@@ -116,7 +128,7 @@ async fn auth_callback(
         .remove(Cookie::from(CSRF_COOKIE_NAME));
 
     let request = AuthCallbackRequest {
-        id_token: payload.id_token,
+        code: payload.code,
         nonce,
         callback_url: state.callback_url().to_string(),
     };
@@ -125,11 +137,11 @@ async fn auth_callback(
         .grpc_server
         .send(Some(core_request::Payload::AuthCallback(request)), None)?;
     let payload = get_core_response(rx).await?;
-    if let core_response::Payload::Empty(()) = payload {
-        debug!("Received auth callback response (empty message)");
-        Ok(private_cookies)
+    if let core_response::Payload::AuthCallback(AuthCallbackResponse { url, token }) = payload {
+        debug!("Received auth callback response {url:?} {token:?}");
+        Ok((private_cookies, Json(CallbackResponseData { url, token })))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type during handling the OpenID authentication callback: {payload:#?}");
         Err(ApiError::InvalidResponseType)
     }
 }
