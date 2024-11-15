@@ -1,10 +1,19 @@
+/* eslint-disable max-len */
+import { useI18nContext } from '../../../i18n/i18n-react';
 import { Button } from '../../../shared/components/layout/Button/Button';
 import {
   ButtonSize,
   ButtonStyleVariant,
 } from '../../../shared/components/layout/Button/types';
+import './style.scss';
 
-export const OpenIdLoginButton = ({ url }: { url: string }) => {
+export const OpenIdLoginButton = ({
+  url,
+  display_name,
+}: {
+  url: string;
+  display_name?: string;
+}) => {
   const { hostname } = new URL(url);
 
   if (hostname === 'accounts.google.com') {
@@ -12,7 +21,7 @@ export const OpenIdLoginButton = ({ url }: { url: string }) => {
   } else if (hostname === 'login.microsoftonline.com') {
     return <MicrosoftButton url={url} />;
   } else {
-    return <CustomButton url={url} />;
+    return <CustomButton url={url} display_name={display_name} />;
   }
 };
 
@@ -69,12 +78,15 @@ const GoogleButton = ({ url }: { url: string }) => {
   );
 };
 
-const CustomButton = ({ url }: { url: string }) => {
+const CustomButton = ({ url, display_name }: { url: string; display_name?: string }) => {
+  const { LL } = useI18nContext();
   return (
     <Button
       size={ButtonSize.LARGE}
       styleVariant={ButtonStyleVariant.PRIMARY}
-      text="Login with OIDC"
+      text={`${LL.pages.token.card.oidcButton()} ${
+        display_name && display_name.length > 0 ? display_name : 'OIDC'
+      }`}
       data-testid="login-oidc"
       onClick={() => {
         window.location.assign(url);

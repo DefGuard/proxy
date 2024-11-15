@@ -290,6 +290,30 @@ If you want to disengage your VPN connection, simply press "deactivate".
             submit: 'Next',
           },
         },
+        oidcButton: 'Sign in with',
+      },
+    },
+    oidcLogin: {
+      card: {
+        title: 'Start your enrollment process',
+        infoBox:
+          'Thank you for validating your account, please follow instruction below for configuring your VPN connection.',
+        steps: {
+          first: 'Please download and install defguard VPN Desktop Client.',
+          second: `2. Open the client and <i>Add Instance</i>. Copy the data provided below into the corresponding fields. 
+              You can also learn more about the process in our <a
+              href="https://docs.defguard.net/help/configuring-vpn/add-new-instance"
+              target="_blank"
+              >
+              documentation
+              </a>.`,
+          tokenInput: {
+            instanceUrl: 'Instance URL',
+            token: 'Token',
+            title: 'Please provide instance URL and token',
+            addInstance: 'Add Instance',
+          },
+        },
       },
     },
   },

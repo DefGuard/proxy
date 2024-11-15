@@ -1,7 +1,8 @@
 import './style.scss';
 
+import parse from 'html-react-parser';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useBreakpoint } from 'use-breakpoint';
 
 import { AxiosError } from 'axios';
@@ -33,24 +34,23 @@ export const OpenIDCallbackCard = () => {
   const { isLoading, data } = useQuery(
     [],
     () => {
-      const hashFragment = window.location.hash.substring(1);
-      const params = new URLSearchParams(hashFragment);
+      const params = new URLSearchParams(window.location.search);
       const error = params.get('error');
       if (error) {
         setError(error);
         return;
       }
-      const id_token = params.get('id_token');
+      const code = params.get('code');
       const state = params.get('state');
-      if (!id_token || !state) {
+      if (!code || !state) {
         setError(
-          "Missing id_token or state in the callback's URL. The provider might not be configured correctly.",
+          "Missing code or state in the callback's URL. The provider might not be configured correctly.",
         );
         return;
       }
-      if (id_token && state) {
+      if (code && state) {
         return openIDCallback({
-          id_token,
+          code,
           state,
         });
       }
@@ -62,7 +62,6 @@ export const OpenIDCallbackCard = () => {
       onError: (error: AxiosError) => {
         console.error(error);
         const errorResponse = error.response?.data as ErrorResponse;
-        console.log('errorResponse', errorResponse);
         if (errorResponse.error) {
           setError(errorResponse.error);
         } else {
@@ -106,14 +105,10 @@ export const OpenIDCallbackCard = () => {
   return (
     <>
       <Card shaded={breakpoint !== 'mobile'} className="openidcallback-card">
-        <h2>Start your enrollment process</h2>
-        <BigInfoBox
-          message={
-            'Thank you for validating your account, please follow instruction below for configuring your VPN connection.'
-          }
-        />
+        <h2>{LL.pages.oidcLogin.card.title()}</h2>
+        <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
         <div className="steps">
-          <p>1. Please download and install defguard VPN Desktop Client</p>
+          <p>1. {LL.pages.oidcLogin.card.steps.first()}</p>
           <div className="download-link">
             <Button
               text="Download Desktop Client"
@@ -124,47 +119,37 @@ export const OpenIDCallbackCard = () => {
               }}
             />
           </div>
-          <p>
-            2. Open the client and <i>Add Instance</i>. Copy the data provided below into
-            the corresponding fields. You can also learn more about the process in our{' '}
-            <a
-              href="https://docs.defguard.net/help/configuring-vpn/add-new-instance"
-              target="_blank"
-            >
-              documentation
-            </a>
-            .
-          </p>
+          <p>{parse(LL.pages.oidcLogin.card.steps.second())}</p>
           <Card className="token-input shaded">
-            <h2>Please provide instance URL and token</h2>
+            <h2>{LL.pages.oidcLogin.card.steps.tokenInput.title()}</h2>
             <div className="labelled-input">
-              <label>Instance URL:</label>
+              <label>{LL.pages.oidcLogin.card.steps.tokenInput.instanceUrl()}</label>
               <div className="input-copy">
                 <Input value={data?.url} readOnly />
                 <ActionButton
                   variant={ActionButtonVariant.COPY}
                   onClick={() => {
-                    navigator.clipboard.writeText(data?.url);
+                    navigator.clipboard.writeText(data?.url!);
                   }}
                 />
               </div>
             </div>
 
             <div className="labelled-input">
-              <label>Token:</label>
+              <label>{LL.pages.oidcLogin.card.steps.tokenInput.token()}</label>
               <div className="input-copy">
                 <Input value={data?.token} readOnly />
                 <ActionButton
                   variant={ActionButtonVariant.COPY}
                   onClick={() => {
-                    navigator.clipboard.writeText(data?.token);
+                    navigator.clipboard.writeText(data?.token!);
                   }}
                 />
               </div>
             </div>
 
             <Button
-              text="Add instance"
+              text={LL.pages.oidcLogin.card.steps.tokenInput.addInstance()}
               styleVariant={ButtonStyleVariant.PRIMARY}
               disabled={true}
             />

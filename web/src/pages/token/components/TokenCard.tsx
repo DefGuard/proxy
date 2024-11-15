@@ -57,7 +57,6 @@ export const TokenCard = () => {
         .required(),
     [LL.pages.token.card.form.errors.token],
   );
-  const [openIDUrl, setOpenIDUrl] = useState(null);
 
   const { control, handleSubmit, setError } = useForm<FormFields>({
     mode: 'all',
@@ -67,12 +66,6 @@ export const TokenCard = () => {
     resolver: zodResolver(schema),
   });
 
-  // useEffect(() => {
-  //   getOpenIDAuthInfo().then((res) => {
-  //     console.log(res);
-  //   });
-  // });
-
   const { isLoading: openidLoading, data: openidData } = useQuery(
     [],
     () => getOpenIDAuthInfo(),
@@ -81,8 +74,6 @@ export const TokenCard = () => {
       refetchOnWindowFocus: false,
     },
   );
-
-  console.log(openidLoading);
 
   const { isLoading, mutate } = useMutation({
     mutationFn: startEnrollment,
@@ -154,7 +145,10 @@ export const TokenCard = () => {
               }
             />
             <div className="openid-button">
-              <OpenIdLoginButton url={openidData.url} />
+              <OpenIdLoginButton
+                url={openidData.url}
+                display_name={openidData.button_display_name}
+              />
             </div>
           </>
         )}
