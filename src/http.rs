@@ -28,9 +28,10 @@ use url::Url;
 use crate::{
     assets::{index, svg, web_asset},
     config::Config,
+    enterprise::handlers::openid_login,
     error::ApiError,
     grpc::ProxyServer,
-    handlers::{desktop_client_mfa, enrollment, openid_login, password_reset, polling},
+    handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
 };
 

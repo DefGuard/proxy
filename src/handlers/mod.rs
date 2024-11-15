@@ -11,7 +11,6 @@ use crate::{error::ApiError, proto::core_response::Payload};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
-pub(crate) mod openid_login;
 pub(crate) mod password_reset;
 pub(crate) mod polling;
 
@@ -49,7 +48,7 @@ where
 /// Helper which awaits core response
 ///
 /// Waits for core response with a given timeout and returns the response payload.
-async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
+pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
     debug!("Fetching core response...");
     if let Ok(core_response) = timeout(CORE_RESPONSE_TIMEOUT, rx).await {
         debug!("Got gRPC response from Defguard core: {core_response:?}");
