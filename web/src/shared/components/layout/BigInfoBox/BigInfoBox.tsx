@@ -13,7 +13,7 @@ interface Props extends HTMLProps<HTMLDivElement> {
 /**
  * Big infobox with a message.
  */
-export const BigInfoBox = ({ message, className, children, ...props }: Props) => {
+export const BigInfoBox = ({ message, children, ...props }: Props) => {
   const renderMessage = useMemo(() => {
     if (!isUndefined(children)) {
       return children;

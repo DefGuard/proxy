@@ -573,10 +573,20 @@ type RootTranslation = {
 						submit: string
 					}
 				}
-				/**
-				 * S​i​g​n​ ​i​n​ ​w​i​t​h
-				 */
-				oidcButton: string
+				oidc: {
+					/**
+					 * S​i​g​n​ ​i​n​ ​w​i​t​h
+					 */
+					oidcButton: string
+					/**
+					 * O​r​ ​S​i​g​n​ ​I​n​ ​w​i​t​h​ ​E​x​t​e​r​n​a​l​ ​S​S​O
+					 */
+					title: string
+					/**
+					 * I​f​ ​y​o​u​ ​w​o​u​l​d​ ​l​i​k​e​ ​t​o​ ​i​n​i​t​i​a​t​e​ ​t​h​e​ ​e​n​r​o​l​l​m​e​n​t​ ​p​r​o​c​e​s​s​ ​u​s​i​n​g​ ​E​x​t​e​r​n​a​l​ ​S​S​O​,​ ​p​l​e​a​s​e​ ​c​l​i​c​k​ ​t​h​e​ ​l​i​n​k​ ​b​e​l​o​w​ ​t​o​ ​s​i​g​n​ ​i​n​ ​a​n​d​ ​s​t​a​r​t​ ​t​h​e​ ​p​r​o​c​e​s​s​.
+					 */
+					infoBox: string
+				}
 			}
 		}
 		oidcLogin: {
@@ -1184,10 +1194,20 @@ export type TranslationFunctions = {
 						submit: () => LocalizedString
 					}
 				}
-				/**
-				 * Sign in with
-				 */
-				oidcButton: () => LocalizedString
+				oidc: {
+					/**
+					 * Sign in with
+					 */
+					oidcButton: () => LocalizedString
+					/**
+					 * Or Sign In with External SSO
+					 */
+					title: () => LocalizedString
+					/**
+					 * If you would like to initiate the enrollment process using External SSO, please click the link below to sign in and start the process.
+					 */
+					infoBox: () => LocalizedString
+				}
 			}
 		}
 		oidcLogin: {

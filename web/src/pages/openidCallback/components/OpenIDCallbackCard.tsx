@@ -1,11 +1,11 @@
 import './style.scss';
 
-import parse from 'html-react-parser';
 import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
+import parse from 'html-react-parser';
 import { useState } from 'react';
 import { useBreakpoint } from 'use-breakpoint';
 
-import { AxiosError } from 'axios';
 import { useI18nContext } from '../../../i18n/i18n-react';
 import { ActionButton } from '../../../shared/components/layout/ActionButton/ActionButton';
 import { ActionButtonVariant } from '../../../shared/components/layout/ActionButton/types';
@@ -44,7 +44,8 @@ export const OpenIDCallbackCard = () => {
       const state = params.get('state');
       if (!code || !state) {
         setError(
-          "Missing code or state in the callback's URL. The provider might not be configured correctly.",
+          "Missing code or state in the callback's URL. \
+          The provider might not be configured correctly.",
         );
         return;
       }
@@ -129,7 +130,8 @@ export const OpenIDCallbackCard = () => {
                 <ActionButton
                   variant={ActionButtonVariant.COPY}
                   onClick={() => {
-                    navigator.clipboard.writeText(data?.url!);
+                    // This should never be undefined, but just in case
+                    navigator.clipboard.writeText(data?.url || '');
                   }}
                 />
               </div>
@@ -142,7 +144,8 @@ export const OpenIDCallbackCard = () => {
                 <ActionButton
                   variant={ActionButtonVariant.COPY}
                   onClick={() => {
-                    navigator.clipboard.writeText(data?.token!);
+                    // This should never be undefined, but just in case
+                    navigator.clipboard.writeText(data?.token || '');
                   }}
                 />
               </div>

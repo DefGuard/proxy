@@ -3,7 +3,7 @@ import './style.scss';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from 'use-breakpoint';
@@ -16,20 +16,18 @@ import {
   ArrowSingleDirection,
   ArrowSingleSize,
 } from '../../../shared/components/icons/ArrowSingle/types';
+import { BigInfoBox } from '../../../shared/components/layout/BigInfoBox/BigInfoBox';
 import { Button } from '../../../shared/components/layout/Button/Button';
 import {
   ButtonSize,
   ButtonStyleVariant,
 } from '../../../shared/components/layout/Button/types';
 import { Card } from '../../../shared/components/layout/Card/Card';
-import { MessageBox } from '../../../shared/components/layout/MessageBox/MessageBox';
-import { MessageBoxType } from '../../../shared/components/layout/MessageBox/types';
+import { LoaderSpinner } from '../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
 import { deviceBreakpoints } from '../../../shared/constants';
 import { useApi } from '../../../shared/hooks/api/useApi';
 import { routes } from '../../../shared/routes';
 import { useEnrollmentStore } from '../../enrollment/hooks/store/useEnrollmentStore';
-import { BigInfoBox } from '../../../shared/components/layout/BigInfoBox/BigInfoBox';
-import { LoaderSpinner } from '../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
 import { OpenIdLoginButton } from './OIDCButtons';
 
 type FormFields = {
@@ -138,12 +136,8 @@ export const TokenCard = () => {
         </form>
         {openidData?.url && (
           <>
-            <h2 className="openid-heading">Or Sign In with External SSO</h2>
-            <BigInfoBox
-              message={
-                'If you would like to initiate the enrollment process using External SSO, please click the link below to sign in and start the process.'
-              }
-            />
+            <h2 className="openid-heading">{LL.pages.token.card.oidc.title()}</h2>
+            <BigInfoBox message={LL.pages.token.card.oidc.infoBox()} />
             <div className="openid-button">
               <OpenIdLoginButton
                 url={openidData.url}

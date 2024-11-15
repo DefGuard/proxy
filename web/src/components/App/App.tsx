@@ -18,11 +18,11 @@ import { detectLocale } from '../../i18n/i18n-util';
 import { loadLocaleAsync } from '../../i18n/i18n-util.async';
 import { EnrollmentPage } from '../../pages/enrollment/EnrollmentPage';
 import { MainPage } from '../../pages/main/MainPage';
+import { OpenIDCallbackPage } from '../../pages/openidCallback/OpenIDCallback';
 import { PasswordResetPage } from '../../pages/passwordReset/PasswordResetPage';
 import { SessionTimeoutPage } from '../../pages/sessionTimeout/SessionTimeoutPage';
 import { TokenPage } from '../../pages/token/TokenPage';
 import { routes } from '../../shared/routes';
-import { OpenIDCallbackPage } from '../../pages/openidCallback/OpenIDCallback';
 
 dayjs.extend(duration);
 dayjs.extend(utc);

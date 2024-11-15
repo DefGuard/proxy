@@ -1,11 +1,12 @@
 /* eslint-disable max-len */
+import './style.scss';
+
 import { useI18nContext } from '../../../i18n/i18n-react';
 import { Button } from '../../../shared/components/layout/Button/Button';
 import {
   ButtonSize,
   ButtonStyleVariant,
 } from '../../../shared/components/layout/Button/types';
-import './style.scss';
 
 export const OpenIdLoginButton = ({
   url,
@@ -84,7 +85,7 @@ const CustomButton = ({ url, display_name }: { url: string; display_name?: strin
     <Button
       size={ButtonSize.LARGE}
       styleVariant={ButtonStyleVariant.PRIMARY}
-      text={`${LL.pages.token.card.oidcButton()} ${
+      text={`${LL.pages.token.card.oidc.oidcButton()} ${
         display_name && display_name.length > 0 ? display_name : 'OIDC'
       }`}
       data-testid="login-oidc"

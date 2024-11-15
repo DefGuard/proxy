@@ -37,7 +37,7 @@ export const useApi = (): UseApi => {
     client
       .get('/openid/auth_info')
       .then((res) => res.data)
-      .catch((_) => {
+      .catch(() => {
         return {
           url: null,
         };

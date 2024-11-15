@@ -290,7 +290,12 @@ If you want to disengage your VPN connection, simply press "deactivate".
             submit: 'Next',
           },
         },
-        oidcButton: 'Sign in with',
+        oidc: {
+          oidcButton: 'Sign in with',
+          title: 'Or Sign In with External SSO',
+          infoBox:
+            'If you would like to initiate the enrollment process using External SSO, please click the link below to sign in and start the process.',
+        },
       },
     },
     oidcLogin: {
