@@ -573,6 +573,66 @@ type RootTranslation = {
 						submit: string
 					}
 				}
+				oidc: {
+					/**
+					 * S​i​g​n​ ​i​n​ ​w​i​t​h
+					 */
+					oidcButton: string
+					/**
+					 * O​r​ ​S​i​g​n​ ​I​n​ ​w​i​t​h​ ​E​x​t​e​r​n​a​l​ ​S​S​O
+					 */
+					title: string
+					/**
+					 * I​f​ ​y​o​u​ ​w​o​u​l​d​ ​l​i​k​e​ ​t​o​ ​i​n​i​t​i​a​t​e​ ​t​h​e​ ​e​n​r​o​l​l​m​e​n​t​ ​p​r​o​c​e​s​s​ ​u​s​i​n​g​ ​E​x​t​e​r​n​a​l​ ​S​S​O​,​ ​p​l​e​a​s​e​ ​c​l​i​c​k​ ​t​h​e​ ​l​i​n​k​ ​b​e​l​o​w​ ​t​o​ ​s​i​g​n​ ​i​n​ ​a​n​d​ ​s​t​a​r​t​ ​t​h​e​ ​p​r​o​c​e​s​s​.
+					 */
+					infoBox: string
+				}
+			}
+		}
+		oidcLogin: {
+			card: {
+				/**
+				 * S​t​a​r​t​ ​y​o​u​r​ ​e​n​r​o​l​l​m​e​n​t​ ​p​r​o​c​e​s​s
+				 */
+				title: string
+				/**
+				 * T​h​a​n​k​ ​y​o​u​ ​f​o​r​ ​v​a​l​i​d​a​t​i​n​g​ ​y​o​u​r​ ​a​c​c​o​u​n​t​,​ ​p​l​e​a​s​e​ ​f​o​l​l​o​w​ ​i​n​s​t​r​u​c​t​i​o​n​ ​b​e​l​o​w​ ​f​o​r​ ​c​o​n​f​i​g​u​r​i​n​g​ ​y​o​u​r​ ​V​P​N​ ​c​o​n​n​e​c​t​i​o​n​.
+				 */
+				infoBox: string
+				steps: {
+					/**
+					 * P​l​e​a​s​e​ ​d​o​w​n​l​o​a​d​ ​a​n​d​ ​i​n​s​t​a​l​l​ ​d​e​f​g​u​a​r​d​ ​V​P​N​ ​D​e​s​k​t​o​p​ ​C​l​i​e​n​t​.
+					 */
+					first: string
+					/**
+					 * 2​.​ ​O​p​e​n​ ​t​h​e​ ​c​l​i​e​n​t​ ​a​n​d​ ​<​i​>​A​d​d​ ​I​n​s​t​a​n​c​e​<​/​i​>​.​ ​C​o​p​y​ ​t​h​e​ ​d​a​t​a​ ​p​r​o​v​i​d​e​d​ ​b​e​l​o​w​ ​i​n​t​o​ ​t​h​e​ ​c​o​r​r​e​s​p​o​n​d​i​n​g​ ​f​i​e​l​d​s​.​ ​
+				​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​Y​o​u​ ​c​a​n​ ​a​l​s​o​ ​l​e​a​r​n​ ​m​o​r​e​ ​a​b​o​u​t​ ​t​h​e​ ​p​r​o​c​e​s​s​ ​i​n​ ​o​u​r​ ​<​a​
+				​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​h​r​e​f​=​"​h​t​t​p​s​:​/​/​d​o​c​s​.​d​e​f​g​u​a​r​d​.​n​e​t​/​h​e​l​p​/​c​o​n​f​i​g​u​r​i​n​g​-​v​p​n​/​a​d​d​-​n​e​w​-​i​n​s​t​a​n​c​e​"​
+				​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​t​a​r​g​e​t​=​"​_​b​l​a​n​k​"​
+				​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​>​
+				​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​d​o​c​u​m​e​n​t​a​t​i​o​n​
+				​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​ ​<​/​a​>​.
+					 */
+					second: string
+					tokenInput: {
+						/**
+						 * I​n​s​t​a​n​c​e​ ​U​R​L
+						 */
+						instanceUrl: string
+						/**
+						 * T​o​k​e​n
+						 */
+						token: string
+						/**
+						 * P​l​e​a​s​e​ ​p​r​o​v​i​d​e​ ​i​n​s​t​a​n​c​e​ ​U​R​L​ ​a​n​d​ ​t​o​k​e​n
+						 */
+						title: string
+						/**
+						 * A​d​d​ ​I​n​s​t​a​n​c​e
+						 */
+						addInstance: string
+					}
+				}
 			}
 		}
 	}
@@ -1132,6 +1192,66 @@ export type TranslationFunctions = {
 						 * Next
 						 */
 						submit: () => LocalizedString
+					}
+				}
+				oidc: {
+					/**
+					 * Sign in with
+					 */
+					oidcButton: () => LocalizedString
+					/**
+					 * Or Sign In with External SSO
+					 */
+					title: () => LocalizedString
+					/**
+					 * If you would like to initiate the enrollment process using External SSO, please click the link below to sign in and start the process.
+					 */
+					infoBox: () => LocalizedString
+				}
+			}
+		}
+		oidcLogin: {
+			card: {
+				/**
+				 * Start your enrollment process
+				 */
+				title: () => LocalizedString
+				/**
+				 * Thank you for validating your account, please follow instruction below for configuring your VPN connection.
+				 */
+				infoBox: () => LocalizedString
+				steps: {
+					/**
+					 * Please download and install defguard VPN Desktop Client.
+					 */
+					first: () => LocalizedString
+					/**
+					 * 2. Open the client and <i>Add Instance</i>. Copy the data provided below into the corresponding fields. 
+				              You can also learn more about the process in our <a
+				              href="https://docs.defguard.net/help/configuring-vpn/add-new-instance"
+				              target="_blank"
+				              >
+				              documentation
+				              </a>.
+					 */
+					second: () => LocalizedString
+					tokenInput: {
+						/**
+						 * Instance URL
+						 */
+						instanceUrl: () => LocalizedString
+						/**
+						 * Token
+						 */
+						token: () => LocalizedString
+						/**
+						 * Please provide instance URL and token
+						 */
+						title: () => LocalizedString
+						/**
+						 * Add Instance
+						 */
+						addInstance: () => LocalizedString
 					}
 				}
 			}

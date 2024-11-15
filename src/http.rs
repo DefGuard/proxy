@@ -23,10 +23,12 @@ use tower_governor::{
 };
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info_span, Level};
+use url::Url;
 
 use crate::{
     assets::{index, svg, web_asset},
     config::Config,
+    enterprise::handlers::openid_login,
     error::ApiError,
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
@@ -41,6 +43,20 @@ const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
     key: Key,
+    url: Url,
+}
+
+impl AppState {
+    /// Returns configured URL with "auth/callback" appended to the path.
+    #[must_use]
+    pub(crate) fn callback_url(&self) -> Url {
+        let mut url = self.url.clone();
+        // Append "/openid/callback" to the URL.
+        if let Ok(mut path_segments) = url.path_segments_mut() {
+            path_segments.extend(&["openid", "callback"]);
+        }
+        url
+    }
 }
 
 impl FromRef<AppState> for Key {
@@ -71,7 +87,10 @@ async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static
     if state.grpc_server.connected.load(Ordering::Relaxed) {
         (StatusCode::OK, "Alive")
     } else {
-        (StatusCode::SERVICE_UNAVAILABLE, "Not connected to core")
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Not connected to Defguard Core",
+        )
     }
 }
 
@@ -95,7 +114,7 @@ fn get_client_addr(request: &Request<Body>) -> String {
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
-    info!("Starting Defguard proxy server");
+    info!("Starting Defguard Proxy server");
     debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
@@ -109,9 +128,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         grpc_server: grpc_server.clone(),
         // Generate secret key for encrypting cookies.
         key: Key::generate(),
+        url: config.url.clone(),
     };
 
-    // read gRPC TLS cert and key
+    // Read gRPC TLS certificate and key.
     debug!("Configuring certificates for gRPC");
     let grpc_cert = config
         .grpc_cert
@@ -121,7 +141,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .grpc_key
         .as_ref()
         .and_then(|path| read_to_string(path).ok());
-    debug!("Configured certificates for gRPC, cert: {grpc_cert:?}");
+    debug!("Configured gRPC certificate: {grpc_cert:?}");
 
     // Start gRPC server.
     debug!("Spawning gRPC server");
@@ -159,7 +179,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD).await;
-                tracing::debug!(
+                debug!(
                     "Cleaning-up rate limiter storage, current size: {}",
                     governor_limiter.len()
                 );
@@ -188,6 +208,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .nest("/enrollment", enrollment::router())
                 .nest("/password-reset", password_reset::router())
                 .nest("/client-mfa", desktop_client_mfa::router())
+                .nest("/openid", openid_login::router())
                 .route("/poll", post(polling::info))
                 .route("/health", get(healthcheck))
                 .route("/health-grpc", get(healthcheckgrpc))
@@ -231,7 +252,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .context("Error running HTTP server")
     });
 
-    info!("Defguard proxy server initialization complete");
+    info!("Defguard Proxy server initialization complete");
     while let Some(Ok(result)) = tasks.join_next().await {
         result?;
     }
