@@ -20,8 +20,8 @@ use crate::{
 };
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
-static CSRF_COOKIE_NAME: &str = "csrf";
-static NONCE_COOKIE_NAME: &str = "nonce";
+static CSRF_COOKIE_NAME: &str = "csrf_proxy";
+static NONCE_COOKIE_NAME: &str = "nonce_proxy";
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
