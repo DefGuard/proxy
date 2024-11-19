@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-pub fn router() -> Router<AppState> {
+pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_enrollment_process))
         .route("/activate_user", post(activate_user))
@@ -21,7 +21,7 @@ pub fn router() -> Router<AppState> {
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn start_enrollment_process(
+async fn start_enrollment_process(
     State(state): State<AppState>,
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
@@ -60,7 +60,7 @@ pub async fn start_enrollment_process(
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn activate_user(
+async fn activate_user(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
@@ -95,7 +95,7 @@ pub async fn activate_user(
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn create_device(
+async fn create_device(
     State(state): State<AppState>,
     device_info: Option<DeviceInfo>,
     private_cookies: PrivateCookieJar,
@@ -123,7 +123,7 @@ pub async fn create_device(
 }
 
 #[instrument(level = "debug", skip(state))]
-pub async fn get_network_info(
+async fn get_network_info(
     State(state): State<AppState>,
     private_cookies: PrivateCookieJar,
     Json(mut req): Json<ExistingDevice>,

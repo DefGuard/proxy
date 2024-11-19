@@ -33,6 +33,19 @@ export const useApi = (): UseApi => {
   const resetPassword: UseApi['passwordReset']['reset'] = (data) =>
     client.post('/password-reset/reset', data).then(unpackRequest);
 
+  const getOpenIDAuthInfo: UseApi['getOpenIDAuthInfo'] = () =>
+    client
+      .get('/openid/auth_info')
+      .then((res) => res.data)
+      .catch(() => {
+        return {
+          url: null,
+        };
+      });
+
+  const openIDCallback: UseApi['openIDCallback'] = (data) =>
+    client.post('/openid/callback', data).then(unpackRequest);
+
   return {
     enrollment: {
       start: startEnrollment,
@@ -45,5 +58,7 @@ export const useApi = (): UseApi => {
       reset: resetPassword,
     },
     getAppInfo,
+    getOpenIDAuthInfo,
+    openIDCallback,
   };
 };

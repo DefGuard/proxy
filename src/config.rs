@@ -1,8 +1,9 @@
-use std::{fs, io::Error as IoError};
+use std::{fs::read_to_string, path::PathBuf};
 
 use clap::Parser;
 use log::LevelFilter;
 use serde::Deserialize;
+use url::Url;
 
 #[derive(Parser, Debug, Deserialize)]
 #[command(version)]
@@ -35,16 +36,24 @@ pub struct Config {
     #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_BURST", default_value_t = 0)]
     pub rate_limit_burst: u32,
 
+    #[arg(
+        long,
+        env = "DEFGUARD_PROXY_URL",
+        value_parser = Url::parse,
+        default_value = "http://localhost:8080"
+    )]
+    pub url: Url,
+
     /// Configuration file path
     #[arg(long = "config", short)]
     #[serde(skip)]
-    config_path: Option<std::path::PathBuf>,
+    config_path: Option<PathBuf>,
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
     #[error("Failed to read config file")]
-    IoError(#[from] IoError),
+    IoError(#[from] std::io::Error),
     #[error("Failed to parse config file")]
     ParseError(#[from] toml::de::Error),
 }
@@ -55,11 +64,11 @@ pub fn get_config() -> Result<Config, ConfigError> {
 
     // load config from file if one was specified
     if let Some(config_path) = cli_config.config_path {
-        info!("Reading configuration from config file: {config_path:?}");
-        let config_toml = fs::read_to_string(config_path)?;
+        info!("Reading configuration from file: {config_path:?}");
+        let config_toml = read_to_string(config_path)?;
         let file_config: Config = toml::from_str(&config_toml)?;
-        return Ok(file_config);
+        Ok(file_config)
+    } else {
+        Ok(cli_config)
     }
-
-    Ok(cli_config)
 }

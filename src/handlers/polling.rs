@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[instrument(level = "debug", skip(state))]
-pub async fn info(
+pub(crate) async fn info(
     State(state): State<AppState>,
     Json(req): Json<InstanceInfoRequest>,
 ) -> Result<Json<InstanceInfoResponse>, ApiError> {

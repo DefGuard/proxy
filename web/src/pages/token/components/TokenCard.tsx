@@ -1,7 +1,7 @@
 import './style.scss';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useMemo } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
@@ -16,18 +16,19 @@ import {
   ArrowSingleDirection,
   ArrowSingleSize,
 } from '../../../shared/components/icons/ArrowSingle/types';
+import { BigInfoBox } from '../../../shared/components/layout/BigInfoBox/BigInfoBox';
 import { Button } from '../../../shared/components/layout/Button/Button';
 import {
   ButtonSize,
   ButtonStyleVariant,
 } from '../../../shared/components/layout/Button/types';
 import { Card } from '../../../shared/components/layout/Card/Card';
-import { MessageBox } from '../../../shared/components/layout/MessageBox/MessageBox';
-import { MessageBoxType } from '../../../shared/components/layout/MessageBox/types';
+import { LoaderSpinner } from '../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
 import { deviceBreakpoints } from '../../../shared/constants';
 import { useApi } from '../../../shared/hooks/api/useApi';
 import { routes } from '../../../shared/routes';
 import { useEnrollmentStore } from '../../enrollment/hooks/store/useEnrollmentStore';
+import { OpenIdLoginButton } from './OIDCButtons';
 
 type FormFields = {
   token: string;
@@ -37,6 +38,7 @@ export const TokenCard = () => {
   const navigate = useNavigate();
   const {
     enrollment: { start: startEnrollment },
+    getOpenIDAuthInfo,
   } = useApi();
   const { breakpoint } = useBreakpoint(deviceBreakpoints);
   const { LL } = useI18nContext();
@@ -61,6 +63,15 @@ export const TokenCard = () => {
     },
     resolver: zodResolver(schema),
   });
+
+  const { isLoading: openidLoading, data: openidData } = useQuery(
+    [],
+    () => getOpenIDAuthInfo(),
+    {
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+    },
+  );
 
   const { isLoading, mutate } = useMutation({
     mutationFn: startEnrollment,
@@ -100,42 +111,19 @@ export const TokenCard = () => {
     }
   };
 
+  if (openidLoading) {
+    return (
+      <div className="loader-container">
+        <LoaderSpinner size={100} />
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="controls">
-        <Button
-          size={ButtonSize.LARGE}
-          styleVariant={ButtonStyleVariant.LINK}
-          text={LL.common.controls.back()}
-          icon={
-            <ArrowSingle
-              size={ArrowSingleSize.SMALL}
-              direction={ArrowSingleDirection.LEFT}
-            />
-          }
-          onClick={() => navigate(routes.main)}
-        />
-        <Button
-          data-testid="enrollment-token-submit-button"
-          size={ButtonSize.LARGE}
-          styleVariant={ButtonStyleVariant.PRIMARY}
-          text={LL.pages.resetPassword.steps.email.controls.send()}
-          rightIcon={
-            <ArrowSingle
-              size={ArrowSingleSize.SMALL}
-              direction={ArrowSingleDirection.RIGHT}
-            />
-          }
-          onClick={handleSubmit(handleValidSubmit)}
-        />
-      </div>
       <Card shaded={breakpoint !== 'mobile'} className="token-card">
         <h2>{LL.pages.token.card.title()}</h2>
-        <MessageBox
-          message={LL.pages.token.card.messageBox.email()}
-          type={MessageBoxType.INFO}
-          dismissId="token-page-card-email"
-        />
+        <BigInfoBox message={LL.pages.token.card.messageBox.email()} />
         <form
           data-testid="enrollment-token-form"
           onSubmit={handleSubmit(handleValidSubmit)}
@@ -146,6 +134,45 @@ export const TokenCard = () => {
             required
           />
         </form>
+        {openidData?.url && (
+          <>
+            <h2 className="openid-heading">{LL.pages.token.card.oidc.title()}</h2>
+            <BigInfoBox message={LL.pages.token.card.oidc.infoBox()} />
+            <div className="openid-button">
+              <OpenIdLoginButton
+                url={openidData.url}
+                display_name={openidData.button_display_name}
+              />
+            </div>
+          </>
+        )}
+        <div className="controls">
+          <Button
+            size={ButtonSize.LARGE}
+            styleVariant={ButtonStyleVariant.LINK}
+            text={LL.common.controls.back()}
+            icon={
+              <ArrowSingle
+                size={ArrowSingleSize.SMALL}
+                direction={ArrowSingleDirection.LEFT}
+              />
+            }
+            onClick={() => navigate(routes.main)}
+          />
+          <Button
+            data-testid="enrollment-token-submit-button"
+            size={ButtonSize.LARGE}
+            styleVariant={ButtonStyleVariant.PRIMARY}
+            text={LL.pages.resetPassword.steps.email.controls.send()}
+            rightIcon={
+              <ArrowSingle
+                size={ArrowSingleSize.SMALL}
+                direction={ArrowSingleDirection.RIGHT}
+              />
+            }
+            onClick={handleSubmit(handleValidSubmit)}
+          />
+        </div>
       </Card>
     </>
   );
