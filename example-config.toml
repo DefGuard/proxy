@@ -16,3 +16,4 @@ grpc_port = 50051
 log_level = "info"
 rate_limit_per_second = 0
 rate_limit_burst = 0
+url = "http://localhost:8080"

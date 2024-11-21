@@ -5,6 +5,10 @@ use log::LevelFilter;
 use serde::Deserialize;
 use url::Url;
 
+fn default_url() -> Url {
+    Url::parse("http://localhost:8080").unwrap()
+}
+
 #[derive(Parser, Debug, Deserialize)]
 #[command(version)]
 pub struct Config {
@@ -42,6 +46,7 @@ pub struct Config {
         value_parser = Url::parse,
         default_value = "http://localhost:8080"
     )]
+    #[serde(default = "default_url")]
     pub url: Url,
 
     /// Configuration file path
