@@ -26,8 +26,13 @@
       rustToolchain = pkgs.rust-bin.stable.latest.default.override {
         extensions = ["rust-analyzer" "rust-src" "rustfmt" "clippy"];
       };
+      # define shared build inputs
+      nativeBuildInputs = with pkgs; [];
+      buildInputs = with pkgs; [protobuf];
     in {
       devShells.default = pkgs.mkShell {
+        inherit nativeBuildInputs buildInputs;
+
         packages = with pkgs; [
           pkg-config
           openssl
