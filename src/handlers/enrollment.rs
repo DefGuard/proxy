@@ -1,15 +1,12 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use defguard_protos::proto::proxy::{core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo, EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice};
 use time::OffsetDateTime;
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::{AppState, ENROLLMENT_COOKIE_NAME},
-    proto::{
-        core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
-        EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
-    },
 };
 
 pub(crate) fn router() -> Router<AppState> {

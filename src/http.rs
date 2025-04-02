@@ -15,6 +15,7 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
+use defguard_protos::proto::proxy::proxy_server;
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
@@ -32,7 +33,6 @@ use crate::{
     error::ApiError,
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
-    proto::proxy_server,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";

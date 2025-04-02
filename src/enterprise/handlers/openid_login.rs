@@ -7,17 +7,13 @@ use axum_extra::extract::{
     cookie::{Cookie, SameSite},
     PrivateCookieJar,
 };
+use defguard_protos::proto::proxy::{
+    core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthInfoRequest,
+};
 use serde::{Deserialize, Serialize};
 use time::Duration;
 
-use crate::{
-    error::ApiError,
-    handlers::get_core_response,
-    http::AppState,
-    proto::{
-        core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthInfoRequest,
-    },
-};
+use crate::{error::ApiError, handlers::get_core_response, http::AppState};
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
 static CSRF_COOKIE_NAME: &str = "csrf_proxy";

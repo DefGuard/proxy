@@ -3,10 +3,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use defguard_protos::proto::proxy::CoreError;
 use serde_json::json;
 use tonic::{metadata::errors::InvalidMetadataValue, Code, Status};
-
-use crate::proto::CoreError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {

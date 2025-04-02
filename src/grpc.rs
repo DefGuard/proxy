@@ -7,14 +7,12 @@ use std::{
     },
 };
 
+use defguard_protos::proto::proxy::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 
-use crate::{
-    error::ApiError,
-    proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
-};
+use crate::error::ApiError;
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;

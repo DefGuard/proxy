@@ -1,14 +1,12 @@
 use axum::{extract::State, routing::post, Json, Router};
 
-use crate::{
-    error::ApiError,
-    handlers::get_core_response,
-    http::AppState,
-    proto::{
-        core_request, core_response, ClientMfaFinishRequest, ClientMfaFinishResponse,
-        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
-    },
+use crate::{error::ApiError, handlers::get_core_response, http::AppState};
+use defguard_protos::proto::proxy::{
+    core_request, core_response, ClientMfaFinishRequest, ClientMfaFinishResponse,
+    ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
 };
+
+use super::LocalDeviceInfo;
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
@@ -19,13 +17,13 @@ pub(crate) fn router() -> Router<AppState> {
 #[instrument(level = "debug", skip(state))]
 async fn start_client_mfa(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: Option<LocalDeviceInfo>,
     Json(req): Json<ClientMfaStartRequest>,
 ) -> Result<Json<ClientMfaStartResponse>, ApiError> {
     info!("Starting desktop client authorization {req:?}");
     let rx = state.grpc_server.send(
         Some(core_request::Payload::ClientMfaStart(req.clone())),
-        device_info,
+        device_info.map(Into::into),
     )?;
     let payload = get_core_response(rx).await?;
 
