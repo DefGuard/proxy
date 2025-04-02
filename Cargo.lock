@@ -539,6 +539,7 @@ dependencies = [
  "axum-client-ip",
  "axum-extra",
  "clap",
+ "defguard_protos",
  "dotenvy",
  "log",
  "mime_guess",
@@ -560,6 +561,17 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "vergen-git2",
+]
+
+[[package]]
+name = "defguard_protos"
+version = "0.0.0"
+source = "git+https://github.com/DefGuard/defguard.git?rev=71d482bba6b4df0d25eaa8c551a93da2648d4e6a#71d482bba6b4df0d25eaa8c551a93da2648d4e6a"
+dependencies = [
+ "prost",
+ "prost-build",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]
