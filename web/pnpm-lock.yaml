@@ -175,7 +175,7 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.3))(eslint@8.57.1)(typescript@5.8.3)
       vite:
-        specifier: ^4.5.14
+        specifier: ^4.4.12
         version: 4.5.14(@types/node@20.17.48)(sass@1.70.0)
 
 packages:
