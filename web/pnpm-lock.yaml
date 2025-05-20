@@ -91,10 +91,7 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1
       '@swc/core-darwin-arm64':
-        specifier: 1.3.70
-        version: 1.3.70
-      '@swc/core-darwin-x64':
-        specifier: 1.3.70
+        specifier: ~1.3
         version: 1.3.70
       '@tanstack/react-query':
         specifier: ^4.32.6
@@ -127,7 +124,7 @@ importers:
         specifier: ^4.0.4
         version: 4.0.4(vite@4.5.3(@types/node@20.16.1)(sass@1.64.2))
       '@vitejs/plugin-react-swc':
-        specifier: 3.3.2
+        specifier: ^3.3.2
         version: 3.3.2(vite@4.5.3(@types/node@20.16.1)(sass@1.64.2))
       autoprefixer:
         specifier: ^10.4.14
@@ -3862,7 +3859,8 @@ snapshots:
 
   '@swc/core-darwin-arm64@1.3.70': {}
 
-  '@swc/core-darwin-x64@1.3.70': {}
+  '@swc/core-darwin-x64@1.3.70':
+    optional: true
 
   '@swc/core-linux-arm-gnueabihf@1.3.70':
     optional: true
