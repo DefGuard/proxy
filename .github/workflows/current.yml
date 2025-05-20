@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - dev
+      - armv7
     paths-ignore:
       - "*.md"
       - "LICENSE"
