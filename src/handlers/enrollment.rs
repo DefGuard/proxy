@@ -23,6 +23,7 @@ pub(crate) fn router() -> Router<AppState> {
 #[instrument(level = "debug", skip(state))]
 async fn start_enrollment_process(
     State(state): State<AppState>,
+    device_info: Option<DeviceInfo>,
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
 ) -> Result<(PrivateCookieJar, Json<EnrollmentStartResponse>), ApiError> {
@@ -40,7 +41,7 @@ async fn start_enrollment_process(
     debug!("Sending the enrollment process request to core service.");
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
+        .send(Some(core_request::Payload::EnrollmentStart(req)), device_info)?;
     let payload = get_core_response(rx).await?;
     debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process.");
     if let core_response::Payload::EnrollmentStart(response) = payload {
