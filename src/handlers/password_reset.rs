@@ -22,13 +22,13 @@ pub(crate) fn router() -> Router<AppState> {
 #[instrument(level = "debug", skip(state))]
 async fn request_password_reset(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     Json(req): Json<PasswordResetInitializeRequest>,
 ) -> Result<(), ApiError> {
     info!("Starting password reset request for {}", req.email);
 
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::PasswordResetInit(req.clone())),
+        core_request::Payload::PasswordResetInit(req.clone()),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
@@ -44,7 +44,7 @@ async fn request_password_reset(
 #[instrument(level = "debug", skip(state))]
 async fn start_password_reset(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<PasswordResetStartRequest>,
 ) -> Result<(PrivateCookieJar, Json<PasswordResetStartResponse>), ApiError> {
@@ -58,10 +58,9 @@ async fn start_password_reset(
 
     let token = req.clone().token.clone();
 
-    let rx = state.grpc_server.send(
-        Some(core_request::Payload::PasswordResetStart(req)),
-        device_info,
-    )?;
+    let rx = state
+        .grpc_server
+        .send(core_request::Payload::PasswordResetStart(req), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::PasswordResetStart(response) = payload {
         // set session cookie
@@ -79,7 +78,7 @@ async fn start_password_reset(
 #[instrument(level = "debug", skip(state))]
 async fn reset_password(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     mut private_cookies: PrivateCookieJar,
     Json(mut req): Json<PasswordResetRequest>,
 ) -> Result<PrivateCookieJar, ApiError> {
@@ -92,7 +91,7 @@ async fn reset_password(
 
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::PasswordReset(req)), device_info)?;
+        .send(core_request::Payload::PasswordReset(req), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::Empty(()) = payload {
         if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
