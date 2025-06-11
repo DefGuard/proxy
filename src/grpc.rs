@@ -44,15 +44,15 @@ impl ProxyServer {
     #[instrument(name = "send_grpc_message", level = "debug", skip(self))]
     pub(crate) fn send(
         &self,
-        payload: Option<core_request::Payload>,
-        device_info: Option<DeviceInfo>,
+        payload: core_request::Payload,
+        device_info: DeviceInfo,
     ) -> Result<oneshot::Receiver<core_response::Payload>, ApiError> {
         if let Some(client_tx) = self.clients.lock().unwrap().values().next() {
             let id = self.current_id.fetch_add(1, Ordering::Relaxed);
             let res = CoreRequest {
                 id,
-                device_info,
-                payload,
+                device_info: Some(device_info),
+                payload: Some(payload),
             };
             if let Err(err) = client_tx.send(Ok(res)) {
                 error!("Failed to send CoreRequest: {err}");
