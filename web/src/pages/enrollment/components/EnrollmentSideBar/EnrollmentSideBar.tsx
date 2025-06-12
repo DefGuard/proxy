@@ -87,7 +87,7 @@ export const EnrollmentSideBar = () => {
       <Divider />
       <div className="copyright">
         <p>
-          Copyright ©{` ${Date.now().getFullYear()} `}
+          Copyright ©{` ${new Date().getFullYear()} `}
           <a href="https://teonite.com" target="_blank" rel="noopener noreferrer">
             teonite
           </a>
