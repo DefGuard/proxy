@@ -12,6 +12,7 @@ export type UserInfo = {
   login: string;
   email: string;
   phone_number?: string;
+  is_admin: boolean;
 };
 
 export type EnrollmentStartRequest = {
@@ -21,6 +22,7 @@ export type EnrollmentStartRequest = {
 export type EnrollmentSettings = {
   vpn_setup_optional: boolean;
   only_client_activation: boolean;
+  admin_device_management: boolean;
 };
 
 export type EnrollmentStartResponse = {
