@@ -16,6 +16,7 @@ use crate::{
     http::AppState,
     proto::{
         core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthInfoRequest,
+        DeviceInfo,
     },
 };
 
@@ -49,6 +50,7 @@ impl AuthInfo {
 #[instrument(level = "debug", skip(state))]
 async fn auth_info(
     State(state): State<AppState>,
+    device_info: DeviceInfo,
     private_cookies: PrivateCookieJar,
 ) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
     debug!("Getting auth info for OAuth2/OpenID login");
@@ -59,7 +61,7 @@ async fn auth_info(
 
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::AuthInfo(request)), None)?;
+        .send(core_request::Payload::AuthInfo(request), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::AuthInfo(response) = payload {
         debug!("Received auth info {response:?}");
@@ -105,6 +107,7 @@ struct CallbackResponseData {
 #[instrument(level = "debug", skip(state))]
 async fn auth_callback(
     State(state): State<AppState>,
+    device_info: DeviceInfo,
     mut private_cookies: PrivateCookieJar,
     Json(payload): Json<AuthenticationResponse>,
 ) -> Result<(PrivateCookieJar, Json<CallbackResponseData>), ApiError> {
@@ -135,7 +138,7 @@ async fn auth_callback(
 
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::AuthCallback(request)), None)?;
+        .send(core_request::Payload::AuthCallback(request), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::AuthCallback(AuthCallbackResponse { url, token }) = payload {
         debug!("Received auth callback response {url:?} {token:?}");
