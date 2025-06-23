@@ -23,6 +23,7 @@ pub(crate) fn router() -> Router<AppState> {
 #[instrument(level = "debug", skip(state))]
 async fn start_enrollment_process(
     State(state): State<AppState>,
+    device_info: DeviceInfo,
     mut private_cookies: PrivateCookieJar,
     Json(req): Json<EnrollmentStartRequest>,
 ) -> Result<(PrivateCookieJar, Json<EnrollmentStartResponse>), ApiError> {
@@ -40,7 +41,7 @@ async fn start_enrollment_process(
     debug!("Sending the enrollment process request to core service.");
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::EnrollmentStart(req)), None)?;
+        .send(core_request::Payload::EnrollmentStart(req), device_info)?;
     let payload = get_core_response(rx).await?;
     debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process.");
     if let core_response::Payload::EnrollmentStart(response) = payload {
@@ -62,7 +63,7 @@ async fn start_enrollment_process(
 #[instrument(level = "debug", skip(state))]
 async fn activate_user(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     mut private_cookies: PrivateCookieJar,
     Json(mut req): Json<ActivateUserRequest>,
 ) -> Result<PrivateCookieJar, ApiError> {
@@ -78,7 +79,7 @@ async fn activate_user(
     debug!("Sending the activate user request to core service.");
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::ActivateUser(req)), device_info)?;
+        .send(core_request::Payload::ActivateUser(req), device_info)?;
     let payload = get_core_response(rx).await?;
     debug!("Receving payload from the core service. Trying to remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
@@ -97,7 +98,7 @@ async fn activate_user(
 #[instrument(level = "debug", skip(state))]
 async fn create_device(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     private_cookies: PrivateCookieJar,
     Json(mut req): Json<NewDevice>,
 ) -> Result<Json<DeviceConfigResponse>, ApiError> {
@@ -111,7 +112,7 @@ async fn create_device(
 
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::NewDevice(req)), device_info)?;
+        .send(core_request::Payload::NewDevice(req), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::DeviceConfig(response) = payload {
         info!("Added new device {name} {pubkey}");
@@ -125,6 +126,7 @@ async fn create_device(
 #[instrument(level = "debug", skip(state))]
 async fn get_network_info(
     State(state): State<AppState>,
+    device_info: DeviceInfo,
     private_cookies: PrivateCookieJar,
     Json(mut req): Json<ExistingDevice>,
 ) -> Result<Json<DeviceConfigResponse>, ApiError> {
@@ -138,7 +140,7 @@ async fn get_network_info(
 
     let rx = state
         .grpc_server
-        .send(Some(core_request::Payload::ExistingDevice(req)), None)?;
+        .send(core_request::Payload::ExistingDevice(req), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::DeviceConfig(response) = payload {
         info!("Got network info for device {pubkey}");

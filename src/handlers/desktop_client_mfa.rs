@@ -19,12 +19,12 @@ pub(crate) fn router() -> Router<AppState> {
 #[instrument(level = "debug", skip(state))]
 async fn start_client_mfa(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     Json(req): Json<ClientMfaStartRequest>,
 ) -> Result<Json<ClientMfaStartResponse>, ApiError> {
     info!("Starting desktop client authorization {req:?}");
     let rx = state.grpc_server.send(
-        Some(core_request::Payload::ClientMfaStart(req.clone())),
+        core_request::Payload::ClientMfaStart(req.clone()),
         device_info,
     )?;
     let payload = get_core_response(rx).await?;
@@ -41,14 +41,13 @@ async fn start_client_mfa(
 #[instrument(level = "debug", skip(state))]
 async fn finish_client_mfa(
     State(state): State<AppState>,
-    device_info: Option<DeviceInfo>,
+    device_info: DeviceInfo,
     Json(req): Json<ClientMfaFinishRequest>,
 ) -> Result<Json<ClientMfaFinishResponse>, ApiError> {
     info!("Finishing desktop client authorization");
-    let rx = state.grpc_server.send(
-        Some(core_request::Payload::ClientMfaFinish(req)),
-        device_info,
-    )?;
+    let rx = state
+        .grpc_server
+        .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::ClientMfaFinish(response) = payload {
         info!("Finished desktop client authorization");

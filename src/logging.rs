@@ -36,7 +36,7 @@ pub(crate) struct HttpFormatter<'a> {
     timer: SystemTime,
 }
 
-impl<'a> Default for HttpFormatter<'a> {
+impl Default for HttpFormatter<'_> {
     fn default() -> Self {
         Self {
             span: "http_request",

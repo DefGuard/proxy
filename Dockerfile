@@ -1,4 +1,4 @@
-FROM node:20-alpine as web
+FROM node:22-alpine as web
 
 WORKDIR /app
 COPY web/package.json .
@@ -10,7 +10,7 @@ COPY web/ .
 RUN pnpm run generate-translation-types
 RUN pnpm build
 
-FROM rust:1.80 as chef
+FROM rust:1.87 as chef
 
 WORKDIR /build
 
