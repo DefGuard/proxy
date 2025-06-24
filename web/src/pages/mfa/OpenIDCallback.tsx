@@ -1,17 +1,17 @@
 import './style.scss';
 
-import { LogoContainer } from '../../components/LogoContainer/LogoContainer';
-import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
-import { useApi } from '../../shared/hooks/api/useApi';
 import { useQuery } from '@tanstack/react-query';
-
-import { useState } from 'react';
-import { useI18nContext } from '../../i18n/i18n-react';
 import { AxiosError } from 'axios';
-import { LoaderSpinner } from '../../shared/components/layout/LoaderSpinner/LoaderSpinner';
-import { AuthFailIcon, ClientReturnIcon } from './icons';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+
+import { LogoContainer } from '../../components/LogoContainer/LogoContainer';
+import { useI18nContext } from '../../i18n/i18n-react';
+import { LoaderSpinner } from '../../shared/components/layout/LoaderSpinner/LoaderSpinner';
+import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
+import { useApi } from '../../shared/hooks/api/useApi';
+import { AuthFailIcon, ClientReturnIcon } from './Icons';
 
 type ErrorResponse = {
   error: string;

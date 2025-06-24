@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    routing::{get, post},
-    Json, Router,
-};
+use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{
     cookie::{Cookie, SameSite},
     PrivateCookieJar,
@@ -22,8 +18,8 @@ use crate::{
 };
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
-static CSRF_COOKIE_NAME: &str = "csrf_proxy";
-static NONCE_COOKIE_NAME: &str = "nonce_proxy";
+pub(super) static CSRF_COOKIE_NAME: &str = "csrf_proxy";
+pub(super) static NONCE_COOKIE_NAME: &str = "nonce_proxy";
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
@@ -127,11 +123,11 @@ async fn auth_info(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AuthenticationResponse {
-    code: String,
-    state: String,
+pub(super) struct AuthenticationResponse {
+    pub(super) code: String,
+    pub(super) state: String,
     #[serde(rename = "type")]
-    flow_type: String,
+    pub(super) flow_type: String,
 }
 
 #[derive(Serialize)]

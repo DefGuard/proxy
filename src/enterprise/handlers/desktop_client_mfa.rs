@@ -1,59 +1,19 @@
-use axum::{
-    extract::State,
-    routing::{get, post},
-    Json, Router,
-};
-use axum_extra::extract::{
-    cookie::{Cookie, SameSite},
-    PrivateCookieJar,
-};
-use serde::{Deserialize, Serialize};
-use time::Duration;
+use axum::{extract::State, Json};
+use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use tracing::{debug, error, info, warn};
 
 use crate::{
-    enterprise::handlers::openid_login::FlowType,
+    enterprise::handlers::openid_login::{
+        AuthenticationResponse, FlowType, CSRF_COOKIE_NAME, NONCE_COOKIE_NAME,
+    },
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
-    proto::{
-        core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthInfoRequest,
-        ClientMfaOidcAuthenticateRequest, ClientMfaStartRequest, ClientMfaStartResponse,
-        DeviceInfo,
-    },
+    proto::{core_request, core_response, ClientMfaOidcAuthenticateRequest, DeviceInfo},
 };
 
-static CSRF_COOKIE_NAME: &str = "csrf_proxy";
-static NONCE_COOKIE_NAME: &str = "nonce_proxy";
-
-#[derive(Serialize)]
-pub struct AuthInfo {
-    url: String,
-}
-
-impl AuthInfo {
-    #[must_use]
-    fn new(url: String) -> Self {
-        Self { url }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct AuthenticationResponse {
-    code: String,
-    state: String,
-    #[serde(rename = "type")]
-    flow_type: String,
-}
-
-#[derive(Serialize)]
-struct CallbackResponseData {
-    url: String,
-    token: String,
-}
-
 #[instrument(level = "debug", skip(state))]
-pub(crate) async fn mfa_auth_callback(
+pub(super) async fn mfa_auth_callback(
     State(state): State<AppState>,
     device_info: DeviceInfo,
     mut private_cookies: PrivateCookieJar,

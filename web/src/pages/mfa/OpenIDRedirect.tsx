@@ -1,14 +1,14 @@
 import './style.scss';
 
+import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+
 import { LogoContainer } from '../../components/LogoContainer/LogoContainer';
+import { useI18nContext } from '../../i18n/i18n-react';
 import { LoaderSpinner } from '../../shared/components/layout/LoaderSpinner/LoaderSpinner';
 import { PageContainer } from '../../shared/components/layout/PageContainer/PageContainer';
 import { useApi } from '../../shared/hooks/api/useApi';
-import { useQuery } from '@tanstack/react-query';
-
-import { useEffect } from 'react';
-import { AuthFailIcon } from './icons';
-import { useI18nContext } from '../../i18n/i18n-react';
+import { AuthFailIcon } from './Icons';
 
 export const OpenIdMfaPage = () => {
   const { getOpenIDAuthInfo } = useApi();
