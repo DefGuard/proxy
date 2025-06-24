@@ -635,6 +635,44 @@ type RootTranslation = {
 				}
 			}
 		}
+		openidMfaCallback: {
+			error: {
+				/**
+				 * A​u​t​h​e​n​t​i​c​a​t​i​o​n​ ​E​r​r​o​r
+				 */
+				title: string
+				/**
+				 * T​h​e​r​e​ ​w​a​s​ ​a​n​ ​e​r​r​o​r​ ​d​u​r​i​n​g​ ​a​u​t​h​e​n​t​i​c​a​t​i​o​n​ ​w​i​t​h​ ​t​h​e​ ​p​r​o​v​i​d​e​r​.​ ​P​l​e​a​s​e​ ​g​o​ ​b​a​c​k​ ​t​o​ ​t​h​e​ ​*​*​D​e​f​g​u​a​r​d​ ​V​P​N​ ​C​l​i​e​n​t​*​*​ ​a​n​d​ ​r​e​p​e​a​t​ ​t​h​e​ ​p​r​o​c​e​s​s​.
+				 */
+				message: string
+				/**
+				 * E​r​r​o​r​ ​D​e​t​a​i​l​s
+				 */
+				detailsTitle: string
+			}
+			success: {
+				/**
+				 * A​u​t​h​e​n​t​i​c​a​t​i​o​n​ ​C​o​m​p​l​e​t​e​d
+				 */
+				title: string
+				/**
+				 * Y​o​u​ ​h​a​v​e​ ​b​e​e​n​ ​s​u​c​c​e​s​s​f​u​l​l​y​ ​a​u​t​h​e​n​t​i​c​a​t​e​d​.​ ​P​l​e​a​s​e​ ​c​l​o​s​e​ ​t​h​i​s​ ​w​i​n​d​o​w​ ​a​n​d​ ​g​e​t​ ​b​a​c​k​ ​t​o​ ​t​h​e​ ​*​*​D​e​f​g​u​a​r​d​ ​V​P​N​ ​C​l​i​e​n​t​*​*​.
+				 */
+				message: string
+			}
+		}
+		openidMfaRedirect: {
+			error: {
+				/**
+				 * A​u​t​h​e​n​t​i​c​a​t​i​o​n​ ​E​r​r​o​r
+				 */
+				title: string
+				/**
+				 * N​o​ ​t​o​k​e​n​ ​p​r​o​v​i​d​e​d​ ​i​n​ ​t​h​e​ ​U​R​L​.​ ​P​l​e​a​s​e​ ​e​n​s​u​r​e​ ​y​o​u​ ​h​a​v​e​ ​a​ ​v​a​l​i​d​ ​t​o​k​e​n​ ​t​o​ ​p​r​o​c​e​e​d​ ​w​i​t​h​ ​O​p​e​n​I​D​ ​a​u​t​h​e​n​t​i​c​a​t​i​o​n​.
+				 */
+				message: string
+			}
+		}
 	}
 }
 
@@ -1254,6 +1292,44 @@ export type TranslationFunctions = {
 						addInstance: () => LocalizedString
 					}
 				}
+			}
+		}
+		openidMfaCallback: {
+			error: {
+				/**
+				 * Authentication Error
+				 */
+				title: () => LocalizedString
+				/**
+				 * There was an error during authentication with the provider. Please go back to the **Defguard VPN Client** and repeat the process.
+				 */
+				message: () => LocalizedString
+				/**
+				 * Error Details
+				 */
+				detailsTitle: () => LocalizedString
+			}
+			success: {
+				/**
+				 * Authentication Completed
+				 */
+				title: () => LocalizedString
+				/**
+				 * You have been successfully authenticated. Please close this window and get back to the **Defguard VPN Client**.
+				 */
+				message: () => LocalizedString
+			}
+		}
+		openidMfaRedirect: {
+			error: {
+				/**
+				 * Authentication Error
+				 */
+				title: () => LocalizedString
+				/**
+				 * No token provided in the URL. Please ensure you have a valid token to proceed with OpenID authentication.
+				 */
+				message: () => LocalizedString
 			}
 		}
 	}

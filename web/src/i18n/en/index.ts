@@ -321,6 +321,26 @@ If you want to disengage your VPN connection, simply press "deactivate".
         },
       },
     },
+    openidMfaCallback: {
+      error: {
+        title: 'Authentication Error',
+        message:
+          'There was an error during authentication with the provider. Please go back to the **Defguard VPN Client** and repeat the process.',
+        detailsTitle: 'Error Details',
+      },
+      success: {
+        title: 'Authentication Completed',
+        message:
+          'You have been successfully authenticated. Please close this window and get back to the **Defguard VPN Client**.',
+      },
+    },
+    openidMfaRedirect: {
+      error: {
+        title: 'Authentication Error',
+        message:
+          'No token provided in the URL. Please ensure you have a valid token to proceed with OpenID authentication.',
+      },
+    },
   },
 } satisfies BaseTranslation;
 

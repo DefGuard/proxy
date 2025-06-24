@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use time::Duration;
 
 use crate::{
+    enterprise::handlers::desktop_client_mfa::mfa_auth_callback,
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
@@ -26,8 +27,9 @@ static NONCE_COOKIE_NAME: &str = "nonce_proxy";
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
-        .route("/auth_info", get(auth_info))
+        .route("/auth_info", post(auth_info))
         .route("/callback", post(auth_callback))
+        .route("/callback/mfa", post(mfa_auth_callback))
 }
 
 #[derive(Serialize)]
@@ -46,17 +48,49 @@ impl AuthInfo {
     }
 }
 
+#[derive(Deserialize, Debug, PartialEq, Eq)]
+pub(crate) enum FlowType {
+    Enrollment,
+    Mfa,
+}
+
+impl std::str::FromStr for FlowType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "enrollment" => Ok(FlowType::Enrollment),
+            "mfa" => Ok(FlowType::Mfa),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct RequestData {
+    state: Option<String>,
+    #[serde(rename = "type")]
+    flow_type: String,
+}
+
 /// Request external OAuth2/OpenID provider details from Defguard Core.
 #[instrument(level = "debug", skip(state))]
 async fn auth_info(
     State(state): State<AppState>,
     device_info: DeviceInfo,
     private_cookies: PrivateCookieJar,
+    Json(request_data): Json<RequestData>,
 ) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
     debug!("Getting auth info for OAuth2/OpenID login");
 
+    let flow_type = request_data
+        .flow_type
+        .parse::<FlowType>()
+        .map_err(|_| ApiError::BadRequest("Invalid flow type".into()))?;
+
     let request = AuthInfoRequest {
-        redirect_url: state.callback_url().to_string(),
+        redirect_url: state.callback_url(flow_type).to_string(),
+        state: request_data.state,
     };
 
     let rx = state
@@ -96,6 +130,8 @@ async fn auth_info(
 pub struct AuthenticationResponse {
     code: String,
     state: String,
+    #[serde(rename = "type")]
+    flow_type: String,
 }
 
 #[derive(Serialize)]
@@ -111,6 +147,17 @@ async fn auth_callback(
     mut private_cookies: PrivateCookieJar,
     Json(payload): Json<AuthenticationResponse>,
 ) -> Result<(PrivateCookieJar, Json<CallbackResponseData>), ApiError> {
+    let flow_type = payload
+        .flow_type
+        .parse::<FlowType>()
+        .map_err(|_| ApiError::BadRequest("Invalid flow type".into()))?;
+
+    if flow_type != FlowType::Enrollment {
+        return Err(ApiError::BadRequest(
+            "Invalid flow type for OpenID enrollment callback".into(),
+        ));
+    }
+
     let nonce = private_cookies
         .get(NONCE_COOKIE_NAME)
         .ok_or(ApiError::Unauthorized("Nonce cookie not found".into()))?
@@ -133,13 +180,14 @@ async fn auth_callback(
     let request = AuthCallbackRequest {
         code: payload.code,
         nonce,
-        callback_url: state.callback_url().to_string(),
+        callback_url: state.callback_url(flow_type).to_string(),
     };
 
     let rx = state
         .grpc_server
         .send(core_request::Payload::AuthCallback(request), device_info)?;
     let payload = get_core_response(rx).await?;
+
     if let core_response::Payload::AuthCallback(AuthCallbackResponse { url, token }) = payload {
         debug!("Received auth callback response {url:?} {token:?}");
         Ok((private_cookies, Json(CallbackResponseData { url, token })))
