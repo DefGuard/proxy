@@ -28,7 +28,7 @@ use url::Url;
 use crate::{
     assets::{index, svg, web_asset},
     config::Config,
-    enterprise::handlers::openid_login,
+    enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
@@ -49,11 +49,14 @@ pub(crate) struct AppState {
 impl AppState {
     /// Returns configured URL with "auth/callback" appended to the path.
     #[must_use]
-    pub(crate) fn callback_url(&self) -> Url {
+    pub(crate) fn callback_url(&self, flow_type: FlowType) -> Url {
         let mut url = self.url.clone();
         // Append "/openid/callback" to the URL.
         if let Ok(mut path_segments) = url.path_segments_mut() {
-            path_segments.extend(&["openid", "callback"]);
+            match flow_type {
+                FlowType::Enrollment => path_segments.extend(&["openid", "callback"]),
+                FlowType::Mfa => path_segments.extend(&["openid", "mfa", "callback"]),
+            };
         }
         url
     }

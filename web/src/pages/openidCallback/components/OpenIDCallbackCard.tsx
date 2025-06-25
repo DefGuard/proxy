@@ -53,6 +53,7 @@ export const OpenIDCallbackCard = () => {
         return openIDCallback({
           code,
           state,
+          type: 'enrollment',
         });
       }
     },

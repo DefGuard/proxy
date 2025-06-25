@@ -5,4 +5,6 @@ export const routes = {
   timeout: '/timeout',
   passwordReset: '/password-reset',
   openidCallback: '/openid/callback',
+  openidMfa: '/openid/mfa',
+  openidMfaCallback: '/openid/mfa/callback',
 };
