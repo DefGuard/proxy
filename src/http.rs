@@ -149,7 +149,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Start gRPC server.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
+        let addr = SocketAddr::new(
+            config
+                .grpc_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            config.grpc_port,
+        );
         info!("gRPC server is listening on {addr}");
         let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
             let identity = Identity::from_pem(cert, key);
@@ -244,7 +249,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Start web server.
     debug!("Spawning API web server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
+        let addr = SocketAddr::new(
+            config
+                .http_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            config.http_port,
+        );
         let listener = TcpListener::bind(&addr).await?;
         info!("API web server is listening on {addr}");
         serve(
