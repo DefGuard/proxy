@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, path::PathBuf};
+use std::{fs::read_to_string, net::IpAddr, path::PathBuf};
 
 use clap::Parser;
 use log::LevelFilter;
@@ -53,6 +53,12 @@ pub struct Config {
     #[arg(long = "config", short)]
     #[serde(skip)]
     config_path: Option<PathBuf>,
+
+    #[arg(long, env = "DEFGUARD_HTTP_BIND_ADDRESS")]
+    pub http_bind_address: Option<IpAddr>,
+
+    #[arg(long, env = "DEFGUARD_GRPC_BIND_ADDRESS")]
+    pub grpc_bind_address: Option<IpAddr>,
 }
 
 #[derive(thiserror::Error, Debug)]
