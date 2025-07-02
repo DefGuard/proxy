@@ -12,6 +12,7 @@ export type UserInfo = {
   login: string;
   email: string;
   phone_number?: string;
+  is_admin: boolean;
 };
 
 export type EnrollmentStartRequest = {
@@ -21,6 +22,7 @@ export type EnrollmentStartRequest = {
 export type EnrollmentSettings = {
   vpn_setup_optional: boolean;
   only_client_activation: boolean;
+  admin_device_management: boolean;
 };
 
 export type EnrollmentStartResponse = {
@@ -93,9 +95,17 @@ export type UseApi = {
     reset: (data: PasswordResetRequest) => Promise<EmptyApiResponse>;
   };
   getAppInfo: () => Promise<AppInfo>;
-  getOpenIDAuthInfo: () => Promise<{ url: string; button_display_name: string }>;
-  openIDCallback: (data: { code: string; state: string }) => Promise<{
+  getOpenIDAuthInfo: (data: {
+    state?: string;
+    type: 'enrollment' | 'mfa';
+  }) => Promise<{ url: string; button_display_name: string }>;
+  openIDCallback: (data: { code: string; state: string; type: 'enrollment' }) => Promise<{
     token: string;
     url: string;
   }>;
+  openIDMFACallback: (data: {
+    code: string;
+    state: string;
+    type: 'mfa';
+  }) => Promise<EmptyApiResponse>;
 };

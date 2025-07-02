@@ -28,7 +28,7 @@ use url::Url;
 use crate::{
     assets::{index, svg, web_asset},
     config::Config,
-    enterprise::handlers::openid_login,
+    enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
@@ -49,11 +49,14 @@ pub(crate) struct AppState {
 impl AppState {
     /// Returns configured URL with "auth/callback" appended to the path.
     #[must_use]
-    pub(crate) fn callback_url(&self) -> Url {
+    pub(crate) fn callback_url(&self, flow_type: FlowType) -> Url {
         let mut url = self.url.clone();
         // Append "/openid/callback" to the URL.
         if let Ok(mut path_segments) = url.path_segments_mut() {
-            path_segments.extend(&["openid", "callback"]);
+            match flow_type {
+                FlowType::Enrollment => path_segments.extend(&["openid", "callback"]),
+                FlowType::Mfa => path_segments.extend(&["openid", "mfa", "callback"]),
+            };
         }
         url
     }
@@ -146,7 +149,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Start gRPC server.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
+        let addr = SocketAddr::new(
+            config
+                .grpc_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            config.grpc_port,
+        );
         info!("gRPC server is listening on {addr}");
         let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
             let identity = Identity::from_pem(cert, key);
@@ -241,7 +249,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Start web server.
     debug!("Spawning API web server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
+        let addr = SocketAddr::new(
+            config
+                .http_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            config.http_port,
+        );
         let listener = TcpListener::bind(&addr).await?;
         info!("API web server is listening on {addr}");
         serve(

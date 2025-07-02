@@ -17,6 +17,11 @@ export const EnrollmentSideBar = () => {
   const vpnOptional = useEnrollmentStore(
     (state) => state.enrollmentSettings?.vpn_setup_optional,
   );
+  const deviceManagementDisabled = useEnrollmentStore((state) =>
+    Boolean(
+      state.enrollmentSettings?.admin_device_management && !state.userInfo?.is_admin,
+    ),
+  );
   const [currentStep, stepsMax] = useEnrollmentStore((state) => [
     state.step,
     state.stepsMax,
@@ -48,12 +53,17 @@ export const EnrollmentSideBar = () => {
       stepsLL.welcome(),
       stepsLL.verification(),
       stepsLL.password(),
-      ...(!enrollmentSettings?.only_client_activation
-        ? [vpnStep, stepsLL.finish()]
-        : [stepsLL.finish()]),
+      ...(enrollmentSettings?.only_client_activation || deviceManagementDisabled
+        ? [stepsLL.finish()]
+        : [vpnStep, stepsLL.finish()]),
     ];
     return steps;
-  }, [LL.pages.enrollment.sideBar.steps, vpnOptional, enrollmentSettings]);
+  }, [
+    LL.pages.enrollment.sideBar.steps,
+    vpnOptional,
+    enrollmentSettings,
+    deviceManagementDisabled,
+  ]);
 
   return (
     <div id="enrollment-side-bar">
@@ -77,7 +87,7 @@ export const EnrollmentSideBar = () => {
       <Divider />
       <div className="copyright">
         <p>
-          Copyright © 2023{' '}
+          Copyright ©{` ${new Date().getFullYear()} `}
           <a href="https://teonite.com" target="_blank" rel="noopener noreferrer">
             teonite
           </a>

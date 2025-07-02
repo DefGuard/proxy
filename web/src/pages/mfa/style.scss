@@ -1,0 +1,32 @@
+@use '@scssutils' as *;
+
+#openid-mfa-page {
+  gap: var(--spacing-xs);
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    width: 440px;
+    text-align: center;
+    min-height: 340px;
+
+    h1 {
+      @include typography(app-welcome-1);
+    }
+
+    h2 {
+      @include typography(app-welcome-2);
+    }
+
+    p {
+      @include typography(welcome-h2);
+    }
+
+    .error-details {
+      @include typography(app-code);
+    }
+  }
+}

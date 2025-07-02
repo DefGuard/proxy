@@ -18,6 +18,8 @@ import { detectLocale } from '../../i18n/i18n-util';
 import { loadLocaleAsync } from '../../i18n/i18n-util.async';
 import { EnrollmentPage } from '../../pages/enrollment/EnrollmentPage';
 import { MainPage } from '../../pages/main/MainPage';
+import { OpenIdMfaCallbackPage } from '../../pages/mfa/OpenIDCallback';
+import { OpenIdMfaPage } from '../../pages/mfa/OpenIDRedirect';
 import { OpenIDCallbackPage } from '../../pages/openidCallback/OpenIDCallback';
 import { PasswordResetPage } from '../../pages/passwordReset/PasswordResetPage';
 import { SessionTimeoutPage } from '../../pages/sessionTimeout/SessionTimeoutPage';
@@ -56,6 +58,14 @@ const router = createBrowserRouter([
   {
     path: routes.openidCallback,
     element: <OpenIDCallbackPage />,
+  },
+  {
+    path: routes.openidMfa,
+    element: <OpenIdMfaPage />,
+  },
+  {
+    path: routes.openidMfaCallback,
+    element: <OpenIdMfaCallbackPage />,
   },
   {
     path: '/*',

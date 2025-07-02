@@ -66,7 +66,10 @@ export const TokenCard = () => {
 
   const { isLoading: openidLoading, data: openidData } = useQuery(
     [],
-    () => getOpenIDAuthInfo(),
+    () =>
+      getOpenIDAuthInfo({
+        type: 'enrollment',
+      }),
     {
       refetchOnMount: true,
       refetchOnWindowFocus: false,
