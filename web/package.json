@@ -10,7 +10,7 @@
     "typesafe-i18n": "typesafe-i18n",
     "generate-translation-types": "typesafe-i18n --no-watch",
     "lint": "eslint --config ./.eslintrc.cjs src && prettier --check 'src/**/*.ts' 'src/**/*.tsx' 'src/**/*.scss'",
-    "fix": "prettier -w 'src/**/*.ts' 'src/**/*.tsx' 'src/**/*.scss' && eslint --fix --config ./.eslintrc.cjs src",
+    "fix": "prettier -w src/**/*.{ts,tsx,scss} && eslint --fix --config ./.eslintrc.cjs src",
     "vite": "vite",
     "eslint": "eslint",
     "prettier": "prettier",
