@@ -19,7 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@scssutils': path.resolve(__dirname, '/src/shared/scss/helpers'),
+      '@scssutils': path.resolve(__dirname, './src/shared/scss/helpers'),
     },
   },
   css: {

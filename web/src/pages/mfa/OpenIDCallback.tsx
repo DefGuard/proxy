@@ -79,7 +79,7 @@ export const OpenIdMfaCallbackPage = () => {
             </ReactMarkdown>
             <div>
               <h2>{LL.pages.openidMfaCallback.error.detailsTitle()}</h2>
-              <pre className="error-details">{error}</pre>
+              <p className="error-details">{error}</p>
             </div>
           </>
         ) : (
