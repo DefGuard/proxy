@@ -3,7 +3,13 @@
   "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["src/**", "!src/i18n/*.ts", "!src/i18n/*.tsx", "!src/i18n/i18n-util"]
+    "includes": [
+      "src/**",
+      "!src/i18n/*.ts",
+      "!src/i18n/*.tsx",
+      "!src/i18n/i18n-util",
+      "!dist/**"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -17,7 +23,7 @@
     "bracketSpacing": true,
     "expand": "auto",
     "useEditorconfig": true,
-    "includes": ["./src/**", "!./src/i18n/*.ts", "!./src/i18n/*.tsx"]
+    "includes": ["./src/**"]
   },
   "linter": {
     "enabled": true,
@@ -54,7 +60,7 @@
         "noArrayIndexKey": "off"
       }
     },
-    "includes": ["src/**", "!**/dist/", "!src/shared/components/svg/*", "!src/i18n/**"]
+    "includes": ["src/**"]
   },
   "javascript": {
     "formatter": {
