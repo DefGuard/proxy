@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import { type SubmitHandler, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { shallow } from 'zustand/shallow';
-
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { FormInput } from '../../../../shared/components/Form/FormInput/FormInput';
 import { Card } from '../../../../shared/components/layout/Card/Card';
@@ -15,10 +14,6 @@ import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicato
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 
 const phonePattern = /^\+?[0-9]+( [0-9]+)?$/;
-
-type FormFields = {
-  phone: string;
-};
 
 export const DataVerificationStep = () => {
   const { LL } = useI18nContext();
@@ -39,28 +34,39 @@ export const DataVerificationStep = () => {
     () =>
       z.object({
         phone: z
-          .union([
-            z.string().length(0),
-            z.string().trim().regex(phonePattern, LL.form.errors.invalid()),
-          ])
-          .optional()
-          .transform((e) => (e === '' ? undefined : e)),
+          .string()
+          .trim()
+          .refine((val) => {
+            if (val && typeof val === 'string' && val.length > 0) {
+              return phonePattern.test(val);
+            }
+            return true;
+          }, LL.form.errors.invalid())
+          .regex(phonePattern, LL.form.errors.invalid()),
       }),
     [LL.form.errors],
   );
 
-  const { control, handleSubmit } = useForm<FormFields>({
-    defaultValues: {
+  type FormFields = z.infer<typeof schema>;
+
+  const defaultValues = useMemo(() => {
+    const res: FormFields = {
       phone: userInfo?.phone_number ?? '',
-    },
+    };
+    return res;
+  }, [userInfo]);
+
+  const { control, handleSubmit } = useForm<FormFields>({
+    defaultValues: defaultValues,
     mode: 'all',
     resolver: zodResolver(schema),
   });
 
   const handleValidSubmit: SubmitHandler<FormFields> = (values) => {
+    const phone = values.phone.length > 0 ? values.phone : undefined;
     if (userInfo) {
       setEnrollment({
-        userInfo: { ...userInfo, phone_number: values.phone },
+        userInfo: { ...userInfo, phone_number: phone },
       });
       next();
     }

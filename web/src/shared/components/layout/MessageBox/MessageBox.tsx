@@ -35,7 +35,7 @@ export const MessageBox = ({
 }: Props) => {
   const [visible, setVisible] = useState(true);
 
-  const dismissable = !isUndefined(dismissId);
+  const dismissible = !isUndefined(dismissId);
 
   const getClassName = useMemo(() => {
     return classNames('message-box', className, type.valueOf());
@@ -77,7 +77,7 @@ export const MessageBox = ({
     <div className={getClassName} {...props}>
       <div className="icon-container">{getIcon}</div>
       <div className="message">{renderMessage}</div>
-      {dismissable && (
+      {dismissible && (
         <button
           className="dismiss"
           onClick={(e) => {

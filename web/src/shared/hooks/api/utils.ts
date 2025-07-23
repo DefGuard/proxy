@@ -14,14 +14,18 @@ However, in dev mode with react strict mode enabled, everything is rendered twic
 This also causes useEffect to run twice, which is not always desirable.
 This custom hook ensures that the effect runs only once in dev mode as well.
 */
-export default function useEffectOnce(fn: () => void) {
+
+// biome-ignore lint/suspicious/noConfusingVoidType: Should work like this
+export default function useEffectOnce(fn: () => void | (() => void)) {
   const isMounted = useRef(false);
   useEffect(() => {
     if (isMounted.current) {
       return;
     }
 
-    fn();
+    const callback = fn();
     isMounted.current = true;
+
+    return callback;
   }, [fn]);
 }

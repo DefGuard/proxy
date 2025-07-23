@@ -1,5 +1,4 @@
-import { create } from 'zustand';
-
+import { createWithEqualityFn } from 'zustand/traditional';
 import type { AdminInfo, UserInfo } from '../../../shared/hooks/api/types';
 
 const defaultValues: StoreValues = {
@@ -9,7 +8,7 @@ const defaultValues: StoreValues = {
   userInfo: undefined,
 };
 
-export const usePasswordResetStore = create<Store>((set) => ({
+export const usePasswordResetStore = createWithEqualityFn<Store>((set) => ({
   ...defaultValues,
   setState: (values) => set((old) => ({ ...old, ...values })),
   nextStep: (step) => set({ step }),

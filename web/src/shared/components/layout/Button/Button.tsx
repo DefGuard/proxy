@@ -78,10 +78,11 @@ export const Button = ({
     return res;
   }, [icon, loading, rightIcon, size, text]);
 
-  // reset hover state when disabled is changed bcs it can get stuck at hovered until mouse dont hover the element again
+  // reset hover state when disabled is changed bcs it can get stuck at hovered until mouse don't hover the element again
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Sideeffect
   useEffect(() => {
     setHovered(false);
-  }, []);
+  }, [disabled, loading]);
 
   return (
     <button

@@ -279,7 +279,7 @@ export const Select = <T,>({
         } else {
           if (!identify) {
             throw Error(
-              'Select needs to be suplied with identify method when values are objects',
+              'Select needs to be supplied with identify method when values are objects',
             );
           }
 
