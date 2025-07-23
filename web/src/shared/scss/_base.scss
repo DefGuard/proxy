@@ -1,4 +1,4 @@
-@use './helpers' as *;
+@use '../defguard-ui/scss/helpers/' as *;
 
 html,
 body {
@@ -24,6 +24,7 @@ input,
 button {
   margin: 0;
   padding: 0;
+
   &:focus,
   &:focus-within {
     outline: none;
