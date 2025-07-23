@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { AdminInfo, UserInfo } from '../../../shared/hooks/api/types';
+import type { AdminInfo, UserInfo } from '../../../shared/hooks/api/types';
 
 const defaultValues: StoreValues = {
   loading: false,

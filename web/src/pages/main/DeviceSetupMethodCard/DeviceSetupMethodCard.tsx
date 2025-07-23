@@ -1,6 +1,6 @@
 import './style.scss';
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { Button } from '../../../shared/components/layout/Button/Button';
 import {

@@ -1,7 +1,7 @@
 import './style.scss';
 
 import { useQuery } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import parse from 'html-react-parser';
 import { useState } from 'react';
 import { useBreakpoint } from 'use-breakpoint';
@@ -105,61 +105,59 @@ export const OpenIDCallbackCard = () => {
   }
 
   return (
-    <>
-      <Card shaded={breakpoint !== 'mobile'} className="openidcallback-card">
-        <h2>{LL.pages.oidcLogin.card.title()}</h2>
-        <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
-        <div className="steps">
-          <p>1. {LL.pages.oidcLogin.card.steps.first()}</p>
-          <div className="download-link">
-            <Button
-              text="Download Desktop Client"
-              styleVariant={ButtonStyleVariant.PRIMARY}
-              icon={<SvgIconDownload color="#fff" />}
-              onClick={() => {
-                window.open('https://defguard.net/download/', '_blank');
-              }}
-            />
-          </div>
-          <p>{parse(LL.pages.oidcLogin.card.steps.second())}</p>
-          <Card className="token-input shaded">
-            <h2>{LL.pages.oidcLogin.card.steps.tokenInput.title()}</h2>
-            <div className="labelled-input">
-              <label>{LL.pages.oidcLogin.card.steps.tokenInput.instanceUrl()}</label>
-              <div className="input-copy">
-                <Input value={data?.url} readOnly />
-                <ActionButton
-                  variant={ActionButtonVariant.COPY}
-                  onClick={() => {
-                    // This should never be undefined, but just in case
-                    navigator.clipboard.writeText(data?.url || '');
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="labelled-input">
-              <label>{LL.pages.oidcLogin.card.steps.tokenInput.token()}</label>
-              <div className="input-copy">
-                <Input value={data?.token} readOnly />
-                <ActionButton
-                  variant={ActionButtonVariant.COPY}
-                  onClick={() => {
-                    // This should never be undefined, but just in case
-                    navigator.clipboard.writeText(data?.token || '');
-                  }}
-                />
-              </div>
-            </div>
-
-            <Button
-              text={LL.pages.oidcLogin.card.steps.tokenInput.addInstance()}
-              styleVariant={ButtonStyleVariant.PRIMARY}
-              disabled={true}
-            />
-          </Card>
+    <Card shaded={breakpoint !== 'mobile'} className="openidcallback-card">
+      <h2>{LL.pages.oidcLogin.card.title()}</h2>
+      <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
+      <div className="steps">
+        <p>1. {LL.pages.oidcLogin.card.steps.first()}</p>
+        <div className="download-link">
+          <Button
+            text="Download Desktop Client"
+            styleVariant={ButtonStyleVariant.PRIMARY}
+            icon={<SvgIconDownload color="#fff" />}
+            onClick={() => {
+              window.open('https://defguard.net/download/', '_blank');
+            }}
+          />
         </div>
-      </Card>
-    </>
+        <p>{parse(LL.pages.oidcLogin.card.steps.second())}</p>
+        <Card className="token-input shaded">
+          <h2>{LL.pages.oidcLogin.card.steps.tokenInput.title()}</h2>
+          <div className="labelled-input">
+            <label>{LL.pages.oidcLogin.card.steps.tokenInput.instanceUrl()}</label>
+            <div className="input-copy">
+              <Input value={data?.url} readOnly />
+              <ActionButton
+                variant={ActionButtonVariant.COPY}
+                onClick={() => {
+                  // This should never be undefined, but just in case
+                  navigator.clipboard.writeText(data?.url || '');
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="labelled-input">
+            <label>{LL.pages.oidcLogin.card.steps.tokenInput.token()}</label>
+            <div className="input-copy">
+              <Input value={data?.token} readOnly />
+              <ActionButton
+                variant={ActionButtonVariant.COPY}
+                onClick={() => {
+                  // This should never be undefined, but just in case
+                  navigator.clipboard.writeText(data?.token || '');
+                }}
+              />
+            </div>
+          </div>
+
+          <Button
+            text={LL.pages.oidcLogin.card.steps.tokenInput.addInstance()}
+            styleVariant={ButtonStyleVariant.PRIMARY}
+            disabled={true}
+          />
+        </Card>
+      </div>
+    </Card>
   );
 };

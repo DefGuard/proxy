@@ -2,7 +2,13 @@ import './style.scss';
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash-es';
-import { ComponentPropsWithoutRef, ReactNode, useEffect, useMemo, useState } from 'react';
+import {
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import SvgIconInfo from '../../svg/IconInfo';
 import SvgIconInfoSuccess from '../../svg/IconInfoSuccess';
@@ -56,14 +62,14 @@ export const MessageBox = ({
   }, [message]);
 
   useEffect(() => {
-    if (dismissId && dismissId.length) {
+    if (dismissId?.length) {
       const visibility = readMessageBoxVisibility(dismissId);
       if (visible !== visibility) {
         setVisible(visibility);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dismissId, visible]);
 
   if (!visible) return null;
 

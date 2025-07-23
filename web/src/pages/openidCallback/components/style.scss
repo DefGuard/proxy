@@ -1,5 +1,3 @@
-@use '@scssutils' as *;
-
 #openidcallback-page {
   .openidcallback-card {
     box-sizing: border-box;
@@ -40,6 +38,7 @@
           svg {
             width: 36px;
             height: 36px;
+
             path {
               fill: var(--text-button-secondary);
             }

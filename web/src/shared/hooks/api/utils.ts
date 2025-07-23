@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: Doesn't care about the type
 export const removeNulls = (obj: any) => {
   return JSON.parse(JSON.stringify(obj), (_, value) => {
     if (value == null) return undefined;

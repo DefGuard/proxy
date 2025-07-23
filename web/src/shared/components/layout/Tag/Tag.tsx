@@ -1,7 +1,7 @@
 import './style.scss';
 
 import classNames from 'classnames';
-import { HTMLProps, useMemo } from 'react';
+import { type HTMLProps, useMemo } from 'react';
 
 import SvgIconCancel from '../../svg/IconCancel';
 

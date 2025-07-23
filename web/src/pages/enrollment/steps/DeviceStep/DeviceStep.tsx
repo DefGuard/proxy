@@ -1,7 +1,7 @@
 import './style.scss';
 
 import { useMutation } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
@@ -59,7 +59,7 @@ export const DeviceStep = () => {
     if (userPassword) {
       const sub = nextSubject.subscribe(() => {
         if (
-          (deviceState && deviceState.device && deviceState.configs) ||
+          (deviceState?.device && deviceState.configs) ||
           settings?.vpn_setup_optional ||
           settings?.only_client_activation ||
           deviceManagementDisabled

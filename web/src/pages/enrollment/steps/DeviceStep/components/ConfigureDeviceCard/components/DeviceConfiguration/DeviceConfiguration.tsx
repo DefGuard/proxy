@@ -14,9 +14,9 @@ import { Input } from '../../../../../../../../shared/components/layout/Input/In
 import { MessageBox } from '../../../../../../../../shared/components/layout/MessageBox/MessageBox';
 import { MessageBoxType } from '../../../../../../../../shared/components/layout/MessageBox/types';
 import { Select } from '../../../../../../../../shared/components/layout/Select/Select';
-import { SelectOption } from '../../../../../../../../shared/components/layout/Select/types';
+import type { SelectOption } from '../../../../../../../../shared/components/layout/Select/types';
 import SvgIconHamburger from '../../../../../../../../shared/components/svg/IconHamburger';
-import { DeviceConfig } from '../../../../../../../../shared/hooks/api/types';
+import type { DeviceConfig } from '../../../../../../../../shared/hooks/api/types';
 import { downloadWGConfig } from '../../../../../../../../shared/utils/downloadWGConfig';
 import { useEnrollmentStore } from '../../../../../../hooks/store/useEnrollmentStore';
 
@@ -43,7 +43,10 @@ export const DeviceConfiguration = () => {
       })) ?? [],
     [deviceState?.configs],
   );
-  const networksAvailable = deviceState?.configs?.length > 0 ?? false;
+
+  const networksAvailable =
+    deviceState && Array.isArray(deviceState.configs) && deviceState.configs.length > 0;
+
   const preparedConfig = useMemo(() => {
     if (deviceState?.device?.privateKey) {
       return selected?.config.replace('YOUR_PRIVATE_KEY', deviceState.device.privateKey);
@@ -57,7 +60,7 @@ export const DeviceConfiguration = () => {
   }, [selected, deviceState?.device?.privateKey, deviceState?.device?.pubkey]);
 
   useEffect(() => {
-    if (deviceState?.configs && deviceState.configs.length) {
+    if (deviceState?.configs?.length) {
       setSelected(deviceState.configs[0]);
     }
   }, [deviceState?.configs]);

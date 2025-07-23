@@ -1,7 +1,7 @@
 import './style.scss';
 
 import dayjs from 'dayjs';
-import { ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { LogoContainer } from '../../components/LogoContainer/LogoContainer';
@@ -39,7 +39,7 @@ export const PasswordResetPage = () => {
 
   useEffect(() => {
     const token = searchParams.get('token');
-    if (token && token.length && !requestPending.current) {
+    if (token?.length && !requestPending.current) {
       requestPending.current = true;
       start({
         token,
@@ -63,7 +63,7 @@ export const PasswordResetPage = () => {
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, navigate, setStore, start]);
 
   return (
     <PageContainer id="password-reset">

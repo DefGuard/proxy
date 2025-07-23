@@ -26,7 +26,7 @@ export const MainPage = () => {
   // check if navigated from link with token if not do nothing
   useEffect(() => {
     const token = searchParams.get('token');
-    if (token && token.length && !requestPending.current) {
+    if (token?.length && !requestPending.current) {
       requestPending.current = true;
       startEnrollment({
         token,
@@ -51,7 +51,7 @@ export const MainPage = () => {
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, initEnrollment, navigate, startEnrollment]);
 
   return (
     <PageContainer id="main-page">

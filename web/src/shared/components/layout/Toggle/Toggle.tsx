@@ -7,7 +7,7 @@ import { isUndefined } from 'lodash-es';
 import { useMemo } from 'react';
 
 import { ToggleOption } from './components/ToggleOption/ToggleOption';
-import { ToggleProps } from './types';
+import type { ToggleProps } from './types';
 
 export const Toggle = <T,>({
   selected,
@@ -17,7 +17,7 @@ export const Toggle = <T,>({
 }: ToggleProps<T>) => {
   const activeOptions = useMemo((): number[] => {
     const checkEqual = (first: T, second: T): boolean => {
-      if (typeof first == 'object' || Array.isArray(first)) {
+      if (typeof first === 'object' || Array.isArray(first)) {
         return equal(first, second);
       } else {
         return first === second;
