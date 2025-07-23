@@ -20,7 +20,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@scss': path.resolve(__dirname, './src/shared/scss'),
-      '@scssutils': path.resolve(__dirname, './src/shared/scss/helpers'),
+      '@scssutils': path.resolve(__dirname, './src/shared/defguard-ui/scss/helpers'),
     },
   },
   css: {
