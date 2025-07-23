@@ -15,7 +15,7 @@ import {
   ButtonStyleVariant,
 } from '../../../../shared/components/layout/Button/types';
 import { Card } from '../../../../shared/components/layout/Card/Card';
-import { MessageBox } from '../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
 
 type FormFields = {
@@ -64,7 +64,7 @@ export const CodeStep = () => {
       </div>
       <Card id="security-code-card">
         <h2>{LL.pages.resetPassword.steps.securityCode.title()}</h2>
-        <MessageBox
+        <MessageBoxOld
           dismissId="reset-password-security-code"
           type={MessageBoxType.INFO}
           message={LL.pages.resetPassword.steps.securityCode.messagebox()}

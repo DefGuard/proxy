@@ -26,7 +26,7 @@ interface Props extends ComponentPropsWithoutRef<'div'> {
 /**
  * Styled box with message.
  */
-export const MessageBox = ({
+export const MessageBoxOld = ({
   message,
   className,
   dismissId,
@@ -38,7 +38,7 @@ export const MessageBox = ({
   const dismissible = !isUndefined(dismissId);
 
   const getClassName = useMemo(() => {
-    return classNames('message-box', className, type.valueOf());
+    return classNames('message-box-old', className, type.valueOf());
   }, [className, type]);
 
   const getIcon = useMemo(() => {

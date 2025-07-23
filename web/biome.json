@@ -48,7 +48,8 @@
         "noNonNullAssertion": "error",
         "useArrayLiterals": "error",
         "useAsConstAssertion": "error",
-        "useBlockStatements": "off"
+        "useBlockStatements": "off",
+        "useLiteralEnumMembers": "off"
       },
       "suspicious": {
         "noCommentText": "error",

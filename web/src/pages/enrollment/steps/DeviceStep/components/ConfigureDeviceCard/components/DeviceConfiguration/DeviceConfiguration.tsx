@@ -11,7 +11,7 @@ import { ActionButtonVariant } from '../../../../../../../../shared/components/l
 import { Card } from '../../../../../../../../shared/components/layout/Card/Card';
 import { useTheme } from '../../../../../../../../shared/components/layout/hooks/theme/useTheme';
 import { Input } from '../../../../../../../../shared/components/layout/Input/Input';
-import { MessageBox } from '../../../../../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import { MessageBoxType } from '../../../../../../../../shared/components/layout/MessageBox/types';
 import { Select } from '../../../../../../../../shared/components/layout/Select/Select';
 import type { SelectOption } from '../../../../../../../../shared/components/layout/Select/types';
@@ -67,7 +67,7 @@ export const DeviceConfiguration = () => {
 
   return (
     <>
-      <MessageBox
+      <MessageBoxOld
         message={parse(autoMode ? cardLL.messageBox.auto() : cardLL.messageBox.manual())}
       />
       <Input
@@ -145,7 +145,10 @@ export const DeviceConfiguration = () => {
         </>
       )}
       {!networksAvailable && (
-        <MessageBox message={cardLL.noNetworksMessage()} type={MessageBoxType.WARNING} />
+        <MessageBoxOld
+          message={cardLL.noNetworksMessage()}
+          type={MessageBoxType.WARNING}
+        />
       )}
     </>
   );

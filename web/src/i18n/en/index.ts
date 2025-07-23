@@ -166,7 +166,7 @@ If you have any questions, please consult your assigned admin.All necessary info
               steps: {
                 wireguard: {
                   content:
-                    'Download and install WireGuard client on your compputer or app on phone.',
+                    'Download and install WireGuard client on your computer or app on phone.',
                   button: 'Download WireGuard',
                 },
                 downloadConfig: 'Download provided configuration file to your device.',

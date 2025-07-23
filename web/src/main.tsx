@@ -5,6 +5,7 @@ import './shared/defguard-ui/scss/index.scss';
 import './shared/scss/index.scss';
 
 import { App } from './components/App/App';
+import { ToastManager } from './shared/defguard-ui/components/Layout/ToastManager/ToastManager';
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ root.render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
+      <ToastManager />
     </QueryClientProvider>
   </StrictMode>,
 );

@@ -15,7 +15,7 @@ import {
   ButtonStyleVariant,
 } from '../../../../shared/components/layout/Button/types';
 import { Card } from '../../../../shared/components/layout/Card/Card';
-import { MessageBox } from '../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
 import { routes } from '../../../../shared/routes';
 import { usePasswordResetStore } from '../../hooks/usePasswordResetStore';
@@ -45,7 +45,7 @@ export const LinkSentStep = () => {
         />
       </div>
       <Card id="link-sent-card" data-testid="email-sent-message">
-        <MessageBox
+        <MessageBoxOld
           type={MessageBoxType.INFO}
           message={LL.pages.resetPassword.steps.linkSent.messageBox()}
         />

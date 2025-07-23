@@ -14,7 +14,7 @@ import {
   ButtonStyleVariant,
 } from '../../../../shared/components/layout/Button/types';
 import { Card } from '../../../../shared/components/layout/Card/Card';
-import { MessageBox } from '../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
 import { usePasswordResetStore } from '../../hooks/usePasswordResetStore';
 
@@ -39,7 +39,7 @@ export const FailureStep = () => {
         />
       </div>
       <Card id="reset-failed-card">
-        <MessageBox
+        <MessageBoxOld
           type={MessageBoxType.ERROR}
           message={LL.pages.resetPassword.steps.resetFailed.messageBox()}
         />

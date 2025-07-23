@@ -9,7 +9,7 @@ import {
   ButtonStyleVariant,
 } from '../../../../../../shared/components/layout/Button/types';
 import { Card } from '../../../../../../shared/components/layout/Card/Card';
-import { MessageBox } from '../../../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../../../shared/components/layout/MessageBox/MessageBoxOld';
 
 export const QuickGuideCard = () => {
   const { LL } = useI18nContext();
@@ -19,7 +19,7 @@ export const QuickGuideCard = () => {
   return (
     <Card id="device-setup-guide">
       <h3>{cardLL.title()}</h3>
-      <MessageBox message={cardLL.messageBox()} />
+      <MessageBoxOld message={cardLL.messageBox()} />
       <div className="steps">
         <label>{cardLL.step({ step: 1 })}</label>
         <p>{cardLL.steps.wireguard.content()}</p>

@@ -1,11 +1,15 @@
 #openidcallback-page {
   .openidcallback-card {
     box-sizing: border-box;
-    padding: 50px 40px;
+    padding: var(--spacing-m) var(--spacing-s);
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--spacing-m);
+
+    @include media-breakpoint-up(lg) {
+      padding: var(--spacing-l) var(--spacing-m);
+    }
 
     .steps {
       display: flex;
@@ -17,7 +21,7 @@
       }
 
       p {
-        @include typography(openidcallback-steps);
+        @include typography(app-body-2);
         color: var(--text-body-primary);
       }
 
@@ -32,7 +36,7 @@
           width: 334px;
 
           span {
-            @include typography(client-download-button);
+            @include typography(app-button-l);
           }
 
           svg {
@@ -58,7 +62,7 @@
           width: 198px;
 
           span {
-            @include typography(client-download-button);
+            @include typography(app-button-l);
           }
         }
 
@@ -94,6 +98,40 @@
       color: var(--text-body-primary);
       margin-bottom: 15px;
       text-align: left;
+    }
+
+    h3 {
+      @include typography(app-body-2);
+    }
+
+    .row {
+      display: flex;
+      flex-flow: row wrap;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 0 var(--spacing-s);
+      column-gap: var(--spacing-s);
+
+      a {
+        display: flex;
+        text-decoration: none;
+
+        .btn {
+          text-decoration: none;
+        }
+      }
+    }
+
+    .qr {
+      padding: var(--spacing-m) 0;
+    }
+
+    .qr-description {
+      color: var(--text-body-tertiary);
+      text-align: center;
+      max-width: 485px;
+      @include typography(app-input);
     }
   }
 

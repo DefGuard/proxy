@@ -12,7 +12,7 @@ import {
   ButtonSize,
   ButtonStyleVariant,
 } from '../../../../../../../shared/components/layout/Button/types';
-import { MessageBox } from '../../../../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import type { ToggleOption } from '../../../../../../../shared/components/layout/Toggle/types';
 import { useApi } from '../../../../../../../shared/hooks/api/useApi';
 import { generateWGKeys } from '../../../../../../../shared/utils/generateWGKeys';
@@ -127,7 +127,7 @@ export const CreateDevice = () => {
 
   return (
     <>
-      <MessageBox message={cardLL.create.messageBox()} />
+      <MessageBoxOld message={cardLL.create.messageBox()} />
       <form
         data-testid="enrollment-device-form"
         onSubmit={handleSubmit(handleValidSubmit)}
