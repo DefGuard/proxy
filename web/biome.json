@@ -1,7 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
   "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
-  "files": { "ignoreUnknown": false },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": ["src/**", "!src/i18n/*.ts", "!src/i18n/*.tsx", "!src/i18n/i18n-util"]
+  },
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
