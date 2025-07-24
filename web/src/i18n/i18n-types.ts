@@ -352,7 +352,7 @@ type RootTranslation = {
 							steps: {
 								wireguard: {
 									/**
-									 * D​o​w​n​l​o​a​d​ ​a​n​d​ ​i​n​s​t​a​l​l​ ​W​i​r​e​G​u​a​r​d​ ​c​l​i​e​n​t​ ​o​n​ ​y​o​u​r​ ​c​o​m​p​u​t​e​r​ ​o​r​ ​a​p​p​ ​o​n​ ​p​h​o​n​e​.
+									 * D​o​w​n​l​o​a​d​ ​a​n​d​ ​i​n​s​t​a​l​l​ ​W​i​r​e​G​u​a​r​d​ ​c​l​i​e​n​t​ ​o​n​ ​y​o​u​r​ ​c​o​m​p​u​t​e​r​ ​o​r​ ​a​p​p​ ​o​n​ ​a​ ​m​o​b​i​l​e​ ​d​e​v​i​c​e​.
 									 */
 									content: string
 									/**
@@ -1011,7 +1011,7 @@ export type TranslationFunctions = {
 							steps: {
 								wireguard: {
 									/**
-									 * Download and install WireGuard client on your computer or app on phone.
+									 * Download and install WireGuard client on your computer or app on a mobile device.
 									 */
 									content: () => LocalizedString
 									/**
