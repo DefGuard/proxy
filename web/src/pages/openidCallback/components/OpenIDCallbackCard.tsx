@@ -18,7 +18,6 @@ import { MessageBoxType } from '../../../shared/components/layout/MessageBox/typ
 import { deviceBreakpoints } from '../../../shared/constants';
 import { CopyField } from '../../../shared/defguard-ui/components/Layout/CopyField/CopyField';
 import { MessageBox } from '../../../shared/defguard-ui/components/Layout/MessageBox/MessageBox';
-import { MessageBoxStyleVariant } from '../../../shared/defguard-ui/components/Layout/MessageBox/types';
 import { useToaster } from '../../../shared/defguard-ui/hooks/toasts/useToaster';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
 import { useApi } from '../../../shared/hooks/api/useApi';
@@ -124,15 +123,11 @@ export const OpenIDCallbackCard = () => {
   return (
     <Card shaded={breakpoint !== 'mobile'} className="openidcallback-card">
       <h2>{LL.pages.oidcLogin.card.title()}</h2>
+      <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
       <h3>
         Please enter the provided Instance URL and Token into your Defguard Client. You
         can scan the QR code or copy and paste the token manually.
       </h3>
-      <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
-      <MessageBox
-        styleVariant={MessageBoxStyleVariant.FILLED}
-        message="Please enter the provided Instance URL and Token into your Defguard Client. You can scan the QR code or copy and paste the token manually."
-      />
       {isPresent(data) && (
         <>
           <CopyField label="Url" value={data.url} onCopy={writeToClipboard} />
