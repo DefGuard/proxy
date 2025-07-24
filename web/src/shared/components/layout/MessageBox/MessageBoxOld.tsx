@@ -2,7 +2,13 @@ import './style.scss';
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash-es';
-import { ComponentPropsWithoutRef, ReactNode, useEffect, useMemo, useState } from 'react';
+import {
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import SvgIconInfo from '../../svg/IconInfo';
 import SvgIconInfoSuccess from '../../svg/IconInfoSuccess';
@@ -20,7 +26,7 @@ interface Props extends ComponentPropsWithoutRef<'div'> {
 /**
  * Styled box with message.
  */
-export const MessageBox = ({
+export const MessageBoxOld = ({
   message,
   className,
   dismissId,
@@ -29,10 +35,10 @@ export const MessageBox = ({
 }: Props) => {
   const [visible, setVisible] = useState(true);
 
-  const dismissable = !isUndefined(dismissId);
+  const dismissible = !isUndefined(dismissId);
 
   const getClassName = useMemo(() => {
-    return classNames('message-box', className, type.valueOf());
+    return classNames('message-box-old', className, type.valueOf());
   }, [className, type]);
 
   const getIcon = useMemo(() => {
@@ -56,14 +62,14 @@ export const MessageBox = ({
   }, [message]);
 
   useEffect(() => {
-    if (dismissId && dismissId.length) {
+    if (dismissId?.length) {
       const visibility = readMessageBoxVisibility(dismissId);
       if (visible !== visibility) {
         setVisible(visibility);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dismissId, visible]);
 
   if (!visible) return null;
 
@@ -71,7 +77,7 @@ export const MessageBox = ({
     <div className={getClassName} {...props}>
       <div className="icon-container">{getIcon}</div>
       <div className="message">{renderMessage}</div>
-      {dismissable && (
+      {dismissible && (
         <button
           className="dismiss"
           onClick={(e) => {

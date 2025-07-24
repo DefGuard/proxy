@@ -1,6 +1,6 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 
-import { UseApi } from './types';
+import type { UseApi } from './types';
 
 const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
 

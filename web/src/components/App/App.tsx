@@ -1,5 +1,4 @@
 import 'dayjs/locale/en';
-import '../../shared/scss/index.scss';
 
 import dayjs from 'dayjs';
 import customParseData from 'dayjs/plugin/customParseFormat';

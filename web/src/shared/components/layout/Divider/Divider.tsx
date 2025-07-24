@@ -1,7 +1,7 @@
 import './style.scss';
 
 import classNames from 'classnames';
-import { HTMLMotionProps, motion } from 'framer-motion';
+import { type HTMLMotionProps, motion } from 'framer-motion';
 import { useMemo } from 'react';
 
 import { DividerDirection } from './types';

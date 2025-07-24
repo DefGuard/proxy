@@ -1,7 +1,9 @@
-@use '@scssutils' as *;
-
 #openid-mfa-page {
   gap: var(--spacing-xs);
+
+  .logo-container {
+    padding-bottom: var(--spacing-l);
+  }
 
   .content {
     display: flex;
@@ -9,7 +11,8 @@
     align-items: center;
     justify-content: center;
     gap: 40px;
-    width: 440px;
+    width: 100%;
+    max-width: 440px;
     text-align: center;
     min-height: 340px;
 
@@ -26,6 +29,11 @@
     }
 
     .error-details {
+      max-width: 100%;
+      margin: 0;
+      box-sizing: border-box;
+      padding: 30px 10px 0;
+
       @include typography(app-code);
     }
   }

@@ -3,3 +3,4 @@
 /*.local
 .direnv/
 .envrc
+/node_modules

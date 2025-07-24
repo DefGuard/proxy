@@ -1,7 +1,7 @@
 import './style.scss';
 
 import { isUndefined } from 'lodash-es';
-import { HTMLProps, ReactNode, useMemo } from 'react';
+import { type HTMLProps, type ReactNode, useMemo } from 'react';
 
 import SvgIconInfo from '../../svg/IconInfo';
 

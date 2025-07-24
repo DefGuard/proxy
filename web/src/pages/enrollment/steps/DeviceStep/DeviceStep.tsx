@@ -1,17 +1,17 @@
 import './style.scss';
 
 import { useMutation } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { LoaderSpinner } from '../../../../shared/components/layout/LoaderSpinner/LoaderSpinner';
-import { MessageBox } from '../../../../shared/components/layout/MessageBox/MessageBox';
+import { MessageBoxOld } from '../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
+import useEffectOnce from '../../../../shared/defguard-ui/utils/useEffectOnce';
 import { useApi } from '../../../../shared/hooks/api/useApi';
-import useEffectOnce from '../../../../shared/hooks/api/utils';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
 import { ConfigureDeviceCard } from './components/ConfigureDeviceCard/ConfigureDeviceCard';
 import { QuickGuideCard } from './components/QuickGuideCard/QuickGuideCard';
@@ -59,7 +59,7 @@ export const DeviceStep = () => {
     if (userPassword) {
       const sub = nextSubject.subscribe(() => {
         if (
-          (deviceState && deviceState.device && deviceState.configs) ||
+          (deviceState?.device && deviceState.configs) ||
           settings?.vpn_setup_optional ||
           settings?.only_client_activation ||
           deviceManagementDisabled
@@ -102,7 +102,7 @@ export const DeviceStep = () => {
       {!settings?.only_client_activation ? (
         <>
           {settings?.vpn_setup_optional && (
-            <MessageBox
+            <MessageBoxOld
               type={MessageBoxType.WARNING}
               message={LL.pages.enrollment.steps.deviceSetup.optionalMessage()}
             />

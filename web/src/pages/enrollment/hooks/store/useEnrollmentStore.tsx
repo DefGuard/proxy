@@ -3,7 +3,7 @@ import { Subject } from 'rxjs';
 import { createJSONStorage, devtools, persist } from 'zustand/middleware';
 import { createWithEqualityFn } from 'zustand/traditional';
 
-import {
+import type {
   AdminInfo,
   Device,
   DeviceConfig,

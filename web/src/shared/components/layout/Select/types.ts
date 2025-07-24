@@ -1,11 +1,11 @@
-import { Key } from 'react';
+import type { Key } from 'react';
 
 export interface SelectOption<T> {
   value: T;
   label: string;
   disabled?: boolean;
   key: Key;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: Can be anything
   meta?: any;
 }
 
