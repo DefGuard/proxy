@@ -1,6 +1,4 @@
-@use '../../../scss/helpers' as *;
-
-.message-box {
+.message-box-old {
   height: auto;
   min-height: 57px;
   width: 100%;
@@ -49,6 +47,7 @@
   .message {
     box-sizing: border-box;
     padding: 17px 0;
+
     p,
     span,
     b,
@@ -82,6 +81,7 @@
           & > circle {
             fill: var(--surface-positive-primary);
           }
+
           & > g {
             & > rect {
               fill: var(--surface-positive-accent);
@@ -94,14 +94,17 @@
 
   &.warning {
     background-color: var(--surface-important-accent);
+
     .message {
       color: var(--text-important);
     }
+
     .icon-container {
       & > svg {
         & > circle {
           fill: var(--surface-important);
         }
+
         & > rect {
           fill: var(--surface-important-accent);
         }
@@ -111,6 +114,7 @@
 
   &.error {
     background-color: var(--surface-alert-accent);
+
     .message {
       color: var(--text-alert);
     }
@@ -121,6 +125,7 @@
           & > circle {
             fill: var(--surface-alert-primary);
           }
+
           & > path {
             fill: var(--surface-alert-accent);
           }
@@ -131,15 +136,18 @@
 
   &.info {
     background-color: var(--surface-info-modal);
+
     .message {
       color: var(--text-body-secondary);
     }
+
     & > .icon-container {
       & > svg {
         & > g {
           & > circle {
             fill: var(--surface-icon-primary);
           }
+
           & > rect {
             fill: var(--surface-button);
           }

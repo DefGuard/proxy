@@ -2,7 +2,7 @@ import './style.scss';
 
 import classNames from 'classnames';
 import { useEffect, useMemo, useState } from 'react';
-import { LocalizedString } from 'typesafe-i18n';
+import type { LocalizedString } from 'typesafe-i18n';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { Divider } from '../../../../shared/components/layout/Divider/Divider';
@@ -42,7 +42,7 @@ export const EnrollmentSideBar = () => {
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appVersion, getAppInfo]);
 
   const steps = useMemo((): LocalizedString[] => {
     const stepsLL = LL.pages.enrollment.sideBar.steps;

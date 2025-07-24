@@ -16,12 +16,12 @@ on:
 
 jobs:
   lint-web:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64] 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: install deps
         working-directory: ./web
         run: |

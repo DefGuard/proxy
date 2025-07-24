@@ -2,8 +2,8 @@ import './style.scss';
 
 import {
   autoUpdate,
-  flip,
   FloatingPortal,
+  flip,
   offset,
   size,
   useFloating,
@@ -25,9 +25,9 @@ import { LoaderSpinner } from '../LoaderSpinner/LoaderSpinner';
 import { Tag } from '../Tag/Tag';
 import { SelectOptionRow } from './components/SelectOptionRow/SelectOptionRow';
 import {
-  SelectFloatingOption,
-  SelectOption,
-  SelectProps,
+  type SelectFloatingOption,
+  type SelectOption,
+  type SelectProps,
   SelectSizeVariant,
 } from './types';
 
@@ -155,9 +155,7 @@ export const Select = <T,>({
         loading,
         open,
         multi,
-        selected: Array.isArray(selected)
-          ? selected && selected.length
-          : !isUndefined(selected),
+        selected: Array.isArray(selected) ? selected?.length : !isUndefined(selected),
         'in-form': inForm,
       },
       `size-${sizeVariant.valueOf().toLocaleLowerCase()}`,
@@ -281,7 +279,7 @@ export const Select = <T,>({
         } else {
           if (!identify) {
             throw Error(
-              'Select needs to be suplied with identify method when values are objects',
+              'Select needs to be supplied with identify method when values are objects',
             );
           }
 

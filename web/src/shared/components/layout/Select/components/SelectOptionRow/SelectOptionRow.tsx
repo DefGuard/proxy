@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { HTMLMotionProps, motion } from 'framer-motion';
+import { type HTMLMotionProps, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 
 import { useTheme } from '../../../hooks/theme/useTheme';
