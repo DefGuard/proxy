@@ -2,3 +2,7 @@
 *.ttf   -text
 *.woff  -text
 *.woff2 -text
+*.png -text
+*.pdf -text
+*.jpeg -text
+*.webm -text
