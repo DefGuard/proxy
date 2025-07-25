@@ -208,6 +208,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     let mut app = Router::new()
         .route("/", get(index))
         .route("/*path", get(index))
+        .route("/fonts/*path", get(web_asset))
         .route("/assets/*path", get(web_asset))
         .route("/svg/*path", get(svg))
         .nest(
