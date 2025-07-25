@@ -103,6 +103,10 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
+      - name: Setup `packer`
+        uses: hashicorp/setup-packer@main
+        id: setup
+
       - name: Set up Docker BuildX
         uses: docker/setup-buildx-action@v3
         with:
