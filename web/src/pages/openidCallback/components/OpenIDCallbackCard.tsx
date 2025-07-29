@@ -18,10 +18,10 @@ import { MessageBoxType } from '../../../shared/components/layout/MessageBox/typ
 import { deviceBreakpoints } from '../../../shared/constants';
 import { CopyField } from '../../../shared/defguard-ui/components/Layout/CopyField/CopyField';
 import { MessageBox } from '../../../shared/defguard-ui/components/Layout/MessageBox/MessageBox';
-import { useToaster } from '../../../shared/defguard-ui/hooks/toasts/useToaster';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
 import { useApi } from '../../../shared/hooks/api/useApi';
 import { useClipboard } from '../../../shared/hooks/useClipboard';
+import { sharedLinks } from '../../../shared/links';
 
 type ErrorResponse = {
   error: string;
@@ -33,7 +33,6 @@ export const OpenIDCallbackCard = () => {
   const { LL } = useI18nContext();
   const [error, setError] = useState<string | null>(null);
   const { writeToClipboard } = useClipboard();
-  const toaster = useToaster();
 
   const { isLoading, data } = useQuery(
     [],
@@ -149,9 +148,9 @@ export const OpenIDCallbackCard = () => {
       </div>
       <div className="row">
         <a
-          onClick={() => {
-            toaster.success('Unimplemented yet');
-          }}
+          href={sharedLinks.client.download.android}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -240,9 +239,9 @@ export const OpenIDCallbackCard = () => {
           </svg>
         </a>
         <a
-          onClick={() => {
-            toaster.success('Unimplemented yet');
-          }}
+          href={sharedLinks.client.download.ios}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -350,12 +349,15 @@ export const OpenIDCallbackCard = () => {
             />
           </svg>
         </a>
-        <a href="https://defguard.net/download" rel="noopener noreferrer" target="_blank">
+        <a
+          href={sharedLinks.client.download.desktop}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           <Button
             size={ButtonSize.SMALL}
             styleVariant={ButtonStyleVariant.LINK}
-            text="Download Desktop"
-            onClick={() => {}}
+            text="Download for Desktop"
           />
         </a>
       </div>
