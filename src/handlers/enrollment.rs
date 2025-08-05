@@ -1,5 +1,6 @@
 use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use serde::Deserialize;
 use time::OffsetDateTime;
 
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
     proto::{
         core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
         EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
+        RegisterMobileAuthRequest,
     },
 };
 
@@ -18,6 +20,48 @@ pub(crate) fn router() -> Router<AppState> {
         .route("/activate_user", post(activate_user))
         .route("/create_device", post(create_device))
         .route("/network_info", post(get_network_info))
+        .route("/register_mobile", post(register_mobile_auth))
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct RegisterMobileAuth {
+    pub auth_pub_key: String,
+    pub device_pub_key: String,
+}
+
+#[instrument(level = "debug", skip(state))]
+async fn register_mobile_auth(
+    State(state): State<AppState>,
+    device_info: DeviceInfo,
+    private_cookies: PrivateCookieJar,
+    Json(req): Json<RegisterMobileAuth>,
+) -> Result<(), ApiError> {
+    debug!("Register mobile auth started");
+    // set auth info
+    let token = match private_cookies
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string())
+    {
+        Some(token) => token,
+        None => return Err(ApiError::BadRequest("No token present".into())),
+    };
+    let send_data = RegisterMobileAuthRequest {
+        token,
+        auth_pub_key: req.auth_pub_key,
+        device_pub_key: req.device_pub_key,
+    };
+    let rx = state.grpc_server.send(
+        core_request::Payload::RegisterMobileAuth(send_data),
+        device_info,
+    )?;
+    let payload = get_core_response(rx).await?;
+    if let core_response::Payload::Empty(()) = payload {
+        info!("Registered mobile device for auth");
+        Ok(())
+    } else {
+        error!("Received invalid gRPC response type: {payload:#?}");
+        Err(ApiError::InvalidResponseType)
+    }
 }
 
 #[instrument(level = "debug", skip(state))]
