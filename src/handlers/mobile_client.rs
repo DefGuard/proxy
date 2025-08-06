@@ -14,14 +14,10 @@ fn validate_register_request_data(data: &RegisterMobileAuth) -> Result<(), ApiEr
     let decoded_device_key = BASE64_STANDARD.decode(&data.device_pub_key)?;
     let decoded_biometry_key = BASE64_STANDARD.decode(&data.auth_pub_key)?;
     if decoded_biometry_key.len() != 32 {
-        return Err(ApiError::BadRequest(
-            "Invalid device or biometric public key.".into(),
-        ));
+        return Err(ApiError::BadRequest("Invalid biometric public key.".into()));
     }
     if decoded_device_key.len() != 32 {
-        return Err(ApiError::BadRequest(
-            "Invalid device or device public key.".into(),
-        ));
+        return Err(ApiError::BadRequest("Invalid device public key.".into()));
     }
     Ok(())
 }
