@@ -11,6 +11,7 @@ use crate::{error::ApiError, proto::core_response::Payload};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
+pub(crate) mod mobile_client;
 pub(crate) mod password_reset;
 pub(crate) mod polling;
 

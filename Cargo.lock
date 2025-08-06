@@ -527,6 +527,7 @@ dependencies = [
  "axum",
  "axum-client-ip",
  "axum-extra",
+ "base64",
  "clap",
  "dotenvy",
  "log",
