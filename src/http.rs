@@ -1,7 +1,7 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::atomic::Ordering,
+    sync::{atomic::Ordering, Arc},
     time::Duration,
 };
 
@@ -15,9 +15,11 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
+use defguard_version::{server::DefguardVersionServerMiddleware, DefguardVersionSet};
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
+use tonic_middleware::MiddlewareFor;
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -116,7 +118,10 @@ fn get_client_addr(request: &Request<Body>) -> String {
         )
 }
 
-pub async fn run_server(config: Config) -> anyhow::Result<()> {
+pub async fn run_server(
+    config: Config,
+    version_set: Arc<DefguardVersionSet>,
+) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {config:?}");
 
@@ -162,8 +167,15 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         } else {
             Server::builder()
         };
+        let versioned_server = MiddlewareFor::new(
+            proxy_server::ProxyServer::new(grpc_server),
+            DefguardVersionServerMiddleware::new(
+                version_set.own.clone(),
+                Arc::clone(&version_set.proxy),
+            ),
+        );
         builder
-            .add_service(proxy_server::ProxyServer::new(grpc_server))
+            .add_service(versioned_server)
             .serve(addr)
             .await
             .context("Error running gRPC server")

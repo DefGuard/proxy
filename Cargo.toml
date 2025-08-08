@@ -7,6 +7,7 @@ homepage = "https://github.com/DefGuard/proxy"
 repository = "https://github.com/DefGuard/proxy"
 
 [dependencies]
+defguard_version = { path = "../defguard/crates/defguard_version" }
 # base `axum` deps
 axum = { version = "0.7", features = ["macros", "tracing"] }
 axum-client-ip = "0.6"
@@ -44,6 +45,7 @@ tower_governor = "0.4"
 rust-embed = { version = "8.5", features = ["include-exclude"] }
 mime_guess = "2.0"
 base64 = "0.22.1"
+tonic-middleware = "0.2"
 
 [build-dependencies]
 tonic-build = { version = "0.12" }
