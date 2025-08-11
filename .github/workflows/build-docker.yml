@@ -116,4 +116,4 @@ jobs:
       - name: Verify image signatures
         run: |
           images='${{ env.GHCR_REPO }}:${{ github.sha }} ${{ steps.meta.outputs.tags }}'
-          cosign verify ${images} --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp="https://github.com/DefGuard/defguard-proxy" -o text
+          cosign verify ${images} --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp="https://github.com/DefGuard/proxy" -o text
