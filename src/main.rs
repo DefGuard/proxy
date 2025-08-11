@@ -9,15 +9,11 @@ async fn main() -> anyhow::Result<()> {
 
     // read config from env
     let config = get_config()?;
-    let version_set = defguard_version::tracing::init(
-        VERSION,
-        &config.log_level.to_string(),
-        &["send_grpc_message", "bidirectional_communication"],
-    );
+    defguard_version::tracing::init(VERSION, &config.log_level.to_string());
     tracing::info!("Starting ... version v{}", VERSION);
 
     // run API web server
-    run_server(config, version_set).await?;
+    run_server(config).await?;
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 use std::{
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::{atomic::Ordering, Arc},
+    sync::atomic::Ordering,
     time::Duration,
 };
 
@@ -15,7 +15,7 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::{server::DefguardVersionServerMiddleware, DefguardVersionSet};
+use defguard_version::server::DefguardVersionServerMiddleware;
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
@@ -35,6 +35,7 @@ use crate::{
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
+    VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -118,10 +119,7 @@ fn get_client_addr(request: &Request<Body>) -> String {
         )
 }
 
-pub async fn run_server(
-    config: Config,
-    version_set: Arc<DefguardVersionSet>,
-) -> anyhow::Result<()> {
+pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {config:?}");
 
@@ -169,10 +167,7 @@ pub async fn run_server(
         };
         let versioned_server = MiddlewareFor::new(
             proxy_server::ProxyServer::new(grpc_server),
-            DefguardVersionServerMiddleware::new(
-                version_set.own.clone(),
-                Arc::clone(&version_set.proxy),
-            ),
+            DefguardVersionServerMiddleware::new(VERSION)?,
         );
         builder
             .add_service(versioned_server)
