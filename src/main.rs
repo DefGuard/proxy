@@ -1,4 +1,4 @@
-use defguard_proxy::{config::get_config, http::run_server, VERSION};
+use defguard_proxy::{config::get_config, http::run_server, logging::init_tracing, VERSION};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -7,9 +7,9 @@ async fn main() -> anyhow::Result<()> {
         dotenvy::dotenv().ok();
     }
 
+	let config = get_config()?;
+	init_tracing(VERSION, &config.log_level);
     // read config from env
-    let config = get_config()?;
-    defguard_version::tracing::init(VERSION, &config.log_level.to_string());
     tracing::info!("Starting ... version v{}", VERSION);
 
     // run API web server
