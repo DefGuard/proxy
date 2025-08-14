@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use defguard_version::parse_metadata;
+use defguard_version::version_info_from_metadata;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
@@ -99,11 +99,11 @@ impl proxy_server::Proxy for ProxyServer {
             error!("Failed to determine client address for request: {request:?}");
             return Err(Status::internal("Failed to determine client address"));
         };
-        let (version, info) = parse_metadata(request.metadata()).unwrap();
+        let (version, info) = version_info_from_metadata(request.metadata());
         let span = tracing::info_span!(
 			"core_bidi_stream",
-            core_version = %version,
-            core_info = %info,
+            core_version = version,
+            core_info = info,
         );
         let _guard = span.enter();
         info!("Defguard Core gRPC client connected from: {address}");

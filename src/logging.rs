@@ -1,7 +1,7 @@
 use defguard_version::{
     tracing::{
-        ExtractedVersionInfo, VersionFieldLayer, VersionFilteredFields, VersionSuffixWriter,
-        build_version_suffix, extract_version_info_from_context,
+        build_version_suffix, extract_version_info_from_context, VersionFieldLayer,
+        VersionFilteredFields, VersionSuffixWriter,
     },
     SystemInfo,
 };
@@ -83,10 +83,11 @@ where
     ) -> std::fmt::Result {
         // Extract version information using the utility function from defguard_version
         let extracted = extract_version_info_from_context(ctx);
-        
+
         // Build version suffix using the utility function from defguard_version
         let is_error = *event.metadata().level() == Level::ERROR;
-        let version_suffix = build_version_suffix(&extracted, &self.own_version, &self.own_info, is_error);
+        let version_suffix =
+            build_version_suffix(&extracted, &self.own_version, &self.own_info, is_error);
 
         // iterate and accumulate spans storing our special span in separate variable if encountered
         let mut context_logs = String::new();
@@ -113,7 +114,6 @@ where
                 context_logs.push(' ');
             }
         };
-
 
         // Create a wrapper writer that will append version info before newlines
         let mut wrapper = VersionSuffixWriter::new(writer, version_suffix);
