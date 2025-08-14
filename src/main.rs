@@ -7,8 +7,8 @@ async fn main() -> anyhow::Result<()> {
         dotenvy::dotenv().ok();
     }
 
-	let config = get_config()?;
-	init_tracing(VERSION, &config.log_level);
+    let config = get_config()?;
+    init_tracing(VERSION, &config.log_level);
     // read config from env
     tracing::info!("Starting ... version v{}", VERSION);
 
