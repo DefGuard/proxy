@@ -15,11 +15,11 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::server::DefguardVersionServerMiddleware;
+use defguard_version::server::DefguardVersionLayer;
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
-use tonic_middleware::MiddlewareFor;
+use tower::ServiceBuilder;
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -165,12 +165,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         } else {
             Server::builder()
         };
-        let versioned_server = MiddlewareFor::new(
-            proxy_server::ProxyServer::new(grpc_server),
-            DefguardVersionServerMiddleware::new(VERSION)?,
-        );
+        let versioned_service = ServiceBuilder::new()
+            .layer(DefguardVersionLayer::new(VERSION)?)
+            .service(proxy_server::ProxyServer::new(grpc_server));
         builder
-            .add_service(versioned_server)
+            .add_service(versioned_service)
             .serve(addr)
             .await
             .context("Error running gRPC server")

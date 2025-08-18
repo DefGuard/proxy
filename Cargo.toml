@@ -49,7 +49,7 @@ tower_governor = "0.4"
 rust-embed = { version = "8.5", features = ["include-exclude"] }
 mime_guess = "2.0"
 base64 = "0.22.1"
-tonic-middleware = "0.2"
+tower = "0.5.2"
 
 [build-dependencies]
 tonic-prost-build = "0.14"
