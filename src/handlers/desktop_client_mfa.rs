@@ -1,7 +1,10 @@
 use axum::{
-    extract::{ws::WebSocket, Path, State, WebSocketUpgrade},
+    extract::{
+        ws::{Message, WebSocket},
+        Query, State, WebSocketUpgrade,
+    },
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
     Json, Router,
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
@@ -23,12 +26,12 @@ pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
         .route("/finish", post(finish_client_mfa))
-        .route("/remote/:token", post(await_remote_auth))
+        .route("/remote", get(await_remote_auth))
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
-pub(crate) struct RemoteMfaRequest {
+pub(crate) struct RemoteMfaRequestQuery {
     pub token: String,
 }
 
@@ -36,18 +39,15 @@ pub(crate) struct RemoteMfaRequest {
 async fn await_remote_auth(
     ws: WebSocketUpgrade,
     //TODO: Validate this smth ?
-    Path(token): Path<String>,
+    Query(req): Query<RemoteMfaRequestQuery>,
     State(state): State<AppState>,
     device_info: DeviceInfo,
-    Json(req): Json<RemoteMfaRequest>,
 ) -> Response {
+    let token = req.token;
     // TODO: validate token!
     // make sure no one else is listening already
-    match state.remote_mfa_sessions.get(&token) {
-        Some(_) => {
-            return ApiError::Unauthorized("Session already exists".into()).into_response();
-        }
-        None => {}
+    if state.remote_mfa_sessions.get(&token).is_some() {
+        return ApiError::Unauthorized("".into()).into_response();
     };
     ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token))
 }
@@ -61,7 +61,12 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
     let forwarder = {
         tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
-                let message = axum::extract::ws::Message::Text(msg);
+                let payload = json!({
+                    "type": "mfa_success",
+                    "preshared_key": &msg,
+                });
+                let serialized = serde_json::to_string(&payload).unwrap();
+                let message = axum::extract::ws::Message::Text(serialized);
                 if ws_tx.send(message).await.is_err() {
                     break;
                 }
@@ -69,8 +74,18 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
             let _ = ws_tx.close().await;
         })
     };
-    while let Some(Ok(axum::extract::ws::Message::Close(_))) = ws_rx.next().await {
-        break;
+    while let Some(msg_result) = ws_rx.next().await {
+        match msg_result {
+            Ok(msg) => {
+                if let Message::Close(_) = msg {
+                    break;
+                }
+            }
+            Err(e) => {
+                error!("Remote desktop mfa WS client listen error {e}");
+                break;
+            }
+        }
     }
     //cleanup
     state.remote_mfa_sessions.remove(&token);
@@ -113,7 +128,7 @@ async fn finish_client_mfa(
     if let core_response::Payload::ClientMfaFinish(response) = payload {
         // check if this needs to be forwarded
         match response.token {
-            // means mobile approve auth method was used
+            // means remote mobile approve auth method was used for start
             Some(token) => {
                 match state.remote_mfa_sessions.get(&token) {
                     Some(sender) => {
