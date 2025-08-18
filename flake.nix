@@ -38,6 +38,8 @@
           vtsls
           # protobuf formatter
           buf
+          # image signarute verification
+          cosign
         ];
 
         # Specify the rust-src path (many editors rely on this)

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - 'release/**'
     paths-ignore:
       - "*.md"
       - "LICENSE"
@@ -12,6 +13,7 @@ on:
     branches:
       - main
       - dev
+      - 'release/**'
     paths-ignore:
       - "*.md"
       - "LICENSE"
@@ -21,7 +23,8 @@ env:
 
 jobs:
   test:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on:
+      - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
     container: rust:1
 
     steps:

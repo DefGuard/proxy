@@ -113,7 +113,7 @@ where
             if seen {
                 context_logs.push(' ');
             }
-        };
+        }
 
         // Create a wrapper writer that will append version info before newlines
         let mut wrapper = VersionSuffixWriter::new(writer, version_suffix);

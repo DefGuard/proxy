@@ -82,7 +82,7 @@ async fn auth_info(
     let flow_type = request_data
         .flow_type
         .parse::<FlowType>()
-        .map_err(|_| ApiError::BadRequest("Invalid flow type".into()))?;
+        .map_err(|()| ApiError::BadRequest("Invalid flow type".into()))?;
 
     let request = AuthInfoRequest {
         redirect_url: state.callback_url(flow_type).to_string(),
@@ -146,7 +146,7 @@ async fn auth_callback(
     let flow_type = payload
         .flow_type
         .parse::<FlowType>()
-        .map_err(|_| ApiError::BadRequest("Invalid flow type".into()))?;
+        .map_err(|()| ApiError::BadRequest("Invalid flow type".into()))?;
 
     if flow_type != FlowType::Enrollment {
         return Err(ApiError::BadRequest(
