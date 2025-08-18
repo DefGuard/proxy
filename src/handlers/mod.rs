@@ -68,7 +68,7 @@ pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, 
                 core_error.status_code, core_error.message
             );
             return Err(core_error.into());
-        };
+        }
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
     } else {

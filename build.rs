@@ -5,17 +5,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let git2 = Git2Builder::default().branch(true).sha(true).build()?;
     Emitter::default().add_instructions(&git2)?.emit()?;
 
-    // compiling protos using path on build time
-    let mut config = prost_build::Config::new();
-    // enable optional fields
-    config.protoc_arg("--experimental_allow_proto3_optional");
-    // Make all messages serde-serializable
-    config.type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]");
-    tonic_build::configure().compile_protos_with_config(
-        config,
-        &["proto/core/proxy.proto"],
-        &["proto/core"],
-    )?;
+    tonic_prost_build::configure()
+        // Enable optional fields.
+        .protoc_arg("--experimental_allow_proto3_optional")
+        // Make all messages serde-serializable.
+        .type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]")
+        // Compiling protos using path on build time.
+        .compile_protos(&["proto/core/proxy.proto"], &["proto/core"])?;
+
     println!("cargo:rerun-if-changed=proto");
     Ok(())
 }
