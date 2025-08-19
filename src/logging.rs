@@ -3,7 +3,7 @@ use defguard_version::{
         build_version_suffix, extract_version_info_from_context, VersionFieldLayer,
         VersionFilteredFields, VersionSuffixWriter,
     },
-    SystemInfo,
+    ComponentInfo, DefguardVersionError,
 };
 use log::LevelFilter;
 use tracing::{Event, Level, Subscriber};
@@ -24,7 +24,7 @@ use tracing_subscriber::{
 // Allows fine-grained filtering with `EnvFilter` directives.
 // The directives are read from `DEFGUARD_PROXY_LOG_FILTER` env variable.
 // For more info read: <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html>
-pub fn init_tracing(own_version: &str, level: &LevelFilter) {
+pub fn init_tracing(own_version: &str, level: &LevelFilter) -> Result<(), DefguardVersionError> {
     tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER")
@@ -33,11 +33,13 @@ pub fn init_tracing(own_version: &str, level: &LevelFilter) {
         .with(VersionFieldLayer) // Add custom layer to capture span fields
         .with(
             fmt::layer()
-                .event_format(HttpVersionFormatter::new(own_version, SystemInfo::get()))
+                .event_format(HttpVersionFormatter::new(own_version)?)
                 .fmt_fields(VersionFilteredFields),
         )
         .init();
+
     info!("Tracing initialized");
+    Ok(())
 }
 
 /// Implements fail2ban-friendly log format with version suffixes.
@@ -46,18 +48,16 @@ pub fn init_tracing(own_version: &str, level: &LevelFilter) {
 pub(crate) struct HttpVersionFormatter<'a> {
     span: &'a str,
     timer: SystemTime,
-    own_version: String,
-    own_info: SystemInfo,
+    component_info: ComponentInfo,
 }
 
 impl<'a> HttpVersionFormatter<'a> {
-    pub fn new(own_version: &str, own_info: SystemInfo) -> Self {
-        Self {
+    pub fn new(own_version: &str) -> Result<Self, DefguardVersionError> {
+        Ok(Self {
             span: "http_request",
             timer: SystemTime,
-            own_version: own_version.to_string(),
-            own_info,
-        }
+            component_info: ComponentInfo::new(own_version)?,
+        })
     }
 }
 
@@ -86,8 +86,12 @@ where
 
         // Build version suffix using the utility function from defguard_version
         let is_error = *event.metadata().level() == Level::ERROR;
-        let version_suffix =
-            build_version_suffix(&extracted, &self.own_version, &self.own_info, is_error);
+        let version_suffix = build_version_suffix(
+            &extracted,
+            &self.component_info.version,
+            &self.component_info.system,
+            is_error,
+        );
 
         // iterate and accumulate spans storing our special span in separate variable if encountered
         let mut context_logs = String::new();
