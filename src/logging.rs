@@ -30,7 +30,7 @@ pub fn init_tracing(own_version: &str, level: &LevelFilter) -> Result<(), Defgua
             EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER")
                 .unwrap_or_else(|_| level.to_string().into()),
         )
-        .with(VersionFieldLayer) // Add custom layer to capture span fields
+        .with(VersionFieldLayer)
         .with(
             fmt::layer()
                 .event_format(HttpVersionFormatter::new(own_version)?)
@@ -81,10 +81,10 @@ where
         writer: format::Writer<'_>,
         event: &Event<'_>,
     ) -> std::fmt::Result {
-        // Extract version information using the utility function from defguard_version
+        // Extract version information
         let extracted = extract_version_info_from_context(ctx);
 
-        // Build version suffix using the utility function from defguard_version
+        // Build version suffix
         let is_error = *event.metadata().level() == Level::ERROR;
         let version_suffix = build_version_suffix(
             &extracted,
