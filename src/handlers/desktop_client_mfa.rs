@@ -10,7 +10,7 @@ use axum::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::json;
-use tokio::sync::mpsc;
+use tokio::{sync::mpsc, task::JoinSet};
 
 use crate::{
     error::ApiError,
@@ -38,58 +38,86 @@ pub(crate) struct RemoteMfaRequestQuery {
 #[instrument(level = "debug", skip(state))]
 async fn await_remote_auth(
     ws: WebSocketUpgrade,
-    //TODO: Validate this smth ?
     Query(req): Query<RemoteMfaRequestQuery>,
     State(state): State<AppState>,
     device_info: DeviceInfo,
-) -> Response {
+) -> Result<Response, impl IntoResponse> {
     let token = req.token;
-    // TODO: validate token!
-    // make sure no one else is listening already
-    if state.remote_mfa_sessions.get(&token).is_some() {
-        return ApiError::Unauthorized("".into()).into_response();
-    };
-    ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token))
+    // let core validate token first
+    let rx = state.grpc_server.send(
+        core_request::Payload::ClientMfaTokenValidation(
+            crate::proto::ClientMfaTokenValidationRequest {
+                token: token.clone(),
+            },
+        ),
+        device_info,
+    )?;
+    let payload = get_core_response(rx).await?;
+    if let core_response::Payload::ClientMfaTokenValidation(response) = payload {
+        if !response.token_valid {
+            return Err(ApiError::Unauthorized("".into()));
+        }
+        // check if its already in the map
+        if state.remote_mfa_sessions.contains_key(&token) {
+            return Err(ApiError::Unauthorized("".into()));
+        };
+        Ok(ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token)))
+    } else {
+        Err(ApiError::InvalidResponseType)
+    }
 }
 
 async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: String) {
     let (tx, mut rx) = mpsc::channel::<String>(10);
     let (mut ws_tx, mut ws_rx) = socket.split();
-    // include the current session in the state
-    state.remote_mfa_sessions.insert(token.clone(), tx.clone());
 
-    let forwarder = {
-        tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                let payload = json!({
-                    "type": "mfa_success",
-                    "preshared_key": &msg,
-                });
-                let serialized = serde_json::to_string(&payload).unwrap();
+    match state.remote_mfa_sessions.entry(token.clone()) {
+        dashmap::Entry::Occupied(_) => {
+            let _ = ws_tx.close().await;
+            return;
+        }
+        dashmap::Entry::Vacant(v) => v.insert(tx),
+    };
+
+    let mut set = JoinSet::new();
+
+    set.spawn(async move {
+        if let Some(msg) = rx.recv().await {
+            let payload = json!({
+                "type": "mfa_success",
+                "preshared_key": &msg,
+            });
+            if let Ok(serialized) = serde_json::to_string(&payload) {
                 let message = axum::extract::ws::Message::Text(serialized);
                 if ws_tx.send(message).await.is_err() {
-                    break;
+                    error!("Failed to send preshared key via ws");
                 }
-            }
-            let _ = ws_tx.close().await;
-        })
-    };
-    while let Some(msg_result) = ws_rx.next().await {
-        match msg_result {
-            Ok(msg) => {
-                if let Message::Close(_) = msg {
-                    break;
-                }
-            }
-            Err(e) => {
-                error!("Remote desktop mfa WS client listen error {e}");
-                break;
+            } else {
+                error!("Failed to serialize remote mfa ws client response message");
             }
         }
-    }
+        let _ = ws_tx.close().await;
+    });
+    set.spawn(async move {
+        while let Some(msg_result) = ws_rx.next().await {
+            match msg_result {
+                Ok(msg) => {
+                    if let Message::Close(_) = msg {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    error!("Remote desktop mfa WS client listen error {e}");
+                    break;
+                }
+            }
+        }
+    });
+
+    let _ = set.join_next().await;
+    set.shutdown().await;
     //cleanup
     state.remote_mfa_sessions.remove(&token);
-    forwarder.abort();
 }
 
 #[instrument(level = "debug", skip(state))]
