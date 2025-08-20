@@ -95,7 +95,7 @@ where
             if seen {
                 context_logs.push(' ');
             }
-        };
+        }
 
         // write http context log (ip, method, path)
         if let Some(log) = http_log {

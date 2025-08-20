@@ -57,7 +57,7 @@ impl ProxyServer {
             if let Err(err) = client_tx.send(Ok(res)) {
                 error!("Failed to send CoreRequest: {err}");
                 return Err(ApiError::Unexpected("Failed to send CoreRequest".into()));
-            };
+            }
             let (tx, rx) = oneshot::channel();
             let mut results = self.results.lock().unwrap();
             results.insert(id, tx);
