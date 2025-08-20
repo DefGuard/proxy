@@ -100,8 +100,7 @@ impl proxy_server::Proxy for ProxyServer {
             return Err(Status::internal("Failed to determine client address"));
         };
         let (version, info) = version_info_from_metadata(request.metadata());
-        let span =
-            tracing::info_span!("core_bidi_stream", core_version = version, core_info = info,);
+        let span = tracing::info_span!("core_bidi_stream", component = "core", version, info);
         let _guard = span.enter();
         info!("Defguard Core gRPC client connected from: {address}");
 
