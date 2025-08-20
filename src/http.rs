@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::{atomic::Ordering, Arc},
@@ -15,7 +16,6 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use dashmap::DashMap;
 use serde::Serialize;
 use tokio::{net::TcpListener, sync::mpsc, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
@@ -43,7 +43,7 @@ const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    pub(crate) remote_mfa_sessions: Arc<DashMap<String, mpsc::Sender<String>>>,
+    pub(crate) remote_mfa_sessions: Arc<tokio::sync::Mutex<HashMap<String, mpsc::Sender<String>>>>,
     key: Key,
     url: Url,
 }
@@ -131,7 +131,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Setting up API server");
     let shared_state = AppState {
         grpc_server: grpc_server.clone(),
-        remote_mfa_sessions: Arc::new(DashMap::new()),
+        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         // Generate secret key for encrypting cookies.
         key: Key::generate(),
         url: config.url.clone(),

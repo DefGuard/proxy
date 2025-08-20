@@ -58,7 +58,11 @@ async fn await_remote_auth(
             return Err(ApiError::Unauthorized(String::new()));
         }
         // check if its already in the map
-        if state.remote_mfa_sessions.contains_key(&token) {
+        let contains_key = {
+            let sessions = state.remote_mfa_sessions.lock().await;
+            sessions.contains_key(&token)
+        };
+        if contains_key {
             return Err(ApiError::Unauthorized("".into()));
         };
         Ok(ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token)))
@@ -71,13 +75,20 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
     let (tx, mut rx) = mpsc::channel::<String>(10);
     let (mut ws_tx, mut ws_rx) = socket.split();
 
-    match state.remote_mfa_sessions.entry(token.clone()) {
-        dashmap::Entry::Occupied(_) => {
-            let _ = ws_tx.close().await;
-            return;
+    let occupied = {
+        let mut sessions = state.remote_mfa_sessions.lock().await;
+        match sessions.entry(token.clone()) {
+            std::collections::hash_map::Entry::Occupied(_) => true,
+            std::collections::hash_map::Entry::Vacant(v) => {
+                v.insert(tx);
+                false
+            }
         }
-        dashmap::Entry::Vacant(v) => v.insert(tx),
     };
+    if occupied {
+        let _ = ws_tx.close().await;
+        return;
+    }
 
     let mut set = JoinSet::new();
 
@@ -117,7 +128,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
     let _ = set.join_next().await;
     set.shutdown().await;
     //cleanup
-    state.remote_mfa_sessions.remove(&token);
+    state.remote_mfa_sessions.lock().await.remove(&token);
 }
 
 #[instrument(level = "debug", skip(state))]
@@ -158,7 +169,7 @@ async fn finish_client_mfa(
         match response.token {
             // means remote mobile approve auth method was used for start
             Some(token) => {
-                match state.remote_mfa_sessions.get(&token) {
+                match state.remote_mfa_sessions.lock().await.get(&token) {
                     Some(sender) => {
                         // send preshared key to the device that is awaiting this token
                         let _ = sender.send(response.preshared_key).await;
