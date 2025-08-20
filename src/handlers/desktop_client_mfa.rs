@@ -10,10 +10,7 @@ use axum::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::json;
-use tokio::{
-    sync::oneshot,
-    task::JoinSet,
-};
+use tokio::{sync::oneshot, task::JoinSet};
 
 use crate::{
     error::ApiError,
