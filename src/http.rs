@@ -17,7 +17,7 @@ use axum::{
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::mpsc, task::JoinSet};
+use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
@@ -43,7 +43,8 @@ const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    pub(crate) remote_mfa_sessions: Arc<tokio::sync::Mutex<HashMap<String, mpsc::Sender<String>>>>,
+    pub(crate) remote_mfa_sessions:
+        Arc<tokio::sync::Mutex<HashMap<String, oneshot::Sender<String>>>>,
     key: Key,
     url: Url,
 }
