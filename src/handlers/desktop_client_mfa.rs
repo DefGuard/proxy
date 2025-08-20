@@ -55,7 +55,7 @@ async fn await_remote_auth(
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::ClientMfaTokenValidation(response) = payload {
         if !response.token_valid {
-            return Err(ApiError::Unauthorized("".into()));
+            return Err(ApiError::Unauthorized(String::new()));
         }
         // check if its already in the map
         if state.remote_mfa_sessions.contains_key(&token) {
