@@ -10,6 +10,7 @@ use axum::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::hash_map::Entry;
 use tokio::{sync::oneshot, task::JoinSet};
 
 use crate::{
@@ -80,8 +81,8 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
     let occupied = {
         let mut sessions = state.remote_mfa_sessions.lock().await;
         match sessions.entry(token.clone()) {
-            std::collections::hash_map::Entry::Occupied(_) => true,
-            std::collections::hash_map::Entry::Vacant(v) => {
+            Entry::Occupied(_) => true,
+            Entry::Vacant(v) => {
                 v.insert(tx);
                 false
             }
@@ -101,7 +102,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
                 "preshared_key": &msg,
             });
             if let Ok(serialized) = serde_json::to_string(&payload) {
-                let message = axum::extract::ws::Message::Text(serialized);
+                let message = Message::Text(serialized);
                 if ws_tx.send(message).await.is_err() {
                     error!("Failed to send preshared key via ws");
                 }
