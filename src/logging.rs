@@ -3,7 +3,7 @@ use defguard_version::{
         build_version_suffix, extract_version_info_from_context, VersionFieldLayer,
         VersionFilteredFields, VersionSuffixWriter,
     },
-    ComponentInfo, DefguardVersionError,
+    ComponentInfo, DefguardVersionError, Version,
 };
 use log::LevelFilter;
 use tracing::{Event, Level, Subscriber};
@@ -24,7 +24,7 @@ use tracing_subscriber::{
 // Allows fine-grained filtering with `EnvFilter` directives.
 // The directives are read from `DEFGUARD_PROXY_LOG_FILTER` env variable.
 // For more info read: <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html>
-pub fn init_tracing(own_version: &str, level: &LevelFilter) -> Result<(), DefguardVersionError> {
+pub fn init_tracing(own_version: Version, level: &LevelFilter) -> Result<(), DefguardVersionError> {
     tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER")
@@ -52,11 +52,11 @@ pub(crate) struct HttpVersionFormatter<'a> {
 }
 
 impl<'a> HttpVersionFormatter<'a> {
-    pub fn new(own_version: &str) -> Result<Self, DefguardVersionError> {
+    pub fn new(own_version: Version) -> Result<Self, DefguardVersionError> {
         Ok(Self {
             span: "http_request",
             timer: SystemTime,
-            component_info: ComponentInfo::new(own_version)?,
+            component_info: ComponentInfo::new(own_version),
         })
     }
 }

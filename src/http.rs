@@ -15,7 +15,7 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::server::DefguardVersionLayer;
+use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
 use tokio::{net::TcpListener, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
@@ -166,7 +166,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             Server::builder()
         };
         let versioned_service = ServiceBuilder::new()
-            .layer(DefguardVersionLayer::new(VERSION)?)
+            .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
             .service(proxy_server::ProxyServer::new(grpc_server));
         builder
             .add_service(versioned_service)
