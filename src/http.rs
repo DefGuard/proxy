@@ -32,7 +32,7 @@ use crate::{
     enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
     grpc::ProxyServer,
-    handlers::{desktop_client_mfa, enrollment, password_reset, polling},
+    handlers::{desktop_client_mfa, enrollment, password_reset, polling, register_mfa},
     proto::proxy_server,
 };
 
@@ -222,6 +222,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .nest("/password-reset", password_reset::router())
                 .nest("/client-mfa", desktop_client_mfa::router())
                 .nest("/openid", openid_login::router())
+                .nest("/register-mfa", register_mfa::router())
                 .route("/poll", post(polling::info))
                 .route("/health", get(healthcheck))
                 .route("/health-grpc", get(healthcheckgrpc))
