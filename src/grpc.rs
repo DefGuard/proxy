@@ -1,4 +1,4 @@
-use defguard_version::version_info_from_metadata;
+use defguard_version::{version_info_from_metadata, DefguardComponent};
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -100,7 +100,7 @@ impl proxy_server::Proxy for ProxyServer {
             return Err(Status::internal("Failed to determine client address"));
         };
         let (version, info) = version_info_from_metadata(request.metadata());
-        let span = tracing::info_span!("core_bidi_stream", component = "core", version, info);
+        let span = tracing::info_span!("core_bidi_stream", component = %DefguardComponent::Core, version, info);
         let _guard = span.enter();
         info!("Defguard Core gRPC client connected from: {address}");
 
