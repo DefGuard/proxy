@@ -65,7 +65,7 @@ async fn await_remote_auth(
             sessions.contains_key(&token)
         };
         if contains_key {
-            return Err(ApiError::Unauthorized("".into()));
+            return Err(ApiError::Unauthorized(String::new()));
         };
         Ok(ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token)))
     } else {
