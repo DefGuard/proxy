@@ -1,18 +1,15 @@
-use axum::Router;
 use serde::Deserialize;
 
-use axum::{extract::State, response::IntoResponse, routing::post, Json};
+use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
 use axum_extra::extract::PrivateCookieJar;
 
-use crate::http::ENROLLMENT_COOKIE_NAME;
-use crate::proto::MfaMethod;
 use crate::{
     error::ApiError,
     handlers::get_core_response,
-    http::AppState,
+    http::{AppState, ENROLLMENT_COOKIE_NAME},
     proto::{
         core_request, core_response, CodeMfaSetupFinishRequest, CodeMfaSetupFinishResponse,
-        CodeMfaSetupStartRequest, CodeMfaSetupStartResponse, DeviceInfo,
+        CodeMfaSetupStartRequest, CodeMfaSetupStartResponse, DeviceInfo, MfaMethod,
     },
 };
 
