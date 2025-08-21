@@ -2,8 +2,8 @@ import './style.scss';
 
 import classNames from 'classnames';
 import equal from 'fast-deep-equal';
-import { motion } from 'framer-motion';
 import { isUndefined } from 'lodash-es';
+import { motion } from 'motion/react';
 import { useMemo } from 'react';
 
 import { ToggleOption } from './components/ToggleOption/ToggleOption';
