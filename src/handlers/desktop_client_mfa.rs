@@ -30,14 +30,13 @@ pub(crate) fn router() -> Router<AppState> {
         .route("/finish-remote", post(finish_remote_mfa))
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct RemoteMfaRequestQuery {
     pub token: String,
 }
 
 // Allows desktop client to await for another device to complete MFA for it via mobile client
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn await_remote_auth(
     ws: WebSocketUpgrade,
     Query(req): Query<RemoteMfaRequestQuery>,
@@ -136,7 +135,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
     state.remote_mfa_sessions.lock().await.remove(&token);
 }
 
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn start_client_mfa(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -158,7 +157,7 @@ async fn start_client_mfa(
     }
 }
 
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn finish_client_mfa(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -177,7 +176,7 @@ async fn finish_client_mfa(
     }
 }
 
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn finish_remote_mfa(
     State(state): State<AppState>,
     device_info: DeviceInfo,
