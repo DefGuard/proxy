@@ -16,9 +16,11 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
+use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
 use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
+use tower::ServiceBuilder;
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -34,6 +36,7 @@ use crate::{
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
+    VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -166,8 +169,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         } else {
             Server::builder()
         };
+        let versioned_service = ServiceBuilder::new()
+            .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
+            .service(proxy_server::ProxyServer::new(grpc_server));
         builder
-            .add_service(proxy_server::ProxyServer::new(grpc_server))
+            .add_service(versioned_service)
             .serve(addr)
             .await
             .context("Error running gRPC server")

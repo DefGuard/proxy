@@ -6,10 +6,12 @@ use std::{
         Arc, Mutex,
     },
 };
-
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
+use tracing::Instrument;
+
+use defguard_version::{version_info_from_metadata, DefguardComponent};
 
 use crate::{
     error::ApiError,
@@ -89,7 +91,7 @@ impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
 
     /// Handle bidirectional communication with Defguard core.
-    #[instrument(name = "bidirectional_communication", level = "debug", skip(self))]
+    #[instrument(name = "bidirectional_communication", level = "info", skip(self))]
     async fn bidi(
         &self,
         request: Request<Streaming<CoreResponse>>,
@@ -98,6 +100,9 @@ impl proxy_server::Proxy for ProxyServer {
             error!("Failed to determine client address for request: {request:?}");
             return Err(Status::internal("Failed to determine client address"));
         };
+        let (version, info) = version_info_from_metadata(request.metadata());
+        let span = tracing::info_span!("core_bidi_stream", component = %DefguardComponent::Core, version, info);
+        let _guard = span.enter();
         info!("Defguard Core gRPC client connected from: {address}");
 
         let (tx, rx) = mpsc::unbounded_channel();
@@ -108,37 +113,40 @@ impl proxy_server::Proxy for ProxyServer {
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
         let mut stream = request.into_inner();
-        tokio::spawn(async move {
-            loop {
-                match stream.message().await {
-                    Ok(Some(response)) => {
-                        debug!("Received message from Defguard core: {response:?}");
-                        connected.store(true, Ordering::Relaxed);
-                        // Discard empty payloads.
-                        if let Some(payload) = response.payload {
-                            if let Some(rx) = results.lock().unwrap().remove(&response.id) {
-                                if let Err(err) = rx.send(payload) {
-                                    error!("Failed to send message to rx: {err:?}");
+        tokio::spawn(
+            async move {
+                loop {
+                    match stream.message().await {
+                        Ok(Some(response)) => {
+                            debug!("Received message from Defguard core: {response:?}");
+                            connected.store(true, Ordering::Relaxed);
+                            // Discard empty payloads.
+                            if let Some(payload) = response.payload {
+                                if let Some(rx) = results.lock().unwrap().remove(&response.id) {
+                                    if let Err(err) = rx.send(payload) {
+                                        error!("Failed to send message to rx: {err:?}");
+                                    }
+                                } else {
+                                    error!("Missing receiver for response #{}", response.id);
                                 }
-                            } else {
-                                error!("Missing receiver for response #{}", response.id);
                             }
                         }
-                    }
-                    Ok(None) => {
-                        info!("gRPC stream has been closed");
-                        break;
-                    }
-                    Err(err) => {
-                        error!("gRPC client error: {err}");
-                        break;
+                        Ok(None) => {
+                            info!("gRPC stream has been closed");
+                            break;
+                        }
+                        Err(err) => {
+                            error!("gRPC client error: {err}");
+                            break;
+                        }
                     }
                 }
+                info!("Defguard core client disconnected: {address}");
+                connected.store(false, Ordering::Relaxed);
+                clients.lock().unwrap().remove(&address);
             }
-            info!("Defguard core client disconnected: {address}");
-            connected.store(false, Ordering::Relaxed);
-            clients.lock().unwrap().remove(&address);
-        });
+            .instrument(tracing::Span::current()),
+        );
 
         Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
