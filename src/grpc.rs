@@ -1,4 +1,3 @@
-use defguard_version::{version_info_from_metadata, DefguardComponent};
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -11,6 +10,8 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 use tracing::Instrument;
+
+use defguard_version::{version_info_from_metadata, DefguardComponent};
 
 use crate::{
     error::ApiError,
