@@ -6,6 +6,7 @@ mod grpc;
 mod handlers;
 pub mod http;
 pub mod logging;
+mod version;
 
 pub(crate) mod proto {
     tonic::include_proto!("defguard.proxy");
@@ -14,4 +15,4 @@ pub(crate) mod proto {
 #[macro_use]
 extern crate tracing;
 
-pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("VERGEN_GIT_SHA"));
+pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+", env!("VERGEN_GIT_SHA"));
