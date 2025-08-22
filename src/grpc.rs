@@ -11,11 +11,14 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 use tracing::Instrument;
 
-use defguard_version::{version_info_from_metadata, DefguardComponent};
+use defguard_version::{
+    parse_metadata, version_info_from_metadata, ComponentInfo, DefguardComponent,
+};
 
 use crate::{
     error::ApiError,
     proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
+    version::is_core_version_supported,
 };
 
 // connected clients
@@ -86,6 +89,17 @@ impl Clone for ProxyServer {
     }
 }
 
+fn get_tracing_variables(info: &Option<ComponentInfo>) -> (String, String) {
+    let version = info
+        .as_ref()
+        .map_or(String::from("?"), |info| info.version.to_string());
+    let info = info
+        .as_ref()
+        .map_or(String::from("?"), |info| info.system.to_string());
+
+    (version, info)
+}
+
 #[tonic::async_trait]
 impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
@@ -100,9 +114,16 @@ impl proxy_server::Proxy for ProxyServer {
             error!("Failed to determine client address for request: {request:?}");
             return Err(Status::internal("Failed to determine client address"));
         };
-        let (version, info) = version_info_from_metadata(request.metadata());
+        let maybe_info = parse_metadata(request.metadata());
+        let (version, info) = get_tracing_variables(&maybe_info);
         let span = tracing::info_span!("core_bidi_stream", component = %DefguardComponent::Core, version, info);
         let _guard = span.enter();
+
+        // check core version and return if it's not supported
+        let version = maybe_info.as_ref().map(|info| &info.version);
+        if !is_core_version_supported(version) {
+            return Err(Status::internal("Unsupported core version"));
+        }
         info!("Defguard Core gRPC client connected from: {address}");
 
         let (tx, rx) = mpsc::unbounded_channel();
