@@ -9,8 +9,8 @@ import {
   useFloating,
 } from '@floating-ui/react';
 import classNames from 'classnames';
-import { AnimatePresence, motion } from 'framer-motion';
 import { isUndefined, last } from 'lodash-es';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { debounceTime, filter, Subject } from 'rxjs';
 import { useBreakpoint } from 'use-breakpoint';
