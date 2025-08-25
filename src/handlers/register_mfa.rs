@@ -31,6 +31,7 @@ async fn register_code_mfa_start(
     cookie_jar: PrivateCookieJar,
     Json(req): Json<RegisterMfaCodeStartRequest>,
 ) -> Result<Json<CodeMfaSetupStartResponse>, impl IntoResponse> {
+    debug!("Register code MFA started");
     let token = cookie_jar
         .get(ENROLLMENT_COOKIE_NAME)
         .ok_or_else(|| ApiError::Unauthorized(String::new()))?
@@ -38,11 +39,12 @@ async fn register_code_mfa_start(
         .to_string();
 
     if req.method != MfaMethod::Email && req.method != MfaMethod::Totp {
+        error!("Requested method not supported");
         return Err(ApiError::BadRequest("Method not supported.".to_string()));
     }
 
     let rx = state.grpc_server.send(
-        core_request::Payload::CodeMfaSetupStartRequest(CodeMfaSetupStartRequest {
+        core_request::Payload::CodeMfaSetupStart(CodeMfaSetupStartRequest {
             token,
             method: req.method.into(),
         }),
@@ -58,6 +60,7 @@ async fn register_code_mfa_start(
 #[derive(Debug, Clone, Deserialize)]
 struct RegisterMfaCodeFinishRequest {
     pub code: String,
+    pub method: MfaMethod,
 }
 
 #[instrument(level = "debug", skip(state, req))]
@@ -73,10 +76,14 @@ async fn register_code_mfa_finish(
         .value()
         .to_string();
 
+    let code = req.code;
+    let method = req.method;
+
     let rx = state.grpc_server.send(
-        core_request::Payload::CodeMfaSetupFinishRequest(CodeMfaSetupFinishRequest {
+        core_request::Payload::CodeMfaSetupFinish(CodeMfaSetupFinishRequest {
             token,
-            code: req.code,
+            code,
+            method: method as i32,
         }),
         device_info,
     )?;
