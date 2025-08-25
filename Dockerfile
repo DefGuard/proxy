@@ -10,7 +10,7 @@ COPY web/ .
 RUN pnpm run generate-translation-types
 RUN pnpm build
 
-FROM rust:1.87 AS chef
+FROM rust:1 AS chef
 
 WORKDIR /build
 
@@ -42,7 +42,7 @@ COPY proto proto
 RUN cargo install --locked --path . --root /build
 
 # run
-FROM debian:bookworm-slim AS runtime
+FROM debian:13-slim AS runtime
 RUN apt-get update -y && \
     apt-get install --no-install-recommends -y ca-certificates && \
     rm -rf /var/lib/apt/lists/*
