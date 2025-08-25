@@ -12,7 +12,7 @@ use tonic::{Request, Response, Status, Streaming};
 use tracing::Instrument;
 
 use defguard_version::{
-    parse_metadata, version_info_from_metadata, ComponentInfo, DefguardComponent,
+    get_tracing_variables, parse_metadata, version_info_from_metadata, ComponentInfo, DefguardComponent
 };
 
 use crate::{
@@ -87,17 +87,6 @@ impl Clone for ProxyServer {
             connected: Arc::clone(&self.connected),
         }
     }
-}
-
-fn get_tracing_variables(info: &Option<ComponentInfo>) -> (String, String) {
-    let version = info
-        .as_ref()
-        .map_or(String::from("?"), |info| info.version.to_string());
-    let info = info
-        .as_ref()
-        .map_or(String::from("?"), |info| info.system.to_string());
-
-    (version, info)
 }
 
 #[tonic::async_trait]

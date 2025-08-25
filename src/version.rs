@@ -9,7 +9,7 @@ pub(crate) fn is_core_version_supported(core_version: Option<&Version>) -> bool 
 		return false;
     };
     if core_version < &MIN_CORE_VERSION {
-        error!("Core version {core_version} is not supported. Minimal supported core version is {MIN_CORE_VERSION}. Exiting.");
+        error!("Core version {core_version} is not supported. Minimal supported core version is {MIN_CORE_VERSION}.");
 		return false;
     }
 
