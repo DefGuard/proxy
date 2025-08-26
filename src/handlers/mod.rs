@@ -14,6 +14,7 @@ pub(crate) mod enrollment;
 pub(crate) mod mobile_client;
 pub(crate) mod password_reset;
 pub(crate) mod polling;
+pub(crate) mod register_mfa;
 
 // Timeout for awaiting response from Defguard Core.
 const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
