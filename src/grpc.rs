@@ -108,11 +108,6 @@ impl proxy_server::Proxy for ProxyServer {
         let span = tracing::info_span!("core_bidi_stream", component = %DefguardComponent::Core, version, info);
         let _guard = span.enter();
 
-        // check core version and return if it's not supported
-        let version = maybe_info.as_ref().map(|info| &info.version);
-        if !is_core_version_supported(version) {
-            return Err(Status::internal("Unsupported core version"));
-        }
         info!("Defguard Core gRPC client connected from: {address}");
 
         let (tx, rx) = mpsc::unbounded_channel();

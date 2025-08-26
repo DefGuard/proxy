@@ -16,7 +16,10 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::{server::DefguardVersionLayer, Version};
+use defguard_version::{
+    server::{DefguardVersionInterceptor, DefguardVersionLayer},
+    DefguardComponent, Version,
+};
 use serde::Serialize;
 use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
@@ -36,6 +39,7 @@ use crate::{
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
+    version::MIN_CORE_VERSION,
     VERSION,
 };
 
@@ -170,6 +174,9 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             Server::builder()
         };
         let versioned_service = ServiceBuilder::new()
+            .layer(tonic::service::InterceptorLayer::new(
+                DefguardVersionInterceptor::new(DefguardComponent::Core, MIN_CORE_VERSION),
+            ))
             .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
             .service(proxy_server::ProxyServer::new(grpc_server));
         builder
