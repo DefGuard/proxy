@@ -15,8 +15,8 @@ use crate::{
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
-        .route("/start", post(register_code_mfa_start))
-        .route("/finish", post(register_code_mfa_finish))
+        .route("/code/start", post(register_code_mfa_start))
+        .route("/code/finish", post(register_code_mfa_finish))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -78,6 +78,10 @@ async fn register_code_mfa_finish(
 
     let code = req.code;
     let method = req.method;
+
+    if method != MfaMethod::Totp && method != MfaMethod::Email {
+        return Err(ApiError::BadRequest("Method not supported".to_string()));
+    }
 
     let rx = state.grpc_server.send(
         core_request::Payload::CodeMfaSetupFinish(CodeMfaSetupFinishRequest {
