@@ -1,3 +1,5 @@
+use defguard_version::Version;
+
 pub mod assets;
 pub mod config;
 mod enterprise;
@@ -6,7 +8,6 @@ mod grpc;
 mod handlers;
 pub mod http;
 pub mod logging;
-mod version;
 
 pub(crate) mod proto {
     tonic::include_proto!("defguard.proxy");
@@ -16,3 +17,4 @@ pub(crate) mod proto {
 extern crate tracing;
 
 pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+", env!("VERGEN_GIT_SHA"));
+pub const MIN_CORE_VERSION: Version = Version::new(1, 5, 0);

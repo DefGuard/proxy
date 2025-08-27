@@ -11,14 +11,11 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 use tracing::Instrument;
 
-use defguard_version::{
-    get_tracing_variables, parse_metadata, version_info_from_metadata, ComponentInfo, DefguardComponent
-};
+use defguard_version::{get_tracing_variables, parse_metadata, DefguardComponent};
 
 use crate::{
     error::ApiError,
     proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
-    version::is_core_version_supported,
 };
 
 // connected clients
