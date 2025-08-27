@@ -173,11 +173,17 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         } else {
             Server::builder()
         };
+        let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
             .layer(tonic::service::InterceptorLayer::new(
-                DefguardVersionInterceptor::new(DefguardComponent::Core, MIN_CORE_VERSION),
+                DefguardVersionInterceptor::new(
+                    own_version.clone(),
+                    DefguardComponent::Core,
+                    MIN_CORE_VERSION,
+                    false,
+                ),
             ))
-            .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
+            .layer(DefguardVersionLayer::new(own_version))
             .service(proxy_server::ProxyServer::new(grpc_server));
         builder
             .add_service(versioned_service)
