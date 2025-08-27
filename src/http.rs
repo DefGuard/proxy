@@ -32,7 +32,14 @@ use tracing::{info_span, Level};
 use url::Url;
 
 use crate::{
-    assets::{index, svg, web_asset}, config::Config, enterprise::handlers::openid_login::{self, FlowType}, error::ApiError, grpc::ProxyServer, handlers::{desktop_client_mfa, enrollment, password_reset, polling}, proto::proxy_server, MIN_CORE_VERSION, VERSION
+    assets::{index, svg, web_asset},
+    config::Config,
+    enterprise::handlers::openid_login::{self, FlowType},
+    error::ApiError,
+    grpc::ProxyServer,
+    handlers::{desktop_client_mfa, enrollment, password_reset, polling},
+    proto::proxy_server,
+    MIN_CORE_VERSION, VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
