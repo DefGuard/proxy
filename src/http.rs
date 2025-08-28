@@ -16,7 +16,10 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::{server::DefguardVersionLayer, Version};
+use defguard_version::{
+    server::{DefguardVersionInterceptor, DefguardVersionLayer},
+    DefguardComponent, Version,
+};
 use serde::Serialize;
 use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
@@ -36,7 +39,7 @@ use crate::{
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
-    VERSION,
+    MIN_CORE_VERSION, VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -169,8 +172,17 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         } else {
             Server::builder()
         };
+        let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
-            .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
+            .layer(tonic::service::InterceptorLayer::new(
+                DefguardVersionInterceptor::new(
+                    own_version.clone(),
+                    DefguardComponent::Core,
+                    MIN_CORE_VERSION,
+                    false,
+                ),
+            ))
+            .layer(DefguardVersionLayer::new(own_version))
             .service(proxy_server::ProxyServer::new(grpc_server));
         builder
             .add_service(versioned_service)
