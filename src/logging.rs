@@ -51,7 +51,7 @@ pub(crate) struct HttpVersionFormatter<'a> {
     component_info: ComponentInfo,
 }
 
-impl<'a> HttpVersionFormatter<'a> {
+impl HttpVersionFormatter<'_> {
     pub fn new(own_version: Version) -> Result<Self, DefguardVersionError> {
         Ok(Self {
             span: "http_request",

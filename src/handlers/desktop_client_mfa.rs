@@ -66,7 +66,7 @@ async fn await_remote_auth(
         };
         if contains_key {
             return Err(ApiError::Unauthorized(String::new()));
-        };
+        }
         Ok(ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token)))
     } else {
         Err(ApiError::InvalidResponseType)
@@ -102,7 +102,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
                 "preshared_key": &msg,
             });
             if let Ok(serialized) = serde_json::to_string(&payload) {
-                let message = Message::Text(serialized);
+                let message = Message::Text(serialized.into());
                 if ws_tx.send(message).await.is_err() {
                     error!("Failed to send preshared key via ws");
                 }
@@ -110,7 +110,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
                 error!("Failed to serialize remote mfa ws client response message");
             }
         } else {
-            error!("Failed to receive preshared key from receiver")
+            error!("Failed to receive preshared key from receiver");
         }
         let _ = ws_tx.close().await;
     });
@@ -190,29 +190,26 @@ async fn finish_remote_mfa(
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::ClientMfaFinish(response) = payload {
         // check if this needs to be forwarded
-        match response.token {
-            Some(token) => {
-                let sender_option = {
-                    let mut sessions = state.remote_mfa_sessions.lock().await;
-                    sessions.remove(&token)
-                };
-                match sender_option {
-                    Some(sender) => {
-                        let _ = sender.send(response.preshared_key);
-                    }
-                    // if desktop stopped listening for the result there will be no palce to send the result
-                    None => {
-                        error!("Remote MFA approve finished but session was not found.");
-                        return Err(ApiError::Unexpected(String::new()));
-                    }
+        if let Some(token) = response.token {
+            let sender_option = {
+                let mut sessions = state.remote_mfa_sessions.lock().await;
+                sessions.remove(&token)
+            };
+            match sender_option {
+                Some(sender) => {
+                    let _ = sender.send(response.preshared_key);
                 }
-                info!("Finished desktop client authorization via mobile device");
-                Ok(Json(json!({})))
+                // if desktop stopped listening for the result there will be no palce to send the result
+                None => {
+                    error!("Remote MFA approve finished but session was not found.");
+                    return Err(ApiError::Unexpected(String::new()));
+                }
             }
-            None => {
-                error!("Remote MFA Unexpected core response, token was not returned");
-                Err(ApiError::Unexpected(String::new()))
-            }
+            info!("Finished desktop client authorization via mobile device");
+            Ok(Json(json!({})))
+        } else {
+            error!("Remote MFA Unexpected core response, token was not returned");
+            Err(ApiError::Unexpected(String::new()))
         }
     } else {
         error!("Received invalid gRPC response type: {payload:#?}");

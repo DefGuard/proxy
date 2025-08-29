@@ -19,7 +19,6 @@ pub(crate) mod register_mfa;
 // Timeout for awaiting response from Defguard Core.
 const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[tonic::async_trait]
 impl<S> FromRequestParts<S> for DeviceInfo
 where
     S: Send + Sync,

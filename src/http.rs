@@ -229,10 +229,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Build axum app
     let mut app = Router::new()
         .route("/", get(index))
-        .route("/*path", get(index))
-        .route("/fonts/*path", get(web_asset))
-        .route("/assets/*path", get(web_asset))
-        .route("/svg/*path", get(svg))
+        .route("/{*path}", get(index))
+        .route("/fonts/{*path}", get(web_asset))
+        .route("/assets/{*path}", get(web_asset))
+        .route("/svg/{*path}", get(svg))
         .nest(
             "/api/v1",
             Router::new()
@@ -263,9 +263,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
     if let Some(conf) = governor_conf {
-        app = app.layer(GovernorLayer {
-            config: conf.into(),
-        });
+        app = app.layer(GovernorLayer::new(conf));
     }
     debug!("Configured API server routing: {app:?}");
 
