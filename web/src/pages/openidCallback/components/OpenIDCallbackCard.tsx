@@ -93,6 +93,13 @@ export const OpenIDCallbackCard = () => {
     return undefined;
   }, [data]);
 
+  const deepLink = useMemo(() => {
+    if (data) {
+      return `defguard://addinstance?token=${data.token}&url=${data.url}`;
+    }
+    return null;
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="loader-container">
@@ -125,13 +132,25 @@ export const OpenIDCallbackCard = () => {
       <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
       <h3>
         Please enter the provided Instance URL and Token into your Defguard Client. You
-        can scan the QR code or copy and paste the token manually.
+        can scan the QR code, click button below or copy and paste the token manually.
       </h3>
       {isPresent(data) && (
         <>
           <CopyField label="Url" value={data.url} onCopy={writeToClipboard} />
           <CopyField label="Token" value={data.token} onCopy={writeToClipboard} />
         </>
+      )}
+
+      {isPresent(deepLink) && (
+        <div className="row">
+          <a href={deepLink} target="_blank" rel="noopener noreferrer">
+            <Button
+              text="Configure your desktop client"
+              size={ButtonSize.LARGE}
+              styleVariant={ButtonStyleVariant.PRIMARY}
+            />
+          </a>
+        </div>
       )}
       {isPresent(qrData) && (
         <div className="row">
