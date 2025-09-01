@@ -132,7 +132,7 @@ export const OpenIDCallbackCard = () => {
       <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
       <h3>
         Please enter the provided Instance URL and Token into your Defguard Client. You
-        can scan the QR code, click button below or copy and paste the token manually.
+        can scan the QR code, click the button below or copy and paste the token manually.
       </h3>
       {isPresent(data) && (
         <>
