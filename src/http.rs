@@ -45,6 +45,7 @@ use crate::{
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
@@ -137,7 +138,7 @@ async fn core_version_middleware(
         if let Ok(core_version_header) = HeaderValue::from_str(&core_version.to_string()) {
             response
                 .headers_mut()
-                .insert("defguard-core-version", core_version_header);
+                .insert(DEFGUARD_CORE_VERSION_HEADER, core_version_header);
         }
     }
 
