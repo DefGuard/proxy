@@ -6,12 +6,12 @@ use std::{
         Arc, Mutex,
     },
 };
+
+use defguard_version::{get_tracing_variables, parse_metadata, DefguardComponent, Version};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
 use tracing::Instrument;
-
-use defguard_version::{get_tracing_variables, parse_metadata, DefguardComponent};
 
 use crate::{
     error::ApiError,
@@ -27,6 +27,7 @@ pub(crate) struct ProxyServer {
     clients: Arc<Mutex<ClientMap>>,
     results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
     pub(crate) connected: Arc<AtomicBool>,
+    pub(crate) core_version: Arc<Mutex<Option<Version>>>,
 }
 
 impl ProxyServer {
@@ -38,6 +39,7 @@ impl ProxyServer {
             clients: Arc::new(Mutex::new(HashMap::new())),
             results: Arc::new(Mutex::new(HashMap::new())),
             connected: Arc::new(AtomicBool::new(false)),
+            core_version: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -82,6 +84,7 @@ impl Clone for ProxyServer {
             clients: Arc::clone(&self.clients),
             results: Arc::clone(&self.results),
             connected: Arc::clone(&self.connected),
+            core_version: Arc::clone(&self.core_version),
         }
     }
 }
@@ -102,6 +105,12 @@ impl proxy_server::Proxy for ProxyServer {
         };
         let maybe_info = parse_metadata(request.metadata());
         let (version, info) = get_tracing_variables(&maybe_info);
+
+        if let Ok(ver) = Version::parse(&version) {
+            let mut core_version = self.core_version.lock().unwrap();
+            *core_version = Some(ver);
+        }
+
         let span = tracing::info_span!("core_bidi_stream", component = %DefguardComponent::Core, version, info);
         let _guard = span.enter();
 

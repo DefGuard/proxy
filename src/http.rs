@@ -10,14 +10,15 @@ use anyhow::Context;
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRef, State},
-    http::{Request, StatusCode},
+    http::{header::HeaderValue, Request, Response, StatusCode},
+    middleware::{self, Next},
     routing::{get, post},
     serve, Json, Router,
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use defguard_version::{
-    server::{DefguardVersionInterceptor, DefguardVersionLayer},
+    server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
     DefguardComponent, Version,
 };
 use serde::Serialize;
@@ -44,6 +45,7 @@ use crate::{
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
@@ -123,6 +125,24 @@ fn get_client_addr(request: &Request<Body>) -> String {
             },
             |ip| ip.trim().to_string(),
         )
+}
+
+async fn core_version_middleware(
+    State(app_state): State<AppState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response<Body> {
+    let mut response = next.run(request).await;
+
+    if let Some(core_version) = app_state.grpc_server.core_version.lock().unwrap().as_ref() {
+        if let Ok(core_version_header) = HeaderValue::from_str(&core_version.to_string()) {
+            response
+                .headers_mut()
+                .insert(DEFGUARD_CORE_VERSION_HEADER, core_version_header);
+        }
+    }
+
+    response
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
@@ -246,6 +266,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .route("/info", get(app_info)),
         )
         .fallback_service(get(handle_404))
+        .layer(middleware::from_fn_with_state(
+            shared_state.clone(),
+            core_version_middleware,
+        ))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
