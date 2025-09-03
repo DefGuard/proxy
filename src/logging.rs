@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use defguard_version::{
     tracing::{
         build_version_suffix, extract_version_info_from_context, VersionFieldLayer,
@@ -33,7 +35,7 @@ pub fn init_tracing(own_version: Version, level: &LevelFilter) -> Result<(), Def
         .with(VersionFieldLayer)
         .with(
             fmt::layer()
-                .event_format(HttpVersionFormatter::new(own_version)?)
+                .event_format(HttpVersionFormatter::new(own_version))
                 .fmt_fields(VersionFilteredFields),
         )
         .init();
@@ -52,12 +54,13 @@ pub(crate) struct HttpVersionFormatter<'a> {
 }
 
 impl HttpVersionFormatter<'_> {
-    pub fn new(own_version: Version) -> Result<Self, DefguardVersionError> {
-        Ok(Self {
+    #[must_use]
+    pub fn new(own_version: Version) -> Self {
+        Self {
             span: "http_request",
             timer: SystemTime,
             component_info: ComponentInfo::new(own_version),
-        })
+        }
     }
 }
 
@@ -100,7 +103,7 @@ where
             let mut seen = false;
             for span in scope.from_root() {
                 let span_name = span.metadata().name();
-                context_logs.push_str(&format!(" {span_name}"));
+                let _ = write!(context_logs, " {span_name}");
                 seen = true;
 
                 let extensions = span.extensions();
@@ -108,7 +111,9 @@ where
                     if !fields.is_empty() {
                         match span_name {
                             x if x == self.span => http_log = Some(format!("{fields}")),
-                            _ => context_logs.push_str(&format!(" {{{fields}}}")),
+                            _ => {
+                                let _ = write!(context_logs, " {{{fields}}}");
+                            }
                         }
                     }
                 }
