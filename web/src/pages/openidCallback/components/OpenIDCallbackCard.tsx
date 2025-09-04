@@ -3,6 +3,7 @@ import './style.scss';
 import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
+import Markdown from 'react-markdown';
 import QRCode from 'react-qr-code';
 import { useBreakpoint } from 'use-breakpoint';
 import { useI18nContext } from '../../../i18n/i18n-react';
@@ -130,17 +131,7 @@ export const OpenIDCallbackCard = () => {
     <Card shaded={breakpoint !== 'mobile'} className="openidcallback-card">
       <h2>{LL.pages.oidcLogin.card.title()}</h2>
       <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
-      <h3>
-        Please enter the provided Instance URL and Token into your Defguard Client. You
-        can scan the QR code, click the button below or copy and paste the token manually.
-      </h3>
-      {isPresent(data) && (
-        <>
-          <CopyField label="Url" value={data.url} onCopy={writeToClipboard} />
-          <CopyField label="Token" value={data.token} onCopy={writeToClipboard} />
-        </>
-      )}
-
+      <MessageBox message="If you want to configure your Defguard desktop client, please install the client (links below), open it and just press the One-Click Desktop Configuration button" />
       {isPresent(deepLink) && (
         <div className="row">
           <a href={deepLink} target="_blank" rel="noopener noreferrer">
@@ -152,6 +143,20 @@ export const OpenIDCallbackCard = () => {
           </a>
         </div>
       )}
+      <MessageBox>
+        <Markdown>
+          {
+            'If you are having trouble with the One-Click configuration you can do it manually by clicking *Add Instance* in the desktop client, and entering the following URL and Token:'
+          }
+        </Markdown>
+      </MessageBox>
+      {isPresent(data) && (
+        <>
+          <CopyField label="Url" value={data.url} onCopy={writeToClipboard} />
+          <CopyField label="Token" value={data.token} onCopy={writeToClipboard} />
+        </>
+      )}
+      <MessageBox message="If you want to configure your Mobile Defguard Client, please just scan this QR code in the app:" />
       {isPresent(qrData) && (
         <div className="row">
           <div className="qr">
@@ -159,12 +164,6 @@ export const OpenIDCallbackCard = () => {
           </div>
         </div>
       )}
-      <div className="row">
-        <p className="qr-description">
-          Scan the QR code with your installed Defguard app. If you haven't installed it
-          yet, use your device's app store or the link below.
-        </p>
-      </div>
       <div className="row">
         <a
           href={sharedLinks.client.download.android}
