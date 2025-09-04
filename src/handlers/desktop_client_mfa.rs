@@ -4,7 +4,7 @@ use axum::{
         Query, State, WebSocketUpgrade,
     },
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{any, post},
     Json, Router,
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
@@ -27,16 +27,16 @@ pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
         .route("/finish", post(finish_client_mfa))
-        .route("/remote", get(await_remote_auth))
+        .route("/remote", any(await_remote_auth))
         .route("/finish-remote", post(finish_remote_mfa))
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Deserialize)]
 pub(crate) struct RemoteMfaRequestQuery {
     pub token: String,
 }
 
-// Allows desktop client to await for another device to complete MFA for it via mobile client
+// Allows desktop client to await for another device to complete MFA for it via mobile client.
 #[instrument(level = "debug", skip(state, req))]
 async fn await_remote_auth(
     ws: WebSocketUpgrade,
@@ -73,26 +73,23 @@ async fn await_remote_auth(
     }
 }
 
-// handle axum ws socket upgrade for await_remote_auth
+/// Handle axum web socket upgrade for `await_remote_auth`.
 async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: String) {
-    let (tx, rx) = oneshot::channel::<String>();
-    let (mut ws_tx, mut ws_rx) = socket.split();
+    let (tx, rx) = oneshot::channel();
 
-    let occupied = {
+    {
         let mut sessions = state.remote_mfa_sessions.lock().await;
         match sessions.entry(token.clone()) {
-            Entry::Occupied(_) => true,
+            Entry::Occupied(_) => {
+                return;
+            }
             Entry::Vacant(v) => {
                 v.insert(tx);
-                false
             }
         }
-    };
-    if occupied {
-        let _ = ws_tx.close().await;
-        return;
     }
 
+    let (mut ws_tx, mut ws_rx) = socket.split();
     let mut set = JoinSet::new();
 
     set.spawn(async move {
@@ -114,6 +111,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
         }
         let _ = ws_tx.close().await;
     });
+
     set.spawn(async move {
         while let Some(msg_result) = ws_rx.next().await {
             match msg_result {
@@ -132,7 +130,7 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
 
     let _ = set.join_next().await;
     set.shutdown().await;
-    // will remove token if it's still there
+    // This will remove token, if it's still there.
     state.remote_mfa_sessions.lock().await.remove(&token);
 }
 
@@ -189,22 +187,22 @@ async fn finish_remote_mfa(
         .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::ClientMfaFinish(response) = payload {
-        // check if this needs to be forwarded
+        // Check if this needs to be forwarded.
         if let Some(token) = response.token {
             let sender_option = {
                 let mut sessions = state.remote_mfa_sessions.lock().await;
                 sessions.remove(&token)
             };
-            match sender_option {
-                Some(sender) => {
-                    let _ = sender.send(response.preshared_key);
-                }
-                // if desktop stopped listening for the result there will be no palce to send the result
-                None => {
-                    error!("Remote MFA approve finished but session was not found.");
-                    return Err(ApiError::Unexpected(String::new()));
-                }
+            if let Some(sender) = sender_option {
+                let _ = sender.send(response.preshared_key);
             }
+            // If desktop stopped listening for the result, there will be no palce to send the
+            // result.
+            else {
+                error!("Remote MFA approve finished but session was not found.");
+                return Err(ApiError::Unexpected(String::new()));
+            }
+
             info!("Finished desktop client authorization via mobile device");
             Ok(Json(json!({})))
         } else {

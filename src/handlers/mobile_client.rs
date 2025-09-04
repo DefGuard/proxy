@@ -37,12 +37,11 @@ pub(crate) async fn register_mobile_auth(
 ) -> Result<(), ApiError> {
     debug!("Register mobile auth started");
     // set auth info
-    let token = match private_cookies
+    let Some(token) = private_cookies
         .get(ENROLLMENT_COOKIE_NAME)
         .map(|cookie| cookie.value().to_string())
-    {
-        Some(token) => token,
-        None => return Err(ApiError::BadRequest("No token present".into())),
+    else {
+        return Err(ApiError::BadRequest("No token present".into()));
     };
     validate_register_request_data(&req)?;
     let send_data = RegisterMobileAuthRequest {

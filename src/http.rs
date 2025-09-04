@@ -47,6 +47,7 @@ pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
+const X_FORWARDED_FOR: &str = "x-forwarded-for";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -60,7 +61,7 @@ pub(crate) struct AppState {
 impl AppState {
     /// Returns configured URL with "auth/callback" appended to the path.
     #[must_use]
-    pub(crate) fn callback_url(&self, flow_type: FlowType) -> Url {
+    pub(crate) fn callback_url(&self, flow_type: &FlowType) -> Url {
         let mut url = self.url.clone();
         // Append "/openid/callback" to the URL.
         if let Ok(mut path_segments) = url.path_segments_mut() {
@@ -113,7 +114,7 @@ async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static
 fn get_client_addr(request: &Request<Body>) -> String {
     request
         .headers()
-        .get("X-Forwarded-For")
+        .get(X_FORWARDED_FOR)
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.split(',').next())
         .map_or_else(
