@@ -7,7 +7,7 @@ homepage = "https://github.com/DefGuard/proxy"
 repository = "https://github.com/DefGuard/proxy"
 
 [dependencies]
-defguard_version = { git = "https://github.com/DefGuard/defguard.git", rev = "168bbd8e737e0aa920c6356947e1b6be99c9031b" }
+defguard_version = { git = "https://github.com/DefGuard/defguard.git", rev = "9aaa99f38eb9e4a07685d47779a8a43d0047b7b9" }
 # base `axum` deps
 axum = { version = "0.8", features = ["ws"] }
 axum-client-ip = "0.7"
