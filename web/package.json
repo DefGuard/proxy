@@ -37,6 +37,7 @@
       ]
     },
     "onlyBuiltDependencies": [
+      "@parcel/watcher",
       "@swc/core",
       "esbuild"
     ]
@@ -82,7 +83,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
+    "@biomejs/biome": "2.2.2",
     "@hookform/devtools": "^4.4.0",
     "@svgr/cli": "^8.1.0",
     "@tanstack/react-query": "^4.40.1",
