@@ -539,12 +539,13 @@ dependencies = [
 [[package]]
 name = "defguard_version"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=be3f96ced072ede3ebde72f2f6c6063d2e7f7403#be3f96ced072ede3ebde72f2f6c6063d2e7f7403"
+source = "git+https://github.com/DefGuard/defguard.git?rev=168bbd8e737e0aa920c6356947e1b6be99c9031b#168bbd8e737e0aa920c6356947e1b6be99c9031b"
 dependencies = [
  "axum",
  "http",
  "os_info",
  "semver",
+ "serde",
  "thiserror 2.0.16",
  "tonic",
  "tower",
@@ -1278,9 +1279,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.27"
+version = "0.4.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
+checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 dependencies = [
  "serde",
 ]
@@ -1978,6 +1979,9 @@ name = "semver"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "serde"

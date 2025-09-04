@@ -1,6 +1,10 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
-  "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": false
+  },
   "files": {
     "ignoreUnknown": false,
     "includes": [
@@ -23,7 +27,9 @@
     "bracketSpacing": true,
     "expand": "auto",
     "useEditorconfig": true,
-    "includes": ["./src/**"]
+    "includes": [
+      "./src/**"
+    ]
   },
   "linter": {
     "enabled": true,
@@ -43,7 +49,9 @@
         "useJsxKeyInIterable": "error",
         "useUniqueElementIds": "off"
       },
-      "security": { "noDangerouslySetInnerHtmlWithChildren": "error" },
+      "security": {
+        "noDangerouslySetInnerHtmlWithChildren": "error"
+      },
       "style": {
         "noNamespace": "error",
         "noNonNullAssertion": "error",
@@ -62,7 +70,9 @@
         "noArrayIndexKey": "off"
       }
     },
-    "includes": ["src/**"]
+    "includes": [
+      "src/**"
+    ]
   },
   "javascript": {
     "formatter": {
@@ -77,10 +87,24 @@
       "bracketSpacing": true
     }
   },
-  "html": { "formatter": { "selfCloseVoidElements": "always" } },
-  "overrides": [{ "includes": ["**/*.js"] }],
+  "html": {
+    "formatter": {
+      "selfCloseVoidElements": "always"
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "**/*.js"
+      ]
+    }
+  ],
   "assist": {
     "enabled": true,
-    "actions": { "source": { "organizeImports": "on" } }
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   }
 }
