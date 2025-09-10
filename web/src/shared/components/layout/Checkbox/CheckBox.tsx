@@ -1,7 +1,7 @@
 import './style.scss';
 
 import classNames from 'classnames';
-import { HTMLProps, useMemo } from 'react';
+import { type HTMLProps, useMemo } from 'react';
 
 export interface CheckBoxProps
   extends Omit<HTMLProps<HTMLDivElement>, 'onChange' | 'value'> {
@@ -16,7 +16,7 @@ export const CheckBox = ({
   disabled = false,
   ...rest
 }: CheckBoxProps) => {
-  const checked = useMemo(() => (Number(value) ? true : false), [value]);
+  const checked = useMemo(() => !!Number(value), [value]);
 
   const cn = useMemo(
     () =>

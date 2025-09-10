@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useMemo } from 'react';
-import { SubmitHandler, useForm } from 'react-hook-form';
+import { type SubmitHandler, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from 'use-breakpoint';
 import { z } from 'zod';
@@ -66,7 +66,10 @@ export const TokenCard = () => {
 
   const { isLoading: openidLoading, data: openidData } = useQuery(
     [],
-    () => getOpenIDAuthInfo(),
+    () =>
+      getOpenIDAuthInfo({
+        type: 'enrollment',
+      }),
     {
       refetchOnMount: true,
       refetchOnWindowFocus: false,
@@ -120,60 +123,58 @@ export const TokenCard = () => {
   }
 
   return (
-    <>
-      <Card shaded={breakpoint !== 'mobile'} className="token-card">
-        <h2>{LL.pages.token.card.title()}</h2>
-        <BigInfoBox message={LL.pages.token.card.messageBox.email()} />
-        <form
-          data-testid="enrollment-token-form"
-          onSubmit={handleSubmit(handleValidSubmit)}
-        >
-          <FormInput
-            controller={{ control, name: 'token' }}
-            placeholder={LL.pages.token.card.form.fields.token.placeholder()}
-            required
-          />
-        </form>
-        {openidData?.url && (
-          <>
-            <h2 className="openid-heading">{LL.pages.token.card.oidc.title()}</h2>
-            <BigInfoBox message={LL.pages.token.card.oidc.infoBox()} />
-            <div className="openid-button">
-              <OpenIdLoginButton
-                url={openidData.url}
-                display_name={openidData.button_display_name}
-              />
-            </div>
-          </>
-        )}
-        <div className="controls">
-          <Button
-            size={ButtonSize.LARGE}
-            styleVariant={ButtonStyleVariant.LINK}
-            text={LL.common.controls.back()}
-            icon={
-              <ArrowSingle
-                size={ArrowSingleSize.SMALL}
-                direction={ArrowSingleDirection.LEFT}
-              />
-            }
-            onClick={() => navigate(routes.main)}
-          />
-          <Button
-            data-testid="enrollment-token-submit-button"
-            size={ButtonSize.LARGE}
-            styleVariant={ButtonStyleVariant.PRIMARY}
-            text={LL.pages.resetPassword.steps.email.controls.send()}
-            rightIcon={
-              <ArrowSingle
-                size={ArrowSingleSize.SMALL}
-                direction={ArrowSingleDirection.RIGHT}
-              />
-            }
-            onClick={handleSubmit(handleValidSubmit)}
-          />
-        </div>
-      </Card>
-    </>
+    <Card shaded={breakpoint !== 'mobile'} className="token-card">
+      <h2>{LL.pages.token.card.title()}</h2>
+      <BigInfoBox message={LL.pages.token.card.messageBox.email()} />
+      <form
+        data-testid="enrollment-token-form"
+        onSubmit={handleSubmit(handleValidSubmit)}
+      >
+        <FormInput
+          controller={{ control, name: 'token' }}
+          placeholder={LL.pages.token.card.form.fields.token.placeholder()}
+          required
+        />
+      </form>
+      {openidData?.url && (
+        <>
+          <h2 className="openid-heading">{LL.pages.token.card.oidc.title()}</h2>
+          <BigInfoBox message={LL.pages.token.card.oidc.infoBox()} />
+          <div className="openid-button">
+            <OpenIdLoginButton
+              url={openidData.url}
+              display_name={openidData.button_display_name}
+            />
+          </div>
+        </>
+      )}
+      <div className="controls">
+        <Button
+          size={ButtonSize.LARGE}
+          styleVariant={ButtonStyleVariant.LINK}
+          text={LL.common.controls.back()}
+          icon={
+            <ArrowSingle
+              size={ArrowSingleSize.SMALL}
+              direction={ArrowSingleDirection.LEFT}
+            />
+          }
+          onClick={() => navigate(routes.main)}
+        />
+        <Button
+          data-testid="enrollment-token-submit-button"
+          size={ButtonSize.LARGE}
+          styleVariant={ButtonStyleVariant.PRIMARY}
+          text={LL.pages.resetPassword.steps.email.controls.send()}
+          rightIcon={
+            <ArrowSingle
+              size={ArrowSingleSize.SMALL}
+              direction={ArrowSingleDirection.RIGHT}
+            />
+          }
+          onClick={handleSubmit(handleValidSubmit)}
+        />
+      </div>
+    </Card>
   );
 };

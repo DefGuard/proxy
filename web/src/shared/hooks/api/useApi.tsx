@@ -1,6 +1,6 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 
-import { UseApi } from './types';
+import type { UseApi } from './types';
 
 const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -33,9 +33,9 @@ export const useApi = (): UseApi => {
   const resetPassword: UseApi['passwordReset']['reset'] = (data) =>
     client.post('/password-reset/reset', data).then(unpackRequest);
 
-  const getOpenIDAuthInfo: UseApi['getOpenIDAuthInfo'] = () =>
+  const getOpenIDAuthInfo: UseApi['getOpenIDAuthInfo'] = (data) =>
     client
-      .get('/openid/auth_info')
+      .post('/openid/auth_info', data)
       .then((res) => res.data)
       .catch(() => {
         return {
@@ -45,6 +45,8 @@ export const useApi = (): UseApi => {
 
   const openIDCallback: UseApi['openIDCallback'] = (data) =>
     client.post('/openid/callback', data).then(unpackRequest);
+  const openIDMFACallback: UseApi['openIDMFACallback'] = (data) =>
+    client.post('/openid/callback/mfa', data).then(unpackRequest);
 
   return {
     enrollment: {
@@ -60,5 +62,6 @@ export const useApi = (): UseApi => {
     getAppInfo,
     getOpenIDAuthInfo,
     openIDCallback,
+    openIDMFACallback,
   };
 };

@@ -2,7 +2,7 @@ import './style.scss';
 
 import classNames from 'classnames';
 import { useEffect, useMemo, useState } from 'react';
-import { LocalizedString } from 'typesafe-i18n';
+import type { LocalizedString } from 'typesafe-i18n';
 
 import { useI18nContext } from '../../../../i18n/i18n-react';
 import { Divider } from '../../../../shared/components/layout/Divider/Divider';
@@ -16,6 +16,11 @@ export const EnrollmentSideBar = () => {
 
   const vpnOptional = useEnrollmentStore(
     (state) => state.enrollmentSettings?.vpn_setup_optional,
+  );
+  const deviceManagementDisabled = useEnrollmentStore((state) =>
+    Boolean(
+      state.enrollmentSettings?.admin_device_management && !state.userInfo?.is_admin,
+    ),
   );
   const [currentStep, stepsMax] = useEnrollmentStore((state) => [
     state.step,
@@ -37,7 +42,7 @@ export const EnrollmentSideBar = () => {
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appVersion, getAppInfo]);
 
   const steps = useMemo((): LocalizedString[] => {
     const stepsLL = LL.pages.enrollment.sideBar.steps;
@@ -48,12 +53,17 @@ export const EnrollmentSideBar = () => {
       stepsLL.welcome(),
       stepsLL.verification(),
       stepsLL.password(),
-      ...(!enrollmentSettings?.only_client_activation
-        ? [vpnStep, stepsLL.finish()]
-        : [stepsLL.finish()]),
+      ...(enrollmentSettings?.only_client_activation || deviceManagementDisabled
+        ? [stepsLL.finish()]
+        : [vpnStep, stepsLL.finish()]),
     ];
     return steps;
-  }, [LL.pages.enrollment.sideBar.steps, vpnOptional, enrollmentSettings]);
+  }, [
+    LL.pages.enrollment.sideBar.steps,
+    vpnOptional,
+    enrollmentSettings,
+    deviceManagementDisabled,
+  ]);
 
   return (
     <div id="enrollment-side-bar">
@@ -77,9 +87,9 @@ export const EnrollmentSideBar = () => {
       <Divider />
       <div className="copyright">
         <p>
-          Copyright © 2023{' '}
-          <a href="https://teonite.com" target="_blank" rel="noopener noreferrer">
-            teonite
+          Copyright ©{` ${new Date().getFullYear()} `}
+          <a href="https://defguard.net" target="_blank" rel="noopener noreferrer">
+            defguard
           </a>
         </p>
         <p>

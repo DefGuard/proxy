@@ -27,19 +27,23 @@
         extensions = ["rust-analyzer" "rust-src" "rustfmt" "clippy"];
       };
       # define shared build inputs
-      nativeBuildInputs = with pkgs; [];
-      buildInputs = with pkgs; [protobuf];
+      nativeBuildInputs = with pkgs; [rustToolchain pkg-config];
+      buildInputs = with pkgs; [openssl protobuf nodejs_22 pnpm];
     in {
       devShells.default = pkgs.mkShell {
         inherit nativeBuildInputs buildInputs;
 
         packages = with pkgs; [
-          pkg-config
-          openssl
-          protobuf
-          sqlx-cli
-          rustToolchain
+          # TS/JS LSP
+          vtsls
+          # protobuf formatter
+          buf
+          # image signarute verification
+          cosign
         ];
+
+        # Specify the rust-src path (many editors rely on this)
+        RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
       };
     });
 }

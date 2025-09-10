@@ -5,23 +5,32 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - "web/**"
+      - 'release/**'
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
   pull_request:
     branches:
       - main
       - dev
-    paths:
-      - "web/**"
+      - 'release/**'
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
 
 jobs:
   lint-web:
-    runs-on: self-hosted
+    runs-on:
+      - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: install deps
         working-directory: ./web
         run: |

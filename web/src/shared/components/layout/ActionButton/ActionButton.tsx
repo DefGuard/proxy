@@ -1,7 +1,7 @@
 import './style.scss';
 
 import classNames from 'classnames';
-import { HTMLMotionProps, motion, TargetAndTransition } from 'framer-motion';
+import { type HTMLMotionProps, motion, type TargetAndTransition } from 'motion/react';
 import { useMemo, useState } from 'react';
 
 import SvgIconCopy from '../../svg/IconCopy';

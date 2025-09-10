@@ -1,3 +1,7 @@
 /target
 /.idea
 /*.local
+.direnv/
+.envrc
+/node_modules
+.env

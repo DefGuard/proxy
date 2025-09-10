@@ -1,5 +1,3 @@
-@use '@scssutils' as *;
-
 #device-setup-guide {
   & > h3 {
     margin-bottom: 23px;
@@ -11,7 +9,7 @@
     margin-bottom: 20px;
   }
 
-  & > .message-box {
+  & > .message-box-old {
     margin-bottom: 10px;
   }
 

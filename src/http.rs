@@ -1,7 +1,8 @@
 use std::{
+    collections::HashMap,
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::atomic::Ordering,
+    sync::{atomic::Ordering, Arc},
     time::Duration,
 };
 
@@ -9,15 +10,21 @@ use anyhow::Context;
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRef, State},
-    http::{Request, StatusCode},
+    http::{header::HeaderValue, Request, Response, StatusCode},
+    middleware::{self, Next},
     routing::{get, post},
     serve, Json, Router,
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
+use defguard_version::{
+    server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
+    DefguardComponent, Version,
+};
 use serde::Serialize;
-use tokio::{net::TcpListener, task::JoinSet};
+use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
+use tower::ServiceBuilder;
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -28,20 +35,25 @@ use url::Url;
 use crate::{
     assets::{index, svg, web_asset},
     config::Config,
-    enterprise::handlers::openid_login,
+    enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
     grpc::ProxyServer,
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
+    MIN_CORE_VERSION, VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
+const X_FORWARDED_FOR: &str = "x-forwarded-for";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
+    pub(crate) remote_mfa_sessions:
+        Arc<tokio::sync::Mutex<HashMap<String, oneshot::Sender<String>>>>,
     key: Key,
     url: Url,
 }
@@ -49,11 +61,14 @@ pub(crate) struct AppState {
 impl AppState {
     /// Returns configured URL with "auth/callback" appended to the path.
     #[must_use]
-    pub(crate) fn callback_url(&self) -> Url {
+    pub(crate) fn callback_url(&self, flow_type: &FlowType) -> Url {
         let mut url = self.url.clone();
         // Append "/openid/callback" to the URL.
         if let Ok(mut path_segments) = url.path_segments_mut() {
-            path_segments.extend(&["openid", "callback"]);
+            match flow_type {
+                FlowType::Enrollment => path_segments.extend(&["openid", "callback"]),
+                FlowType::Mfa => path_segments.extend(&["openid", "mfa", "callback"]),
+            };
         }
         url
     }
@@ -99,7 +114,7 @@ async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static
 fn get_client_addr(request: &Request<Body>) -> String {
     request
         .headers()
-        .get("X-Forwarded-For")
+        .get(X_FORWARDED_FOR)
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.split(',').next())
         .map_or_else(
@@ -111,6 +126,24 @@ fn get_client_addr(request: &Request<Body>) -> String {
             },
             |ip| ip.trim().to_string(),
         )
+}
+
+async fn core_version_middleware(
+    State(app_state): State<AppState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response<Body> {
+    let mut response = next.run(request).await;
+
+    if let Some(core_version) = app_state.grpc_server.core_version.lock().unwrap().as_ref() {
+        if let Ok(core_version_header) = HeaderValue::from_str(&core_version.to_string()) {
+            response
+                .headers_mut()
+                .insert(DEFGUARD_CORE_VERSION_HEADER, core_version_header);
+        }
+    }
+
+    response
 }
 
 pub async fn run_server(config: Config) -> anyhow::Result<()> {
@@ -126,6 +159,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Setting up API server");
     let shared_state = AppState {
         grpc_server: grpc_server.clone(),
+        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         // Generate secret key for encrypting cookies.
         key: Key::generate(),
         url: config.url.clone(),
@@ -146,7 +180,12 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Start gRPC server.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.grpc_port);
+        let addr = SocketAddr::new(
+            config
+                .grpc_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            config.grpc_port,
+        );
         info!("gRPC server is listening on {addr}");
         let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
             let identity = Identity::from_pem(cert, key);
@@ -154,8 +193,20 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         } else {
             Server::builder()
         };
+        let own_version = Version::parse(VERSION)?;
+        let versioned_service = ServiceBuilder::new()
+            .layer(tonic::service::InterceptorLayer::new(
+                DefguardVersionInterceptor::new(
+                    own_version.clone(),
+                    DefguardComponent::Core,
+                    MIN_CORE_VERSION,
+                    false,
+                ),
+            ))
+            .layer(DefguardVersionLayer::new(own_version))
+            .service(proxy_server::ProxyServer::new(grpc_server));
         builder
-            .add_service(proxy_server::ProxyServer::new(grpc_server))
+            .add_service(versioned_service)
             .serve(addr)
             .await
             .context("Error running gRPC server")
@@ -199,9 +250,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Build axum app
     let mut app = Router::new()
         .route("/", get(index))
-        .route("/*path", get(index))
-        .route("/assets/*path", get(web_asset))
-        .route("/svg/*path", get(svg))
+        .route("/{*path}", get(index))
+        .route("/fonts/{*path}", get(web_asset))
+        .route("/assets/{*path}", get(web_asset))
+        .route("/svg/{*path}", get(svg))
         .nest(
             "/api/v1",
             Router::new()
@@ -215,6 +267,11 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .route("/info", get(app_info)),
         )
         .fallback_service(get(handle_404))
+        .layer(middleware::from_fn_with_state(
+            shared_state.clone(),
+            core_version_middleware,
+        ))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
@@ -232,16 +289,19 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
     if let Some(conf) = governor_conf {
-        app = app.layer(GovernorLayer {
-            config: conf.into(),
-        });
+        app = app.layer(GovernorLayer::new(conf));
     }
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
     debug!("Spawning API web server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), config.http_port);
+        let addr = SocketAddr::new(
+            config
+                .http_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            config.http_port,
+        );
         let listener = TcpListener::bind(&addr).await?;
         info!("API web server is listening on {addr}");
         serve(

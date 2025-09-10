@@ -11,13 +11,14 @@ use crate::{error::ApiError, proto::core_response::Payload};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
+pub(crate) mod mobile_client;
 pub(crate) mod password_reset;
 pub(crate) mod polling;
+pub(crate) mod register_mfa;
 
 // Timeout for awaiting response from Defguard Core.
 const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[tonic::async_trait]
 impl<S> FromRequestParts<S> for DeviceInfo
 where
     S: Send + Sync,
@@ -67,7 +68,7 @@ pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, 
                 core_error.status_code, core_error.message
             );
             return Err(core_error.into());
-        };
+        }
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
     } else {

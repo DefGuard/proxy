@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { SubmitHandler, useController, useForm } from 'react-hook-form';
+import { type SubmitHandler, useController, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useI18nContext } from '../../../../../../../i18n/i18n-react';
@@ -12,8 +12,8 @@ import {
   ButtonSize,
   ButtonStyleVariant,
 } from '../../../../../../../shared/components/layout/Button/types';
-import { MessageBox } from '../../../../../../../shared/components/layout/MessageBox/MessageBox';
-import { ToggleOption } from '../../../../../../../shared/components/layout/Toggle/types';
+import { MessageBoxOld } from '../../../../../../../shared/components/layout/MessageBox/MessageBoxOld';
+import type { ToggleOption } from '../../../../../../../shared/components/layout/Toggle/types';
 import { useApi } from '../../../../../../../shared/hooks/api/useApi';
 import { generateWGKeys } from '../../../../../../../shared/utils/generateWGKeys';
 import { useEnrollmentStore } from '../../../../../hooks/store/useEnrollmentStore';
@@ -127,7 +127,7 @@ export const CreateDevice = () => {
 
   return (
     <>
-      <MessageBox message={cardLL.create.messageBox()} />
+      <MessageBoxOld message={cardLL.create.messageBox()} />
       <form
         data-testid="enrollment-device-form"
         onSubmit={handleSubmit(handleValidSubmit)}

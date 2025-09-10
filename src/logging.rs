@@ -1,5 +1,14 @@
+use std::fmt::Write as _;
+
+use defguard_version::{
+    tracing::{
+        build_version_suffix, extract_version_info_from_context, VersionFieldLayer,
+        VersionFilteredFields, VersionSuffixWriter,
+    },
+    ComponentInfo, DefguardVersionError, Version,
+};
 use log::LevelFilter;
-use tracing::{Event, Subscriber};
+use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
     fmt::{
         self,
@@ -13,39 +22,49 @@ use tracing_subscriber::{
     EnvFilter,
 };
 
-// Initializes tracing with the specified log level.
+// Initializes tracing with the specified log level and version information.
 // Allows fine-grained filtering with `EnvFilter` directives.
 // The directives are read from `DEFGUARD_PROXY_LOG_FILTER` env variable.
 // For more info read: <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html>
-pub fn init_tracing(level: &LevelFilter) {
+pub fn init_tracing(own_version: Version, level: &LevelFilter) -> Result<(), DefguardVersionError> {
     tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER")
                 .unwrap_or_else(|_| level.to_string().into()),
         )
-        .with(fmt::layer().event_format(HttpFormatter::default()))
+        .with(VersionFieldLayer)
+        .with(
+            fmt::layer()
+                .event_format(HttpVersionFormatter::new(own_version))
+                .fmt_fields(VersionFilteredFields),
+        )
         .init();
+
     info!("Tracing initialized");
+    Ok(())
 }
 
-/// Implements fail2ban-friendly log format using `tracing_subscriber::fmt::format::FormatEvent` trait.
+/// Implements fail2ban-friendly log format with version suffixes.
 /// HTTP info (if available) is extracted from the specified tracing span. The format is as follows:
-/// TIMESTAMP LEVEL CLIENT_ADDR METHOD URI LOG_MESSAGE || TRACING_DATA
-pub(crate) struct HttpFormatter<'a> {
+/// TIMESTAMP LEVEL CLIENT_ADDR METHOD URI LOG_MESSAGE [VERSION_SUFFIXES] || TRACING_DATA
+pub(crate) struct HttpVersionFormatter<'a> {
     span: &'a str,
     timer: SystemTime,
+    component_info: ComponentInfo,
 }
 
-impl Default for HttpFormatter<'_> {
-    fn default() -> Self {
+impl HttpVersionFormatter<'_> {
+    #[must_use]
+    pub fn new(own_version: Version) -> Self {
         Self {
             span: "http_request",
             timer: SystemTime,
+            component_info: ComponentInfo::new(own_version),
         }
     }
 }
 
-impl HttpFormatter<'_> {
+impl HttpVersionFormatter<'_> {
     fn format_timestamp(&self, writer: &mut Writer<'_>) -> std::fmt::Result {
         if self.timer.format_time(writer).is_err() {
             writer.write_str("<unknown time>")?;
@@ -54,7 +73,7 @@ impl HttpFormatter<'_> {
     }
 }
 
-impl<S, N> FormatEvent<S, N> for HttpFormatter<'_>
+impl<S, N> FormatEvent<S, N> for HttpVersionFormatter<'_>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
@@ -62,15 +81,20 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
-        mut writer: format::Writer<'_>,
+        writer: format::Writer<'_>,
         event: &Event<'_>,
     ) -> std::fmt::Result {
-        let meta = event.metadata();
+        // Extract version information
+        let extracted = extract_version_info_from_context(ctx);
 
-        // timestamp, level & target
-        self.format_timestamp(&mut writer)?;
-        write!(writer, "{} ", meta.level())?;
-        write!(writer, "{}: ", meta.target(),)?;
+        // Build version suffix
+        let is_error = *event.metadata().level() == Level::ERROR;
+        let version_suffix = build_version_suffix(
+            &extracted,
+            &self.component_info.version,
+            &self.component_info.system,
+            is_error,
+        );
 
         // iterate and accumulate spans storing our special span in separate variable if encountered
         let mut context_logs = String::new();
@@ -79,14 +103,17 @@ where
             let mut seen = false;
             for span in scope.from_root() {
                 let span_name = span.metadata().name();
-                context_logs.push_str(&format!(" {span_name}"));
+                let _ = write!(context_logs, " {span_name}");
                 seen = true;
 
-                if let Some(fields) = span.extensions().get::<FormattedFields<N>>() {
+                let extensions = span.extensions();
+                if let Some(fields) = extensions.get::<FormattedFields<N>>() {
                     if !fields.is_empty() {
                         match span_name {
                             x if x == self.span => http_log = Some(format!("{fields}")),
-                            _ => context_logs.push_str(&format!(" {{{fields}}}")),
+                            _ => {
+                                let _ = write!(context_logs, " {{{fields}}}");
+                            }
                         }
                     }
                 }
@@ -95,7 +122,17 @@ where
             if seen {
                 context_logs.push(' ');
             }
-        };
+        }
+
+        // Create a wrapper writer that will append version info before newlines
+        let mut wrapper = VersionSuffixWriter::new(writer, version_suffix);
+        let mut versioned_writer = Writer::new(&mut wrapper);
+
+        // timestamp, level & target
+        self.format_timestamp(&mut versioned_writer)?;
+        let meta = event.metadata();
+        write!(versioned_writer, "{} ", meta.level())?;
+        write!(versioned_writer, "{}: ", meta.target(),)?;
 
         // write http context log (ip, method, path)
         if let Some(log) = http_log {
@@ -107,16 +144,16 @@ where
             let ip = addr
                 .and_then(|s| s.split(':').next().map(ToString::to_string))
                 .unwrap_or("unknown".to_string());
-            write!(writer, "{ip} {method} {path} ")?;
+            write!(versioned_writer, "{ip} {method} {path} ")?;
         }
 
         // write actual log message
-        ctx.format_fields(writer.by_ref(), event)?;
+        ctx.format_fields(versioned_writer.by_ref(), event)?;
 
         // write span context
         if !context_logs.is_empty() {
-            write!(writer, " || Tracing data: {context_logs}")?;
+            write!(versioned_writer, " || Tracing data: {context_logs}")?;
         }
-        writeln!(writer)
+        writeln!(versioned_writer)
     }
 }

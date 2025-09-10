@@ -1,4 +1,4 @@
-FROM node:22-alpine as web
+FROM node:24-alpine AS web
 
 WORKDIR /app
 COPY web/package.json .
@@ -10,7 +10,7 @@ COPY web/ .
 RUN pnpm run generate-translation-types
 RUN pnpm build
 
-FROM rust:1.87 as chef
+FROM rust:1 AS chef
 
 WORKDIR /build
 
@@ -18,7 +18,7 @@ WORKDIR /build
 RUN cargo install cargo-chef
 RUN rustup component add rustfmt
 
-FROM chef as planner
+FROM chef AS planner
 # prepare recipe
 COPY Cargo.toml Cargo.lock ./
 COPY src src
@@ -42,7 +42,7 @@ COPY proto proto
 RUN cargo install --locked --path . --root /build
 
 # run
-FROM debian:bookworm-slim as runtime
+FROM debian:13-slim AS runtime
 RUN apt-get update -y && \
     apt-get install --no-install-recommends -y ca-certificates && \
     rm -rf /var/lib/apt/lists/*

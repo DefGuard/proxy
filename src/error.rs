@@ -26,6 +26,8 @@ pub enum ApiError {
     PermissionDenied(String),
     #[error("Enterprise not enabled")]
     EnterpriseNotEnabled,
+    #[error("Precondition required: {0}")]
+    PreconditionRequired(String),
 }
 
 impl IntoResponse for ApiError {
@@ -39,6 +41,7 @@ impl IntoResponse for ApiError {
                 StatusCode::PAYMENT_REQUIRED,
                 "Enterprise features are not enabled".to_string(),
             ),
+            Self::PreconditionRequired(msg) => (StatusCode::PRECONDITION_REQUIRED, msg),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
@@ -53,6 +56,14 @@ impl IntoResponse for ApiError {
     }
 }
 
+impl From<base64::DecodeError> for ApiError {
+    fn from(value: base64::DecodeError) -> Self {
+        Self::BadRequest(format!(
+            "Failed to decode base64 from request data. {value}"
+        ))
+    }
+}
+
 impl From<CoreError> for ApiError {
     fn from(core_error: CoreError) -> Self {
         // convert to tonic::Status first
@@ -64,8 +75,9 @@ impl From<CoreError> for ApiError {
             Code::FailedPrecondition => match status.message().to_lowercase().as_str() {
                 // TODO: find a better way than matching on the error message
                 "no valid license" => ApiError::EnterpriseNotEnabled,
-                _ => ApiError::Unexpected(status.to_string()),
+                _ => ApiError::PreconditionRequired(status.message().to_string()),
             },
+            Code::Unavailable => ApiError::CoreTimeout,
             _ => ApiError::Unexpected(status.to_string()),
         }
     }

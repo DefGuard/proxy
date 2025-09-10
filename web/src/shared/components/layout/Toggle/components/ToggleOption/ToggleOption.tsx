@@ -1,12 +1,12 @@
 import './style.scss';
 
 import classNames from 'classnames';
-import { motion, TargetAndTransition } from 'framer-motion';
+import { motion, type TargetAndTransition } from 'motion/react';
 import { useMemo, useState } from 'react';
 
 import { CheckBox } from '../../../Checkbox/CheckBox';
 import { useTheme } from '../../../hooks/theme/useTheme';
-import { ToggleOptionProps } from '../../types';
+import type { ToggleOptionProps } from '../../types';
 
 export const ToggleOption = <T,>({
   text,

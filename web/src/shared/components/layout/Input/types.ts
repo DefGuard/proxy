@@ -1,5 +1,5 @@
-import { HTMLMotionProps } from 'framer-motion';
-import { ReactNode } from 'react';
+import type { HTMLMotionProps } from 'motion/react';
+import type { ReactNode } from 'react';
 
 export type InputFloatingErrors = {
   title: string;

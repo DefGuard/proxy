@@ -3,21 +3,28 @@ import './style.scss';
 import {
   arrow,
   autoUpdate,
-  flip,
   FloatingPortal,
+  flip,
   offset,
   useFloating,
 } from '@floating-ui/react';
 import classNames from 'classnames';
-import { AnimatePresence, motion } from 'framer-motion';
-import React, { ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import React, {
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import SvgIconAsterix from '../../svg/IconAsterix';
 import SvgIconWarning from '../../svg/IconWarning';
 import SvgIconX from '../../svg/IconX';
 import { FloatingArrow } from '../FloatingArrow/FloatingArrow';
 import { FloatingBox } from '../FloatingBox/FloatingBox';
-import { InputProps } from './types';
+import type { InputProps } from './types';
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
@@ -109,8 +116,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       ) {
         setFloatingErrorsOpen(false);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [floatingErrors, floatingErrorsOpen]);
+    }, [floatingErrors, floatingErrorsOpen, focused]);
 
     return (
       <div className="input">
@@ -134,7 +140,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className={getInputContainerClassName}
           onFocus={() => {
             setFocused(true);
-            if (floatingErrors && floatingErrors.errorMessages.length) {
+            if (floatingErrors?.errorMessages.length) {
               setFloatingErrorsOpen(true);
             }
           }}

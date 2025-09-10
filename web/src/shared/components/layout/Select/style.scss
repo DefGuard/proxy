@@ -1,5 +1,3 @@
-@use '../../../scss/helpers' as *;
-
 .select {
   & > .select-label {
     @include typography(app-wizard-1);

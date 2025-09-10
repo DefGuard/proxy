@@ -1,8 +1,8 @@
 import './style.scss';
 
 import classNames from 'classnames';
-import { HTMLMotionProps, motion } from 'framer-motion';
-import { ReactNode, useMemo } from 'react';
+import { type HTMLMotionProps, motion } from 'motion/react';
+import { type ReactNode, useMemo } from 'react';
 import { useBreakpoint } from 'use-breakpoint';
 
 import { deviceBreakpoints } from '../../../constants';

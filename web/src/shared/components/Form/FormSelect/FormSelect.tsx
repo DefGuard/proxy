@@ -1,20 +1,19 @@
 import { isUndefined } from 'lodash-es';
 import { useMemo } from 'react';
-import { FieldValues, useController, UseControllerProps } from 'react-hook-form';
-
 import {
-  Select,
-  SelectOption,
-  SelectProps,
-  SelectValue,
-} from '../../layout/Select/Select';
+  type FieldValues,
+  type UseControllerProps,
+  useController,
+} from 'react-hook-form';
 
-interface Props<T extends FieldValues, Y extends SelectValue>
-  extends Omit<SelectProps<Y>, 'onChange'> {
+import { Select } from '../../layout/Select/Select';
+import type { SelectProps } from '../../layout/Select/types';
+
+interface Props<T extends FieldValues, Y> extends SelectProps<Y> {
   controller: UseControllerProps<T>;
 }
 
-export const FormSelect = <T extends FieldValues, Y extends SelectValue>({
+export const FormSelect = <T extends FieldValues, Y extends object>({
   controller,
   ...rest
 }: Props<T, Y>) => {
@@ -34,20 +33,15 @@ export const FormSelect = <T extends FieldValues, Y extends SelectValue>({
     return false;
   }, [error, isDirty, isSubmitted, isTouched]);
 
-  const isValid = useMemo(
-    () => !isInvalid && (isTouched || isDirty || isSubmitted),
-    [isDirty, isInvalid, isSubmitted, isTouched],
-  );
-
   return (
     <Select
       {...rest}
-      selected={field.value as SelectOption<Y> | SelectOption<Y>[]}
-      valid={isValid}
+      selected={field.value}
       invalid={isInvalid}
       errorMessage={error?.message}
-      onChange={(res) => field.onChange(res)}
       inForm={true}
+      onChangeArray={(res) => field.onChange(res)}
+      onChangeSingle={(res) => field.onChange(res)}
     />
   );
 };

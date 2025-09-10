@@ -1,5 +1,3 @@
-@use '@scssutils' as *;
-
 #token-page {
   @include media-breakpoint-up(lg) {
     padding: 100px 50px;
@@ -12,6 +10,7 @@
   & > .logo-container {
     display: none;
     margin-bottom: 30px;
+
     @include media-breakpoint-up(lg) {
       display: flex;
       margin-bottom: 100px;
@@ -36,12 +35,14 @@
       .arrow-single {
         height: 36px;
         width: 36px;
+
         svg {
           g {
             fill: var(--surface-icon-primary);
           }
         }
       }
+
       &.variant-primary {
         .arrow-single {
           svg {
