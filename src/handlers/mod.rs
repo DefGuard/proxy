@@ -128,7 +128,7 @@ mod tests {
     struct DummyState;
 
     #[tokio::test]
-    async fn test_user_agent_sanitization() {
+    async fn test_user_agent_sanitization_dg25_16() {
         let state = DummyState;
 
         // valid user agents
