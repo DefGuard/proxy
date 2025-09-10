@@ -35,7 +35,8 @@ where
         let user_agent = TypedHeader::<UserAgent>::from_request_parts(parts, state)
             .await
             .map(|v| v.to_string())
-            .ok();
+            .ok()
+            .filter(|agent| !ammonia::is_html(agent));
 
         let ip_address = forwarded_for_ip
             .or(insecure_ip)
