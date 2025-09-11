@@ -45,6 +45,7 @@ use crate::{
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
@@ -142,6 +143,17 @@ async fn core_version_middleware(
                 .insert(DEFGUARD_CORE_VERSION_HEADER, core_version_header);
         }
     }
+
+    let core_connected = app_state.grpc_server.connected.load(Ordering::Relaxed);
+    let core_connected_header = if core_connected {
+        HeaderValue::from_static("true")
+    } else {
+        HeaderValue::from_static("false")
+    };
+
+    response
+        .headers_mut()
+        .insert(DEFGUARD_CORE_CONNECTED_HEADER, core_connected_header);
 
     response
 }
