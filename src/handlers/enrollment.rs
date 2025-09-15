@@ -2,9 +2,11 @@ use axum::{extract::State, routing::post, Json, Router};
 use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
 
+use super::register_mfa::router as register_mfa_router;
+
 use crate::{
     error::ApiError,
-    handlers::get_core_response,
+    handlers::{get_core_response, mobile_client::register_mobile_auth},
     http::{AppState, ENROLLMENT_COOKIE_NAME},
     proto::{
         core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
@@ -14,10 +16,12 @@ use crate::{
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
+        .nest("/register-mfa", register_mfa_router())
         .route("/start", post(start_enrollment_process))
         .route("/activate_user", post(activate_user))
         .route("/create_device", post(create_device))
         .route("/network_info", post(get_network_info))
+        .route("/register_mobile", post(register_mobile_auth))
 }
 
 #[instrument(level = "debug", skip(state))]
@@ -81,7 +85,7 @@ async fn activate_user(
         .grpc_server
         .send(core_request::Payload::ActivateUser(req), device_info)?;
     let payload = get_core_response(rx).await?;
-    debug!("Receving payload from the core service. Trying to remove private cookie...");
+    debug!("Receiving payload from the core service. Trying to remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
         info!("Activated user - phone number {phone:?}");
         if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {

@@ -1,6 +1,6 @@
 import './style.scss';
 
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 type Props = {
   size?: number;

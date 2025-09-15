@@ -88,8 +88,8 @@ export const EnrollmentSideBar = () => {
       <div className="copyright">
         <p>
           Copyright ©{` ${new Date().getFullYear()} `}
-          <a href="https://teonite.com" target="_blank" rel="noopener noreferrer">
-            teonite
+          <a href="https://defguard.net" target="_blank" rel="noopener noreferrer">
+            defguard
           </a>
         </p>
         <p>

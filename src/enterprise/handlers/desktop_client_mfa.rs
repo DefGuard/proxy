@@ -78,7 +78,7 @@ pub(super) async fn mfa_auth_callback(
     let request = ClientMfaOidcAuthenticateRequest {
         code: payload.code,
         nonce,
-        callback_url: state.callback_url(flow_type).to_string(),
+        callback_url: state.callback_url(&flow_type).to_string(),
         state: payload.state,
     };
 

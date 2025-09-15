@@ -91,14 +91,12 @@ export const Button = ({
       className={getClassName}
       disabled={isDisabled}
       onClick={(e) => {
-        if (!disabled && !loading && (onClick || type !== 'button')) {
-          if (onClick) {
-            onClick(e);
-          }
-        } else {
+        if (disabled || loading) {
           e.preventDefault();
           e.stopPropagation();
+          return;
         }
+        onClick?.(e);
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

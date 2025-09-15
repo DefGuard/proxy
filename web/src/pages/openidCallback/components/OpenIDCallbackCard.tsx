@@ -3,6 +3,7 @@ import './style.scss';
 import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
+import Markdown from 'react-markdown';
 import QRCode from 'react-qr-code';
 import { useBreakpoint } from 'use-breakpoint';
 import { useI18nContext } from '../../../i18n/i18n-react';
@@ -18,10 +19,10 @@ import { MessageBoxType } from '../../../shared/components/layout/MessageBox/typ
 import { deviceBreakpoints } from '../../../shared/constants';
 import { CopyField } from '../../../shared/defguard-ui/components/Layout/CopyField/CopyField';
 import { MessageBox } from '../../../shared/defguard-ui/components/Layout/MessageBox/MessageBox';
-import { useToaster } from '../../../shared/defguard-ui/hooks/toasts/useToaster';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
 import { useApi } from '../../../shared/hooks/api/useApi';
 import { useClipboard } from '../../../shared/hooks/useClipboard';
+import { sharedLinks } from '../../../shared/links';
 
 type ErrorResponse = {
   error: string;
@@ -33,7 +34,6 @@ export const OpenIDCallbackCard = () => {
   const { LL } = useI18nContext();
   const [error, setError] = useState<string | null>(null);
   const { writeToClipboard } = useClipboard();
-  const toaster = useToaster();
 
   const { isLoading, data } = useQuery(
     [],
@@ -94,6 +94,13 @@ export const OpenIDCallbackCard = () => {
     return undefined;
   }, [data]);
 
+  const deepLink = useMemo(() => {
+    if (data) {
+      return `defguard://addinstance?token=${data.token}&url=${data.url}`;
+    }
+    return null;
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="loader-container">
@@ -124,16 +131,32 @@ export const OpenIDCallbackCard = () => {
     <Card shaded={breakpoint !== 'mobile'} className="openidcallback-card">
       <h2>{LL.pages.oidcLogin.card.title()}</h2>
       <BigInfoBox message={LL.pages.oidcLogin.card.infoBox()} />
-      <h3>
-        Please enter the provided Instance URL and Token into your Defguard Client. You
-        can scan the QR code or copy and paste the token manually.
-      </h3>
+      <MessageBox message="If you want to configure your Defguard desktop client, please install the client (links below), open it and just press the One-Click Desktop Configuration button" />
+      {isPresent(deepLink) && (
+        <div className="row">
+          <a href={deepLink} target="_blank" rel="noopener noreferrer">
+            <Button
+              text="Configure your desktop client"
+              size={ButtonSize.LARGE}
+              styleVariant={ButtonStyleVariant.PRIMARY}
+            />
+          </a>
+        </div>
+      )}
+      <MessageBox>
+        <Markdown>
+          {
+            'If you are having trouble with the One-Click configuration you can do it manually by clicking *Add Instance* in the desktop client, and entering the following URL and Token:'
+          }
+        </Markdown>
+      </MessageBox>
       {isPresent(data) && (
         <>
           <CopyField label="Url" value={data.url} onCopy={writeToClipboard} />
           <CopyField label="Token" value={data.token} onCopy={writeToClipboard} />
         </>
       )}
+      <MessageBox message="If you want to configure your Mobile Defguard Client, please just scan this QR code in the app:" />
       {isPresent(qrData) && (
         <div className="row">
           <div className="qr">
@@ -142,16 +165,10 @@ export const OpenIDCallbackCard = () => {
         </div>
       )}
       <div className="row">
-        <p className="qr-description">
-          Scan the QR code with your installed Defguard app. If you haven't installed it
-          yet, use your device's app store or the link below.
-        </p>
-      </div>
-      <div className="row">
         <a
-          onClick={() => {
-            toaster.success('Unimplemented yet');
-          }}
+          href={sharedLinks.client.download.android}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -240,9 +257,9 @@ export const OpenIDCallbackCard = () => {
           </svg>
         </a>
         <a
-          onClick={() => {
-            toaster.success('Unimplemented yet');
-          }}
+          href={sharedLinks.client.download.ios}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -350,12 +367,15 @@ export const OpenIDCallbackCard = () => {
             />
           </svg>
         </a>
-        <a href="https://defguard.net/download" rel="noopener noreferrer" target="_blank">
+        <a
+          href={sharedLinks.client.download.desktop}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           <Button
             size={ButtonSize.SMALL}
             styleVariant={ButtonStyleVariant.LINK}
-            text="Download Desktop"
-            onClick={() => {}}
+            text="Download for Desktop"
           />
         </a>
       </div>

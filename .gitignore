@@ -4,3 +4,4 @@
 .direnv/
 .envrc
 /node_modules
+.env

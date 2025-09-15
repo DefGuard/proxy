@@ -56,6 +56,14 @@ impl IntoResponse for ApiError {
     }
 }
 
+impl From<base64::DecodeError> for ApiError {
+    fn from(value: base64::DecodeError) -> Self {
+        Self::BadRequest(format!(
+            "Failed to decode base64 from request data. {value}"
+        ))
+    }
+}
+
 impl From<CoreError> for ApiError {
     fn from(core_error: CoreError) -> Self {
         // convert to tonic::Status first
