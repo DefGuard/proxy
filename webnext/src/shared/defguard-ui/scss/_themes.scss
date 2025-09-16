@@ -1,0 +1,113 @@
+:root[data-theme="light"] {
+  --theme-bg-default: var(--c-white);
+  --theme-bg-dark: var(--c-neutral-1300);
+  --theme-bg-white: var(--c-white);
+  --theme-bg-faded: var(--c-neutral-300);
+  --theme-bg-disabled: var(--c-neutral-50);
+  --theme-bg-muted: var(--c-neutral-50);
+  --theme-bg-emphasis: var(--c-neutral-100);
+  --theme-bg-active: var(--c-neutral-200);
+  --theme-bg-inverted: var(--c-neutral-1300);
+
+  --theme-bg-action: var(--c-blue-500);
+  --theme-bg-action-emphasis: var(--c-blue-400);
+  --theme-bg-action-faded: var(--c-blue-300);
+  --theme-bg-action-muted: var(--c-blue-100);
+
+  --theme-bg-critical-emphasis: var(--c-red-600);
+  --theme-bg-critical: var(--c-red-500);
+  --theme-bg-critical-faded: var(--c-red-400);
+  --theme-bg-critical-muted: var(--c-red-200);
+
+  --theme-bg-success: var(--c-green-500);
+  --theme-bg-warning: var(--c-orange-500);
+
+  --theme-border-action: var(--c-blue-500);
+  --theme-border-action-disabled: var(--c-blue-300);
+  --theme-border-default: var(--c-neutral-200);
+  --theme-border-disabled: var(--c-neutral-200);
+  --theme-border-emphasis: var(--c-neutral-500);
+  --theme-border-muted: var(--c-neutral-200);
+  --theme-border-faded: var(--c-neutral-400);
+  --theme-border-critical: var(--c-red-500);
+  --theme-border-success: var(--c-green-300);
+  --theme-border-warning: var(--c-orange-300);
+
+  --theme-fg-action: var(--c-blue-500);
+  --theme-fg-action-emphasis: var(--c-blue-600);
+  --theme-fg-action-muted: var(--c-blue-300);
+  --theme-fg-attention: var(--c-orange-500);
+  --theme-fg-critical: var(--c-red-500);
+  --theme-fg-critical-muted: var(--c-red-200);
+
+  --theme-fg-default: var(--c-neutral-1400);
+  --theme-fg-faded: var(--c-neutral-900);
+  --theme-fg-neutral: var(--c-neutral-800);
+  --theme-fg-muted: var(--c-neutral-600);
+  --theme-fg-disabled: var(--c-neutral-500);
+
+  --theme-fg-success: var(--c-green-500);
+  --theme-fg-success-muted: var(--c-green-100);
+  --theme-fg-code: var(--c-violet-500);
+  --theme-fg-inverted: var(--c-white);
+  --theme-fg-white: var(--c-white);
+  --theme-fg-white-transparent: var(--c-white-50);
+  --theme-fg-blue-transparent-2: var(--c-blue-500-transparent);
+}
+
+:root[data-theme="dark"] {
+  --theme-bg-default: var(--c-neutral-1400);
+  --theme-bg-dark: var(--c-neutral-1100);
+  --theme-bg-white: var(--c-white);
+  --theme-bg-faded: var(--c-neutral-900);
+  --theme-bg-disabled: var(--c-neutral-1300);
+  --theme-bg-muted: var(--c-neutral-1200);
+  --theme-bg-emphasis: var(--c-neutral-1200);
+  --theme-bg-active: var(--c-neutral-1100);
+  --theme-bg-inverted: var(--c-neutral-100);
+
+  --theme-bg-action: var(--c-blue-500);
+  --theme-bg-action-emphasis: var(--c-blue-600);
+  --theme-bg-action-faded: var(--c-blue-400);
+  --theme-bg-action-muted: var(--c-blue-300);
+
+  --theme-bg-critical-emphasis: var(--c-red-600);
+  --theme-bg-critical: var(--c-red-500);
+  --theme-bg-critical-faded: var(--c-red-400);
+  --theme-bg-critical-muted: var(--c-red-200);
+
+  --theme-bg-success: var(--c-green-500);
+  --theme-bg-warning: var(--c-orange-500);
+
+  --theme-border-action: var(--c-blue-500);
+  --theme-border-action-disabled: var(--c-blue-300);
+  --theme-border-default: var(--c-neutral-900);
+  --theme-border-disabled: var(--c-neutral-1000);
+  --theme-border-emphasis: var(--c-neutral-500);
+  --theme-border-muted: var(--c-neutral-1100);
+  --theme-border-faded: var(--c-neutral-800);
+  --theme-border-critical: var(--c-red-500);
+  --theme-border-success: var(--c-green-300);
+  --theme-border-warning: var(--c-orange-300);
+
+  --theme-fg-action: var(--c-blue-500);
+  --theme-fg-action-emphasis: var(--c-blue-600);
+  --theme-fg-action-muted: var(--c-blue-300);
+  --theme-fg-attention: var(--c-orange-500);
+  --theme-fg-critical: var(--c-red-500);
+  --theme-fg-critical-muted: var(--c-red-200);
+
+  --theme-fg-default: var(--c-white);
+  --theme-fg-faded: var(--c-neutral-400);
+  --theme-fg-neutral: var(--c-neutral-300);
+  --theme-fg-muted: var(--c-neutral-200);
+  --theme-fg-disabled: var(--c-neutral-700);
+
+  --theme-fg-success: var(--c-green-500);
+  --theme-fg-success-muted: var(--c-green-100);
+  --theme-fg-code: var(--c-violet-500);
+  --theme-fg-inverted: var(--c-neutral-1400);
+  --theme-fg-white: var(--c-white);
+  --theme-fg-white-transparent: var(--c-white-50);
+  --theme-fg-blue-transparent-2: var(--c-blue-500-transparent);
+}

@@ -1,0 +1,173 @@
+:root {
+  // font settings
+  --font-family-title: Geist, system-ui, sans-serif;
+  --font-family-body: Geist, system-ui, sans-serif;
+  --font-family-component: Geist, system-ui, sans-serif;
+  --font-family-code: "Source Code Pro", system-ui, sans-serif;
+
+  --t-body-xxs-600: 600 11px/14px var(--font-family-body);
+  --t-body-xxs-400: 400 11px/14px var(--font-family-body);
+
+  --t-body-xs-600: 600 12px/16px var(--font-family-body);
+  --t-body-xs-500: 500 12px/16px var(--font-family-body);
+  --t-body-xs-400: 400 12px/16px var(--font-family-body);
+
+  --t-body-sm-600: 600 14px/20px var(--font-family-body);
+  --t-body-sm-500: 500 14px/20px var(--font-family-body);
+  --t-body-sm-400: 400 14px/20px var(--font-family-body);
+
+  --t-body-primary-400: 400 16px/24px var(--font-family-body);
+  --t-body-primary-600: 600 16px/24px var(--font-family-body);
+  --t-body-primary-500: 500 16px/24px var(--font-family-body);
+
+  --t-title-h5: 600 18px/28px var(--font-family-title);
+  --t-title-h4: 600 20px/28px var(--font-family-title);
+  --t-title-h3: 600 24px/32px var(--font-family-title);
+  --t-title-h2: 600 28px/40px var(--font-family-title);
+  --t-title-h1: 600 32px/44px var(--font-family-title);
+
+  // border width
+  --border-1: 1px;
+  --border-2: 2px;
+
+  // border-radius
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-xxl: 24px;
+  --radius-xxxl: 32px;
+  --radius-full: 100px;
+
+  // scale
+  --size-xs: 16px;
+  --size-sm: 20px;
+  --size-md: 24px;
+  --size-xl: 32px;
+  --size-2xl: 36px;
+  --size-3xl: 40px;
+  --size-4xl: 44px;
+  --size-5xl: 60px;
+
+  // spacing
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+  --spacing-4xl: 40px;
+  --spacing-5xl: 48px;
+  --spacing-6xl: 64px;
+  --spacing-7xl: 80px;
+  --spacing-8xl: 96px;
+  --spacing-9xl: 120px;
+
+  // color basis
+  --c-neutral-1400: rgba(20, 21, 23);
+  --c-neutral-1300: rgba(25, 26, 28);
+  --c-neutral-1200: rgba(36, 38, 41);
+  --c-neutral-1100: rgba(46, 49, 54);
+  --c-neutral-1000: rgba(50, 54, 60);
+  --c-neutral-900: rgba(61, 67, 75);
+  --c-neutral-800: rgba(74, 80, 89);
+  --c-neutral-700: rgba(94, 102, 114);
+  --c-neutral-600: rgba(126, 135, 148);
+  --c-neutral-500: rgba(147, 156, 169);
+  --c-neutral-400: rgba(162, 172, 186);
+  --c-neutral-300: rgba(184, 192, 205);
+  --c-neutral-200: rgba(223, 227, 233);
+  --c-neutral-100: rgba(240, 242, 245);
+  --c-neutral-50: rgba(247, 248, 250);
+
+  --c-white: rgba(255, 255, 255);
+  --c-white-50: rgba(255, 255, 255, 0.5);
+  --c-transparent: rgba(0, 0, 0, 0);
+
+  --c-additional-error: rgba(204, 60, 60);
+  --c-additional-warning: rgba(255, 149, 0);
+  --c-additional-success: rgba(3, 128, 38);
+  --c-additional-code: rgba(112, 75, 172);
+
+  --c-green-700: rgba(2, 78, 23);
+  --c-green-600: rgba(2, 90, 27);
+  --c-green-500: rgba(3, 128, 38);
+  --c-green-400: rgba(46, 150, 75);
+  --c-green-300: rgba(109, 181, 129);
+  --c-green-200: rgba(152, 203, 166);
+  --c-green-100: rgba(230, 242, 233);
+  --c-green-500-transparent: rgba(3, 128, 38, 0.08);
+
+  --c-orange-700: rgba(156, 91, 0);
+  --c-orange-600: rgba(179, 104, 0);
+  --c-orange-500: rgba(255, 149, 0);
+  --c-orange-400: rgba(255, 167, 43);
+  --c-orange-300: rgba(255, 194, 107);
+  --c-orange-200: rgba(255, 212, 150);
+  --c-orange-100: rgba(255, 244, 230);
+  --c-orange-500-transparent: rgba(255, 149, 0, 0.08);
+
+  --c-violet-700: rgba(53, 36, 82);
+  --c-violet-600: rgba(83, 55, 128);
+  --c-violet-500: rgba(102, 55, 178);
+  --c-violet-400: rgba(136, 106, 186);
+  --c-violet-300: rgba(172, 151, 207);
+  --c-violet-200: rgba(196, 181, 221);
+  --c-violet-100: rgba(241, 237, 247);
+
+  --c-blue-700: rgba(38, 57, 115);
+  --c-blue-600: rgba(51, 77, 156);
+  --c-blue-500: rgba(57, 97, 219);
+  --c-blue-400: rgba(87, 119, 217);
+  --c-blue-300: rgba(140, 161, 222);
+  --c-blue-200: rgba(180, 196, 242);
+  --c-blue-100: rgba(237, 241, 252);
+  --c-blue-500-transparent: rgba(50, 92, 219, 0.08);
+
+  --c-red-700: rgba(124, 37, 37);
+  --c-red-600: rgba(143, 42, 42);
+  --c-red-500: rgba(204, 60, 60);
+  --c-red-400: rgba(213, 93, 93);
+  --c-red-300: rgba(225, 142, 142);
+  --c-red-200: rgba(234, 175, 175);
+  --c-red-100: rgba(250, 236, 236);
+  --c-red-500-transparent: rgba(204, 60, 60, 0.08);
+
+  // Components
+
+  // Menu
+  --t-menu-title: 600 12px/24px var(--font-family-body);
+  --t-menu-body: 400 14px/24px var(--font-family-body);
+  --menu-spacing-icon: var(--spacing-md);
+  --menu-padding-sides: var(--spacing-sm);
+  --menu-border-radius-group: var(--radius-lg);
+  --menu-border-radius-item: var(--radius-md);
+  --menu-height: var(--size-2xl);
+
+  // Icons
+
+  --icon-size-lg: 32px;
+  --icon-size: 20px;
+  --icon-size-xs: 16px;
+
+  // Modals
+
+  --modal-title-size: 16px;
+  --modal-size-md: 640px;
+  --modal-size-sm: 480px;
+  --modal-spacing: var(--spacing-md);
+  --modal-spacing-sides: var(--spacing-lg);
+  --modal-border-radius: var(--radius-lg);
+
+  // Buttons
+
+  --t-button-label-lg: 400 16/auto var(--font-family-component);
+  --t-button-label-primary: 400 14/auto var(--font-family-component);
+  --button-border-radius-sm: var(--radius-md);
+  --button-border-radius-primary: var(--radius-md);
+  --button-border-radius-xl: var(--radius-full);
+  --button-size-primary: var(--size-2xl);
+  --button-size-lg: var(--size-4xl);
+  --button-size-xl: var(--size-5xl);
+}
