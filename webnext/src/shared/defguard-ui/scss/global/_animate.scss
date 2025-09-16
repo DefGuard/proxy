@@ -1,0 +1,9 @@
+// for now no prop required
+@mixin animate($properties...) {
+  transition-timing-function: ease-out;
+  transition-duration: 160ms;
+
+  @if length($properties)>0 {
+    transition-property: $properties;
+  }
+}
