@@ -151,7 +151,7 @@ async fn start_client_mfa(
         info!("Started desktop client authorization {req:?}");
         Ok(Json(response))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
@@ -170,7 +170,7 @@ async fn finish_client_mfa(
     if let core_response::Payload::ClientMfaFinish(response) = payload {
         Ok(Json(response))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
@@ -210,7 +210,7 @@ async fn finish_remote_mfa(
             Err(ApiError::Unexpected(String::new()))
         }
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }

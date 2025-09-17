@@ -58,7 +58,7 @@ pub(crate) async fn register_mobile_auth(
         info!("Registered mobile device for auth");
         Ok(())
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }

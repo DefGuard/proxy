@@ -24,7 +24,7 @@ pub(crate) async fn info(
         info!("Retrieved info for polling request");
         Ok(Json(response))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }

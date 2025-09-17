@@ -95,7 +95,10 @@ pub(super) async fn mfa_auth_callback(
         info!("MFA authentication callback completed successfully");
         Ok(private_cookies)
     } else {
-        error!("Received invalid gRPC response type during handling the MFA OpenID authentication callback: {payload:#?}");
+        error!(
+            "Received invalid gRPC response type during handling the MFA OpenID authentication \
+            callback"
+        );
         Err(ApiError::InvalidResponseType)
     }
 }
