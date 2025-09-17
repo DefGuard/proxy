@@ -57,7 +57,7 @@ where
 pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
     debug!("Fetching core response...");
     if let Ok(core_response) = timeout(CORE_RESPONSE_TIMEOUT, rx).await {
-        debug!("Got gRPC response from Defguard core: {core_response:?}");
+        debug!("Got gRPC response from Defguard Core");
         if let Ok(Payload::CoreError(core_error)) = core_response {
             if core_error.status_code == Code::FailedPrecondition as i32
                 && core_error.message == "no valid license"
