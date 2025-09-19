@@ -10,10 +10,9 @@ import { FormInput } from '../../../../shared/components/Form/FormInput/FormInpu
 import { Card } from '../../../../shared/components/layout/Card/Card';
 import { MessageBoxOld } from '../../../../shared/components/layout/MessageBox/MessageBoxOld';
 import { MessageBoxType } from '../../../../shared/components/layout/MessageBox/types';
+import { patternValidPhoneNumber } from '../../../../shared/patterns';
 import { EnrollmentStepIndicator } from '../../components/EnrollmentStepIndicator/EnrollmentStepIndicator';
 import { useEnrollmentStore } from '../../hooks/store/useEnrollmentStore';
-
-const phonePattern = /^\+?[0-9]+( [0-9]+)?$/;
 
 export const DataVerificationStep = () => {
   const { LL } = useI18nContext();
@@ -38,7 +37,7 @@ export const DataVerificationStep = () => {
           .trim()
           .refine((val) => {
             if (val && typeof val === 'string' && val.length > 0) {
-              return phonePattern.test(val);
+              return patternValidPhoneNumber.test(val);
             }
             return true;
           }, LL.form.errors.invalid()),
