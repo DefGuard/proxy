@@ -1,0 +1,9 @@
+.input {
+  & > .inner {
+    position: relative;
+
+    .track {
+      box-sizing: border-box;
+    }
+  }
+}

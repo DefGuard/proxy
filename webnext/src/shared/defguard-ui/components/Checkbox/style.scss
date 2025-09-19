@@ -1,0 +1,29 @@
+.checkbox {
+  display: inline-block;
+  user-select: none;
+
+  &:not(.disabled) {
+    cursor: pointer;
+  }
+
+  .can-error {
+    padding-bottom: var(--form-field-error-space);
+  }
+
+  &.disabled {
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  &.text {
+    display: grid;
+    grid-template-columns: 24px auto;
+    grid-template-rows: 1fr;
+    column-gap: var(--spacing-sm);
+    align-items: center;
+  }
+
+  span {
+    font: var(--t-body-sm-400);
+  }
+}

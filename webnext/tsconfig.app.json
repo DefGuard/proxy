@@ -25,7 +25,10 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "allowJs": true,
-    "checkJs": true
+    "checkJs": false,
+    "types": [
+      "vite/client"
+    ]
   },
   "include": [
     "src"

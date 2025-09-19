@@ -1,0 +1,156 @@
+.btn {
+  --btn-size: var(--button-size-primary);
+  --border-color: transparent;
+  --bg-color: transparent;
+  --text-color: var(--fg-default);
+  --loader-bg: transparent;
+  --loader-track: transparent;
+  --loader-part: transparent;
+
+  border: none;
+  box-sizing: border-box;
+  border-radius: var(--button-border-radius-primary);
+  background: var(--bg-color);
+  box-shadow: 0 0 0 1px var(--border-color);
+  color: var(--text-color);
+  min-height: var(--button-size-primary);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-clip: padding-box;
+  position: relative;
+  user-select: none;
+
+  @include animate(background-color, border-color, opacity, box-shadow);
+
+  &:not(.disabled, .loading) {
+    cursor: pointer;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .text {
+    font: var(--t-button-label-primary);
+    color: inherit;
+
+    @include animate(color);
+  }
+
+  &.size-primary {
+    --btn-size: var(--button-size-primary);
+  }
+
+  &.size-big {
+    --btn-size: var(--button-size-big);
+  }
+
+  &.variant-primary {
+    --bg-color: var(--fg-action);
+    --border-color: var(--fg-action);
+    --text-color: var(--fg-white);
+    --loader-track: var(--c-white-50);
+    --loader-part: var(--c-white);
+    --loader-bg: var(--bg-action-emphasis);
+
+    &:hover {
+      --bg-color: var(--bg-action-emphasis);
+      --border-color: var(--bg-color);
+    }
+
+    &.disabled {
+      --bg-color: var(--fg-blue-transparent-2);
+      --border-color: var(--bg-color);
+      --text-color: var(--fg-action-muted);
+    }
+  }
+
+  &.variant-secondary {
+    --bg-color: var(--bg-emphasis);
+    --border-color: var(--bg-color);
+    --text-color: var(--fg-default);
+    --loader-track: var(--c-neutral-400);
+    --loader-part: var(--c-neutral-800);
+    --loader-bg: var(--bg-active);
+
+    &:hover {
+      --bg-color: var(--bg-active);
+    }
+
+    &.disabled {
+      --bg-color: var(--bg-disabled);
+      --text-color: var(--fg-disabled);
+    }
+  }
+
+  &.variant-critical {
+    --bg-color: var(--bg-critical);
+    --border-color: var(--bg-color);
+    --text-color: var(--fg-white);
+    --loader-track: var(--c-white-50);
+    --loader-part: var(--c-white);
+    --loader-bg: var(--bg-critical-faded);
+
+    &:hover {
+      --bg-color: var(--bg-critical-faded);
+    }
+
+    &.disabled {
+      --bg-color: var(--bg-critical-muted);
+      --text-color: var(--fg-white-transparent);
+    }
+  }
+
+  &.variant-outlined {
+    --bg-color: transparent;
+    --border-color: var(--border-action);
+    --loader-track: var(--c-blue-200);
+    --loader-part: var(--c-blue-500);
+    --loader-bg: var(--bg-action-muted);
+
+    &:hover {
+      --bg-color: var(--bg-action-muted);
+      --border-color: var(--border-action);
+    }
+
+    &.disabled {
+      --bg-color: var(--fg-blue-transparent-2);
+      --border-color: var(--bg-color);
+      --text-color: var(--fg-action-muted);
+    }
+  }
+
+  // since box-shadow adds on top of element it's needed to be set with loader overlay
+  &:not(.disabled).loading {
+    --border-color: var(--loader-bg);
+  }
+
+  .loader-overlay {
+    background-color: var(--loader-bg);
+    border: none;
+    border-radius: inherit;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      & > path {
+        stroke: var(--loader-part);
+        fill: none;
+
+        @include animate(stroke);
+      }
+
+      & > circle {
+        stroke: var(--loader-track);
+
+        @include animate(stroke);
+      }
+    }
+  }
+}

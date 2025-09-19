@@ -1,0 +1,46 @@
+.counter-label {
+  --color: var(--fg-white);
+  --bg-color: transparent;
+
+  color: var(--color);
+  background-color: var(--bg-color);
+  border-radius: 8px;
+  user-select: none;
+  pointer-events: none;
+  box-sizing: border-box;
+  padding: 0 var(--spacing-xs);
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-flow: row;
+  flex: none;
+  height: auto;
+
+  &.variant-neutral {
+    --color: var(--fg-neutral);
+    --bg-color: var(--bg-emphasis);
+  }
+
+  &.variant-action {
+    --bg-color: var(--bg-action);
+  }
+
+  &.variant-critical {
+    --bg-color: var(--bg-critical);
+  }
+
+  &.variant-warning {
+    --bg-color: var(--bg-warning);
+  }
+
+  &.variant-default {
+    --bg-color: var(--bg-dark);
+  }
+
+  span {
+    font: var(--t-body-xxs-600);
+    color: inherit;
+    text-align: center;
+  }
+}

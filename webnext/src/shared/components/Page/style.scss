@@ -1,0 +1,26 @@
+.page {
+  width: 100%;
+
+  & > .content-track {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0 var(--spacing-xl);
+
+    & > .content-limiter {
+      width: 100%;
+      max-width: 1440px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: 1fr;
+      column-gap: 40px;
+
+      & > .page-content {
+        grid-row: 1;
+        grid-column: 4 / 10;
+      }
+    }
+  }
+}

@@ -6,6 +6,10 @@ import * as path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: 3000,
+    strictPort: true,
+  },
   plugins: [
     paraglideVitePlugin({
       project: './project.inlang',

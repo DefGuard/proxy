@@ -1,5 +1,3 @@
-import type { Direction, ThemeKey } from '../../types';
-
 export const IconKind = {
   ArrowBig: 'arrow-big',
   ArrowSmall: 'arrow-small',
@@ -90,4 +88,4 @@ export const IconKind = {
   StatusImportant: 'status-important',
 } as const;
 
-export type IconKind = (typeof IconKind)[keyof typeof IconKind];
+export type IconKindValue = (typeof IconKind)[keyof typeof IconKind];

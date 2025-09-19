@@ -1,11 +1,14 @@
 import { type CSSProperties, type Ref, useMemo } from 'react';
-import type { IconKind } from './icon-types';
+import type { IconKindValue } from './icon-types';
 import './style.scss';
 import type { Direction } from '../../types';
 import { IconArrowBig } from './icons/IconArrowBig';
 import { IconArrowSmall } from './icons/IconArrowSmall';
+import { IconLoader } from './icons/IconLoader';
+import { IconPlus } from './icons/IconPlus';
+import { IconStatusSimple } from './icons/IconStatusSimple';
 
-type Props<T extends IconKind = IconKind> = {
+type Props<T extends IconKindValue = IconKindValue> = {
   icon: T;
   size?: number;
   rotationDirection?: Direction;
@@ -15,7 +18,7 @@ type Props<T extends IconKind = IconKind> = {
 
 type RotationMap = Record<Direction, number>;
 
-const mapRotation = (kind: IconKind, direction: Direction): number => {
+const mapRotation = (kind: IconKindValue, direction: Direction): number => {
   switch (kind) {
     case 'arrow-small':
     case 'arrow-big': {
@@ -34,7 +37,7 @@ const mapRotation = (kind: IconKind, direction: Direction): number => {
 };
 
 // Color should be set by css bcs some icons have different structures like 'loader'
-export const Icon = <T extends IconKind>({
+export const Icon = <T extends IconKindValue>({
   icon: iconKind,
   rotationDirection,
   customRotation,
@@ -48,6 +51,12 @@ export const Icon = <T extends IconKind>({
       }
       case 'arrow-small':
         return IconArrowSmall;
+      case 'loader':
+        return IconLoader;
+      case 'plus':
+        return IconPlus;
+      case 'status-simple':
+        return IconStatusSimple;
       default:
         throw Error('Unimplemented icon kind');
     }

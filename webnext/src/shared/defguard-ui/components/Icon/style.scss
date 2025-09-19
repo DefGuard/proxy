@@ -1,21 +1,21 @@
 .icon {
   display: inline-block;
   overflow: hidden;
+  user-select: none;
 
   svg {
+    width: inherit;
+    height: inherit;
     transition-property: transform;
-    @include animate();
-  }
 
-  svg {
+    @include animate;
+
     path {
-      transition-property: fill;
-      @include animate();
+      @include animate(fill);
     }
 
     circle {
-      transition-property: stroke;
-      @include animate();
+      @include animate(stroke);
     }
   }
 }

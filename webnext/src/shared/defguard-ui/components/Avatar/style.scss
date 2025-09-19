@@ -1,0 +1,47 @@
+.avatar {
+  user-select: none;
+
+  &.size-small {
+    .inner {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &.size-default {
+    .inner {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  &.size-big {
+    .inner {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  svg {
+    height: inherit;
+    width: inherit;
+  }
+}
+
+.avatar .icon-default {
+  g {
+    rect {
+      fill: var(--bg-emphasis);
+    }
+
+    path {
+      fill: var(--bg-faded);
+    }
+  }
+
+  defs {
+    rect {
+      fill: var(--fg-default);
+    }
+  }
+}

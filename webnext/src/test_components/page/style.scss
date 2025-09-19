@@ -1,0 +1,11 @@
+#test-page {
+  .test-row {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding-bottom: var(--spacing-2xl);
+    column-gap: var(--spacing-xl);
+  }
+}

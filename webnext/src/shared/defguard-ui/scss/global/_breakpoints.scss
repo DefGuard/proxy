@@ -10,24 +10,34 @@ $grid-breakpoints: (
   xxl: 1600px,
 );
 
-@function break-next($name, $breakpoints: $grid-breakpoints, $breakpoint-names: map-keys($breakpoints)) {
-  $n: index($breakpoint-names, $name);
+@function break-next(
+  $name,
+  $breakpoints: $grid-breakpoints,
+  $breakpoint-names: map.keys($breakpoints)
+) {
+  $n: list.index($breakpoint-names, $name);
 
   @if not $n {
     @error "breakpoint `#{$name}` not found in `#{$breakpoints}`";
   }
 
-  @return if($n < length($breakpoint-names), nth($breakpoint-names, $n + 1), null);
+  @return if(
+    $n < list.length($breakpoint-names),
+    list.nth($breakpoint-names, $n + 1),
+    null
+  );
 }
 
 @function break-min($name, $breakpoints: $grid-breakpoints) {
-  $min: map-get($breakpoints, $name);
-  @return if($min !=0, $min, null);
+  $min: map.get($breakpoints, $name);
+
+  @return if($min != 0, $min, null);
 }
 
 @function break-max($name, $breakpoints: $grid-breakpoints) {
-  $max: map-get($breakpoints, $name);
-  @return if($max and $max > 0, $max - .02, null);
+  $max: map.get($breakpoints, $name);
+
+  @return if($max and $max > 0, $max - 0.02, null);
 }
 
 @mixin break-up($name, $breakpoints: $grid-breakpoints) {
@@ -37,9 +47,7 @@ $grid-breakpoints: (
     @media (min-width: $min) {
       @content;
     }
-  }
-
-  @else {
+  } @else {
     @content;
   }
 }
@@ -51,9 +59,7 @@ $grid-breakpoints: (
     @media (max-width: $max) {
       @content;
     }
-  }
-
-  @else {
+  } @else {
     @content;
   }
 }
@@ -62,19 +68,15 @@ $grid-breakpoints: (
   $min: break-min($lower, $breakpoints);
   $max: break-max($upper, $breakpoints);
 
-  @if $min !=null and $max !=null {
+  @if $min != null and $max != null {
     @media (min-width: $min) and (max-width: $max) {
       @content;
     }
-  }
-
-  @else if $max ==null {
+  } @else if $max == null {
     @include break-up($lower, $breakpoints) {
       @content;
     }
-  }
-
-  @else if $min ==null {
+  } @else if $min == null {
     @include break-down($upper, $breakpoints) {
       @content;
     }
@@ -86,19 +88,15 @@ $grid-breakpoints: (
   $next: break-next($name, $breakpoints);
   $max: break-max($next, $breakpoints);
 
-  @if $min !=null and $max !=null {
+  @if $min != null and $max != null {
     @media (min-width: $min) and (max-width: $max) {
       @content;
     }
-  }
-
-  @else if $max ==null {
+  } @else if $max == null {
     @include break-up($name, $breakpoints) {
       @content;
     }
-  }
-
-  @else if $min ==null {
+  } @else if $min == null {
     @include break-down($next, $breakpoints) {
       @content;
     }
