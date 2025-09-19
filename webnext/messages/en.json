@@ -1,3 +1,13 @@
 {
-  "$schema": "https://inlang.com/schema/inlang-message-format"
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "start_footer_contact": "If you need assistance, please contact your defguard administrator at",
+  "start_footer_copyright": "Copyright ©2023-{currentYear} Defguard Sp. z o.o.",
+  "start_multi_title": "Get Started with Defguard",
+  "start_multi_subtitle": "Please select the option that suits your needs.",
+  "start_multi_enrollment_title": "Enrollment process",
+  "start_multi_enrollment_subtitle": "Configure your device in a few simple steps to access your corporate VPN.",
+  "start_multi_enrollment_button": "Launch enrollment",
+  "start_multi_password_title": "Password reset",
+  "start_multi_password_subtitle": "Use this option to reset your internal Defguard access password.",
+  "start_multi_password_button": "Reset password"
 }

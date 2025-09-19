@@ -18,6 +18,11 @@
   background-clip: padding-box;
   position: relative;
   user-select: none;
+  display: grid;
+  grid-template-columns: auto;
+  grid-template-rows: 1fr;
+  align-items: center;
+  column-gap: var(--button-icons-spacing);
 
   @include animate(background-color, border-color, opacity, box-shadow);
 
@@ -30,11 +35,33 @@
     pointer-events: none;
   }
 
+  .icon {
+    svg {
+      path {
+        fill: var(--loader-part);
+
+        @include animate(fill);
+      }
+    }
+  }
+
   .text {
     font: var(--t-button-label-primary);
     color: inherit;
 
     @include animate(color);
+  }
+
+  &.icon-left {
+    grid-template-columns: 20px auto;
+  }
+
+  &.icon-right {
+    grid-template-columns: auto 20px;
+  }
+
+  &.icon-both {
+    grid-template-columns: 20px auto 20px;
   }
 
   &.size-primary {

@@ -1,0 +1,30 @@
+#home-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  column-gap: var(--spacing-4xl);
+
+  & > .choice {
+    box-sizing: border-box;
+    padding: var(--spacing-3xl);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-default);
+
+    .title {
+      color: var(--fg-faded);
+      font: var(--t-titles-h3);
+    }
+
+    .subtitle {
+      color: var(--fg-muted);
+      font: var(--t-body-primary-400);
+    }
+
+    .image {
+      content: '';
+      height: 271px;
+      width: 100%;
+      background-color: var(--fg-action);
+    }
+  }
+}

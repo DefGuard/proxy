@@ -14,10 +14,35 @@ li {
   padding: 0;
 }
 
+h1 {
+  font: var(--t-title-h1);
+}
+
+h2 {
+  font: var(--t-title-h2);
+}
+
+h3 {
+  font: var(--t-title-h3);
+}
+
+h4 {
+  font: var(--t-title-h4);
+}
+
+h5 {
+  font: var(--t-title-h5);
+}
+
 #root {
   position: relative;
   min-height: 100dvh;
   width: 100%;
+}
+
+#root,
+body {
+  background-color: var(--bg-default);
 }
 
 p,

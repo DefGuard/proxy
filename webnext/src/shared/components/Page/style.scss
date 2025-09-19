@@ -1,7 +1,15 @@
 .page {
+  --content-cols: 4 / 10;
+
   width: 100%;
+  min-height: inherit;
+
+  &.variant-home {
+    --content-cols: 3 / 10;
+  }
 
   & > .content-track {
+    min-height: inherit;
     display: flex;
     flex-flow: row;
     align-items: center;
@@ -10,6 +18,7 @@
     padding: 0 var(--spacing-xl);
 
     & > .content-limiter {
+      min-height: inherit;
       width: 100%;
       max-width: 1440px;
       display: grid;
@@ -18,8 +27,9 @@
       column-gap: 40px;
 
       & > .page-content {
+        min-height: inherit;
         grid-row: 1;
-        grid-column: 4 / 10;
+        grid-column: var(--content-cols);
       }
     }
   }

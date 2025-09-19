@@ -5,6 +5,7 @@ import type { Direction } from '../../types';
 import { IconArrowBig } from './icons/IconArrowBig';
 import { IconArrowSmall } from './icons/IconArrowSmall';
 import { IconLoader } from './icons/IconLoader';
+import { IconLockOpen } from './icons/IconLock';
 import { IconPlus } from './icons/IconPlus';
 import { IconStatusSimple } from './icons/IconStatusSimple';
 
@@ -57,6 +58,8 @@ export const Icon = <T extends IconKindValue>({
         return IconPlus;
       case 'status-simple':
         return IconStatusSimple;
+      case 'lock-open':
+        return IconLockOpen;
       default:
         throw Error('Unimplemented icon kind');
     }

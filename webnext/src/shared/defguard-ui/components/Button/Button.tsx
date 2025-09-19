@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { motionTransitionStandard } from '../../../consts';
 import { isPresent } from '../../utils/isPresent';
+import { Icon } from '../Icon';
 import { LoaderSpinner } from '../LoaderSpinner/LoaderSpinner';
 import type { ButtonProps } from './types';
 
@@ -39,7 +40,9 @@ export const Button = ({
         'icon-both': isPresent(iconLeft) && isPresent(iconRight),
       })}
     >
+      {isPresent(iconLeft) && <Icon icon={iconLeft} size={20} />}
       <span className="text">{text}</span>
+      {isPresent(iconRight) && <Icon icon={iconRight} size={20} />}
       <AnimatePresence mode="wait">
         {loading && !disabled && (
           <motion.div
