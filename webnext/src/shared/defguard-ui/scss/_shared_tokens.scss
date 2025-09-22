@@ -199,6 +199,18 @@ $source-code-pro:
   --t-badge: normal 500 12px / 16px #{$geist};
   --t-badge-spacing: 0.3px;
 
+  // Inputs
+  --t-input-title: normal 400 12px / 16px #{$geist};
+  --t-input-text-primary: normal 400 12px / 20px #{$geist};
+  --t-input-text-big: normal 400 16px / 20px #{$geist};
+  --t-input-error-message: normal 400 12px / 16px #{$geist};
+  --input-border-radius: var(--radius-md);
+  --input-size-primary: 20px;
+  --input-size-lg: 28px;
+  --input-spacing-xs: var(--spacing-xs);
+  --input-spacing-sm: var(--spacing-sm);
+  --input-spacing-lg: var(--spacing-md);
+
   // custom
 
   // how much space does error message in all takes

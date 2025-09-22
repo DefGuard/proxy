@@ -4,6 +4,7 @@ import './style.scss';
 import type { Direction } from '../../types';
 import { IconArrowBig } from './icons/IconArrowBig';
 import { IconArrowSmall } from './icons/IconArrowSmall';
+import { IconCheckCircle } from './icons/IconCheckCircle';
 import { IconLoader } from './icons/IconLoader';
 import { IconLockOpen } from './icons/IconLock';
 import { IconPlus } from './icons/IconPlus';
@@ -43,7 +44,7 @@ export const Icon = <T extends IconKindValue>({
   rotationDirection,
   customRotation,
   ref,
-  size,
+  size = 20,
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
@@ -60,6 +61,8 @@ export const Icon = <T extends IconKindValue>({
         return IconStatusSimple;
       case 'lock-open':
         return IconLockOpen;
+      case 'check-circle':
+        return IconCheckCircle;
       default:
         throw Error('Unimplemented icon kind');
     }

@@ -23,6 +23,7 @@
   grid-template-rows: 1fr;
   align-items: center;
   column-gap: var(--button-icons-spacing);
+  text-decoration: none !important;
 
   @include animate(background-color, border-color, opacity, box-shadow);
 
@@ -134,6 +135,7 @@
     --loader-track: var(--c-blue-200);
     --loader-part: var(--c-blue-500);
     --loader-bg: var(--bg-action-muted);
+    --text-color: var(--fg-action);
 
     &:hover {
       --bg-color: var(--bg-action-muted);
@@ -180,4 +182,8 @@
       }
     }
   }
+}
+
+a:has(.btn) {
+  text-decoration: none;
 }

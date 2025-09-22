@@ -1,5 +1,10 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "controls_back": "Back",
+  "form_error_email": "Enter valid email",
+  "form_error_required": "Field is required",
+  "cmp_enrol_step": "Step {current}/{max}",
+  "cmp_enrol_final": "Final step",
   "start_footer_contact": "If you need assistance, please contact your defguard administrator at",
   "start_footer_copyright": "Copyright ©2023-{currentYear} Defguard Sp. z o.o.",
   "start_multi_title": "Get Started with Defguard",
@@ -9,5 +14,13 @@
   "start_multi_enrollment_button": "Launch enrollment",
   "start_multi_password_title": "Password reset",
   "start_multi_password_subtitle": "Use this option to reset your internal Defguard access password.",
-  "start_multi_password_button": "Reset password"
+  "start_multi_password_button": "Reset password",
+  "password_start_title": "Reset password",
+  "password_start_subtitle": "Please enter your email associated with your defguard account.",
+  "password_start_form_explain": "After you submit the request, a password reset link will be sent to the email you provide. It may take a few minutes. If you do not receive the email in several minutes, please check your spam folder.",
+  "password_start_form_label_email": "Email",
+  "password_start_submit": "Send request",
+  "password_sent_title": "Your request has been sent.",
+  "password_sent_subTitle": "If the provided email address is assigned to any account, the password reset will be initiated and you will receive an email with further instructions.",
+  "password_sent_link": "Back to main page"
 }

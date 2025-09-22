@@ -46,7 +46,7 @@ type TextProps<T extends TextAllowed = TextDefault> = PolymorphicProps<
   ref?: PolymorphicForwardedRef<T>;
 };
 
-export const Text = <T extends TextAllowed = TextDefault>({
+export const AppText = <T extends TextAllowed = TextDefault>({
   as,
   children,
   style,
