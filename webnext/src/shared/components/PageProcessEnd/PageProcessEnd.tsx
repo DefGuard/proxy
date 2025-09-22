@@ -19,7 +19,7 @@ export const PageProcessEnd = ({ link, linkText, subtitle, title }: Props) => {
   return (
     <Page className="page-process-end">
       <SizedBox height={ThemeSpacing.Xl9} />
-      <Icon icon="check-circle" size={20} />
+      <Icon icon="check-circle" size={32} />
       <SizedBox height={ThemeSpacing.Xl} />
       <AppText as="h1" font={TextStyle.TTitleH3}>
         {title}
