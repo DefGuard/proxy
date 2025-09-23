@@ -17,8 +17,6 @@ export const Input = ({
   type = 'text',
   required = false,
   disabled = false,
-  canError = false,
-  errorPadding = false,
   onChange,
   onBlur,
   onFocus,
@@ -30,7 +28,6 @@ export const Input = ({
     <div className="input spacer">
       <div
         className={clsx('inner', {
-          error: canError && errorPadding,
           disabled,
         })}
       >
@@ -58,7 +55,7 @@ export const Input = ({
             }}
           />
         </div>
-        {canError && <FieldError error={disabled ? undefined : error} />}
+        <FieldError error={disabled ? undefined : error} />
       </div>
     </div>
   );

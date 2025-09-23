@@ -1,4 +1,5 @@
 .btn {
+  --btn-font: var(--t-button-label-primary);
   --btn-size: var(--button-size-primary);
   --border-color: transparent;
   --bg-color: transparent;
@@ -7,6 +8,7 @@
   --loader-track: transparent;
   --loader-part: transparent;
 
+  height: var(--btn-size);
   border: none;
   box-sizing: border-box;
   border-radius: var(--button-border-radius-primary);
@@ -47,7 +49,7 @@
   }
 
   .text {
-    font: var(--t-button-label-primary);
+    font: var(--btn-font);
     color: inherit;
 
     @include animate(color);
@@ -70,7 +72,8 @@
   }
 
   &.size-big {
-    --btn-size: var(--button-size-big);
+    --btn-font: var(--t-button-label-lg);
+    --btn-size: var(--button-size-lg);
   }
 
   &.variant-primary {

@@ -8,6 +8,10 @@
     --content-cols: 3 / 10;
   }
 
+  &.variant-small {
+    --content-cols: 5 / 9;
+  }
+
   &.nav {
     .page-content {
       padding-bottom: calc(61px + var(--spacing-2xl));

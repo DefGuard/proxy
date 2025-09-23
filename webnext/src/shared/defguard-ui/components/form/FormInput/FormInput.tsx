@@ -1,26 +1,43 @@
+import { useStore } from '@tanstack/react-form';
 import { useMemo } from 'react';
-import type { ZodError } from 'zod';
+import type { z } from 'zod';
 import { useFieldContext } from '../../../form';
+import { isPresent } from '../../../utils/isPresent';
 import { Input } from '../../Input/Input';
 import type { FormInputProps } from '../../Input/types';
 
-export const FormInput = (props: FormInputProps) => {
+export const FormInput = ({ mapError, ...props }: FormInputProps) => {
   const field = useFieldContext<string>();
 
+  const isPristine = useStore(field.store, (state) => state.meta.isPristine);
+
+  const errorState = useStore(
+    field.store,
+    (state) => state.meta.errors as z.core.$ZodIssue[],
+  );
+
   const errorMessage = useMemo(() => {
-    const fieldZodError = field.state.meta.errors[0] as ZodError | undefined;
+    // ignore errors unless some touches the field or submit's the form
+    if (isPristine) return undefined;
+
+    const fieldZodError = errorState[0];
+
     if (fieldZodError) {
+      if (isPresent(mapError)) {
+        const result = mapError(fieldZodError.message);
+        console.log(`Mapping Message: ${fieldZodError.message} to ${result}`);
+        return result;
+      }
       return fieldZodError.message;
     }
     return undefined;
-  }, [field.state.meta.errors]);
+  }, [mapError, errorState[0], isPristine]);
 
   return (
     <Input
       onBlur={field.handleBlur}
       onChange={field.handleChange}
       value={field.state.value}
-      canError
       error={errorMessage}
       {...props}
     />

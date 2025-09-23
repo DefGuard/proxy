@@ -1,6 +1,5 @@
 .input {
   & > .inner {
-    position: relative;
     box-sizing: border-box;
 
     &.error {
@@ -10,12 +9,6 @@
     .field-label {
       cursor: pointer;
       user-select: none;
-    }
-
-    .field-error {
-      position: absolute;
-      bottom: 0;
-      left: 0;
     }
 
     .track {

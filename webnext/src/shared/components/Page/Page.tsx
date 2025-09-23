@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type { HTMLProps, PropsWithChildren } from 'react';
 import { Logo } from '../Logo/Logo';
 
-type Variant = 'home' | 'default';
+type Variant = 'home' | 'default' | 'small';
 
 type Props = PropsWithChildren &
   HTMLProps<HTMLDivElement> & {

@@ -1,6 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "controls_back": "Back",
+  "form_error_min_len": "Minimum length of {length}",
   "form_error_email": "Enter valid email",
   "form_error_required": "Field is required",
   "cmp_enrol_step": "Step {current}/{max}",
@@ -22,5 +23,18 @@
   "password_start_submit": "Send request",
   "password_sent_title": "Your request has been sent.",
   "password_sent_subTitle": "If the provided email address is assigned to any account, the password reset will be initiated and you will receive an email with further instructions.",
-  "password_sent_link": "Back to main page"
+  "password_sent_link": "Back to main page",
+  "password_form_title": "Create new password",
+  "password_form_subtitle": "Set up a strong password to protect your account.",
+  "password_form_labels_password": "Create new password",
+  "password_form_labels_repeat": "Confirm new password",
+  "password_form_check_title": "Your password must include:",
+  "password_form_check_number": "At least one number required",
+  "password_form_check_special": "At least one special character",
+  "password_form_check_lowercase": "At least one lowercase character",
+  "password_form_check_uppercase": "At least one uppercase character",
+  "password_form_check_minimum": "Minimum length of 8",
+  "password_form_check_repeat_match": "Password's doesn't match",
+  "password_form_special_error": "Password doesn't meet the requirements. Please check the list below.",
+  "password_form_submit": "Submit new password"
 }

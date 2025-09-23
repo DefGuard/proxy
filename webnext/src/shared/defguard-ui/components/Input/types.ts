@@ -6,8 +6,6 @@ export type InputProps = {
   type?: HTMLInputTypeAttribute;
   ref?: Ref<HTMLInputElement>;
   error?: string;
-  canError?: boolean;
-  errorPadding?: boolean;
   name?: string;
   label?: string;
   required?: boolean;
@@ -18,5 +16,7 @@ export type InputProps = {
 
 export type FormInputProps = Pick<
   InputProps,
-  'name' | 'placeholder' | 'errorPadding' | 'disabled' | 'required' | 'label'
->;
+  'name' | 'placeholder' | 'disabled' | 'required' | 'label'
+> & {
+  mapError?: (error: string) => string | undefined;
+};
