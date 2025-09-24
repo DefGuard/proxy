@@ -1,3 +1,4 @@
+import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
 import {tanstackRouter} from "@tanstack/router-plugin/vite";
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { defineConfig } from 'vite'
@@ -19,6 +20,9 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
+    }),
+    ViteImageOptimizer({
+      test: /\.(jpe?g|png|gif|tiff|webp|avif)$/i,
     }),
     react(),
   ],
