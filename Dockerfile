@@ -1,12 +1,12 @@
 FROM node:24-alpine AS web
 
 WORKDIR /app
-COPY web/package.json .
-COPY web/pnpm-lock.yaml .
-COPY web/.npmrc .
+COPY webnext/package.json .
+COPY webnext/pnpm-lock.yaml .
+COPY webnext/.npmrc .
 RUN npm i -g pnpm
 RUN pnpm install --ignore-scripts --frozen-lockfile
-COPY web/ .
+COPY webnext/ .
 RUN pnpm run generate-translation-types
 RUN pnpm build
 
@@ -31,8 +31,7 @@ COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # build project
-COPY --from=web /app/dist ./web/dist
-COPY web/src/shared/images/svg ./web/src/shared/images/svg
+COPY --from=web /app/dist ./webnext/dist
 RUN apt-get update && apt-get -y install protobuf-compiler libprotobuf-dev
 COPY Cargo.toml Cargo.lock build.rs ./
 # for vergen

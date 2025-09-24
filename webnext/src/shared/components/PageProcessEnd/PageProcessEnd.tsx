@@ -6,13 +6,14 @@ import { Icon } from '../../defguard-ui/components/Icon';
 import { SizedBox } from '../../defguard-ui/components/SizedBox/SizedBox';
 import { AppText } from '../../defguard-ui/components/Text/Text';
 import { TextStyle, ThemeSpacing } from '../../defguard-ui/types';
+import { isPresent } from '../../defguard-ui/utils/isPresent';
 import { Page } from '../Page/Page';
 
 type Props = {
   title: string;
   subtitle: string;
-  linkText: string;
-  link: '/';
+  linkText?: string;
+  link?: '/';
 };
 
 export const PageProcessEnd = ({ link, linkText, subtitle, title }: Props) => {
@@ -27,10 +28,14 @@ export const PageProcessEnd = ({ link, linkText, subtitle, title }: Props) => {
       <AppText as="p" font={TextStyle.TBodyPrimary400}>
         {subtitle}
       </AppText>
-      <SizedBox height={ThemeSpacing.Xl3} />
-      <Link to={link} replace>
-        <Button text={linkText} />
-      </Link>
+      {isPresent(linkText) && isPresent(link) && (
+        <>
+          <SizedBox height={ThemeSpacing.Xl3} />
+          <Link to={link} replace>
+            <Button text={linkText} />
+          </Link>
+        </>
+      )}
     </Page>
   );
 };

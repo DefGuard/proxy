@@ -4,6 +4,7 @@ import { Container } from '../../shared/components/Container/Container';
 import { Page } from '../../shared/components/Page/Page';
 import './style.scss';
 import { revalidateLogic, useStore } from '@tanstack/react-form';
+import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
 import { useCallback } from 'react';
 import { Button } from '../../shared/defguard-ui/components/Button/Button';
@@ -108,6 +109,8 @@ const defaultFormValues: FormFields = {
 };
 
 export const PasswordFormPage = () => {
+  const navigate = useNavigate();
+
   const form = useAppForm({
     defaultValues: defaultFormValues,
     validationLogic: revalidateLogic({
@@ -116,6 +119,13 @@ export const PasswordFormPage = () => {
     }),
     validators: {
       onDynamic: formSchema,
+    },
+    onSubmit: (values) => {
+      console.table(values);
+      navigate({
+        to: '/password/form/finish',
+        replace: true,
+      });
     },
   });
 

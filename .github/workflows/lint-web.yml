@@ -32,13 +32,13 @@ jobs:
         with:
           node-version: 24
       - name: install deps
-        working-directory: ./web
+        working-directory: ./webnext
         run: |
           npm i -g pnpm
           pnpm i --frozen-lockfile
       - name: Lint
-        working-directory: ./web
+        working-directory: ./webnext
         run: pnpm lint
       - name: Audit
-        working-directory: ./web
+        working-directory: ./webnext
         run: pnpm audit --prod

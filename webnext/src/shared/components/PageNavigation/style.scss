@@ -10,6 +10,8 @@
   box-sizing: border-box;
   padding: 12px 20px;
   border-top: 1px solid var(--border-default);
+  background-color: var(--bg-default);
+  z-index: 2;
 
   & > .content {
     width: 100%;

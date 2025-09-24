@@ -3,6 +3,8 @@
     display: flex;
     flex-flow: column;
     align-items: center;
+    max-width: 100%;
+    overflow-x: hidden;
 
     h1 {
       font-size: 52px;

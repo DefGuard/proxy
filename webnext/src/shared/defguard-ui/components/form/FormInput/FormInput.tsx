@@ -24,9 +24,7 @@ export const FormInput = ({ mapError, ...props }: FormInputProps) => {
 
     if (fieldZodError) {
       if (isPresent(mapError)) {
-        const result = mapError(fieldZodError.message);
-        console.log(`Mapping Message: ${fieldZodError.message} to ${result}`);
-        return result;
+        return mapError(fieldZodError.message);
       }
       return fieldZodError.message;
     }

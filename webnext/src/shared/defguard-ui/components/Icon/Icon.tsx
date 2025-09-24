@@ -2,15 +2,22 @@ import { type CSSProperties, type Ref, useMemo } from 'react';
 import type { IconKindValue } from './icon-types';
 import './style.scss';
 import type { Direction } from '../../types';
+import { IconAndroid } from './icons/IconAndroid';
+import { IconApple } from './icons/IconApple';
+import { IconAppStore } from './icons/IconAppstore';
 import { IconArrowBig } from './icons/IconArrowBig';
 import { IconArrowSmall } from './icons/IconArrowSmall';
 import { IconCheckCircle } from './icons/IconCheckCircle';
 import { IconCheckFilled } from './icons/IconCheckFilled';
+import { IconDesktop } from './icons/IconDesktop';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
+import { IconLinux } from './icons/IconLinux';
 import { IconLoader } from './icons/IconLoader';
 import { IconLockOpen } from './icons/IconLock';
+import { IconMobile } from './icons/IconMobile';
 import { IconPlus } from './icons/IconPlus';
 import { IconStatusSimple } from './icons/IconStatusSimple';
+import { IconWindows } from './icons/IconWindows';
 
 type Props<T extends IconKindValue = IconKindValue> = {
   icon: T;
@@ -50,9 +57,8 @@ export const Icon = <T extends IconKindValue>({
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
-      case 'arrow-big': {
+      case 'arrow-big':
         return IconArrowBig;
-      }
       case 'arrow-small':
         return IconArrowSmall;
       case 'loader':
@@ -69,6 +75,20 @@ export const Icon = <T extends IconKindValue>({
         return IconCheckFilled;
       case 'empty-point':
         return IconEmptyPoint;
+      case 'desktop':
+        return IconDesktop;
+      case 'mobile':
+        return IconMobile;
+      case 'windows':
+        return IconWindows;
+      case 'linux':
+        return IconLinux;
+      case 'app-store':
+        return IconAppStore;
+      case 'apple':
+        return IconApple;
+      case 'android':
+        return IconAndroid;
       default:
         throw Error('Unimplemented icon kind');
     }

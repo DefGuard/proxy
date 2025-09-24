@@ -7,19 +7,25 @@ import { Button } from '../../../shared/defguard-ui/components/Button/Button';
 import type { IconKindValue } from '../../../shared/defguard-ui/components/Icon/icon-types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
+import enrollDefaultImage from './assets/enroll-default.png';
+import enrollHoverImage from './assets/enroll-hover.png';
+import passwordDefaultImage from './assets/password-default.png';
+import passwordHoverImage from './assets/password-hover.png';
 
 export const HomeChoice = () => {
   return (
     <div id="home-choice">
       <Card
+        img="enroll"
         title={m.start_multi_enrollment_title()}
         subtitle={m.start_multi_enrollment_subtitle()}
         buttonText={m.start_multi_enrollment_button()}
         buttonIcon="lock-open"
-        link="/password"
+        link="/download"
         onClick={() => {}}
       />
       <Card
+        img="password"
         title={m.start_multi_password_title()}
         subtitle={m.start_multi_password_subtitle()}
         buttonText={m.start_multi_password_button()}
@@ -32,7 +38,8 @@ export const HomeChoice = () => {
 };
 
 type CardProps = {
-  link: '/password';
+  img: 'enroll' | 'password';
+  link: '/password' | '/download';
   buttonIcon: IconKindValue;
   buttonText: string;
   subtitle: string;
@@ -41,10 +48,31 @@ type CardProps = {
   onClick: () => void;
 };
 
-const Card = ({ buttonIcon, buttonText, subtitle, title, onClick, link }: CardProps) => {
+const Card = ({
+  buttonIcon,
+  buttonText,
+  subtitle,
+  title,
+  onClick,
+  link,
+  img,
+}: CardProps) => {
   return (
     <div className={clsx('choice')}>
-      <div className="image"></div>
+      <div className="image">
+        {img === 'enroll' && (
+          <>
+            <img src={enrollDefaultImage} />
+            <img src={enrollHoverImage} />
+          </>
+        )}
+        {img === 'password' && (
+          <>
+            <img src={passwordDefaultImage} />
+            <img src={passwordHoverImage} />
+          </>
+        )}
+      </div>
       <SizedBox height={37} />
       <p className="title">{title}</p>
       <SizedBox height={ThemeSpacing.Md} />

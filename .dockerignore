@@ -1,6 +1,8 @@
 target/
 web/node_modules
 web/dist
+webnext/node_modules
+webnext/dist
 .volumes/
 .github/
 docs/
