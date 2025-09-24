@@ -1,0 +1,67 @@
+.radio {
+  user-select: none;
+  cursor: pointer;
+
+  &.disabled {
+    cursor: not-allowed;
+  }
+
+  &.text {
+    display: grid;
+    grid-template-columns: 24px auto;
+    grid-template-rows: 1fr;
+    column-gap: var(--spacing-sm);
+  }
+
+  span {
+    font: var(--t-body-sm-400);
+  }
+}
+
+// state colors
+.radio svg {
+  &.icon-default {
+    circle {
+      stroke: var(--border-default);
+      fill: var(--bg-default);
+    }
+  }
+
+  &.icon-hover {
+    circle {
+      stroke: var(--border-emphasis);
+      fill: var(--bg-default);
+    }
+  }
+
+  &.icon-disabled {
+    circle {
+      fill: var(--bg-disabled);
+      stroke: var(--border-disabled);
+    }
+  }
+
+  &.icon-selected {
+    circle {
+      &:nth-child(1) {
+        fill: var(--bg-action);
+      }
+
+      &:nth-child(2) {
+        fill: var(--c-white);
+      }
+    }
+  }
+
+  &.icon-selected-disabled {
+    circle {
+      &:nth-child(1) {
+        fill: var(--bg-faded);
+      }
+
+      &:nth-child(2) {
+        fill: var(--bg-disabled);
+      }
+    }
+  }
+}

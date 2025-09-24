@@ -33,7 +33,7 @@ use tracing::{info_span, Level};
 use url::Url;
 
 use crate::{
-    assets::{index, svg, web_asset},
+    assets::{index, web_asset},
     config::Config,
     enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
@@ -265,7 +265,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .route("/{*path}", get(index))
         .route("/fonts/{*path}", get(web_asset))
         .route("/assets/{*path}", get(web_asset))
-        .route("/svg/{*path}", get(svg))
         .nest(
             "/api/v1",
             Router::new()

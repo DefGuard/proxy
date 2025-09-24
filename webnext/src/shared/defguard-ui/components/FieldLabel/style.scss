@@ -1,0 +1,17 @@
+.field-label {
+  position: relative;
+  padding-bottom: var(--input-spacing-xs);
+  display: block;
+  font: var(--t-input-title);
+  color: var(--fg-neutral);
+
+  svg {
+    position: absolute;
+    left: 0;
+    top: 3.5px;
+  }
+
+  &.required {
+    padding-left: 8px;
+  }
+}

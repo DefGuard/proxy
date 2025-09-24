@@ -1,0 +1,68 @@
+.badge {
+  --bg-color: transparent;
+  --color: var(--fg-neutral);
+  --icon-color: var(--color);
+
+  border-radius: var(--badge-border-radius);
+  display: grid;
+  grid-template-columns: 20px auto;
+  grid-template-rows: 1fr;
+  align-items: center;
+  box-sizing: border-box;
+  padding: calc(var(--badge-spacing) / 2) var(--badge-spacing);
+  column-gap: var(--badge-gap);
+  background-color: var(--bg-color);
+  color: var(--color);
+  user-select: none;
+
+  @include animate(background-color);
+
+  &.variant-neutral {
+    --color: var(--fg-neutral);
+    --icon-color: var(--fg-muted);
+
+    &:not(.bg) {
+      --bg-color: var(--bg-muted);
+    }
+  }
+
+  &.variant-success {
+    --color: var(--fg-success);
+
+    &:not(.bg) {
+      --bg-color: var(--c-green-500-transparent);
+    }
+  }
+
+  &.variant-critical {
+    --color: var(--fg-critical);
+
+    &:not(.bg) {
+      --bg-color: var(--c-red-500-transparent);
+    }
+  }
+
+  &.variant-warning {
+    --color: var(--fg-attention);
+
+    &:not(.bg) {
+      --bg-color: var(--c-orange-500-transparent);
+    }
+  }
+
+  span {
+    font: var(--t-badge);
+    letter-spacing: var(--t-badge-spacing);
+    color: inherit;
+
+    @include animate(color);
+  }
+
+  & > .icon > svg {
+    rect {
+      fill: var(--icon-color);
+
+      @include animate(fill);
+    }
+  }
+}

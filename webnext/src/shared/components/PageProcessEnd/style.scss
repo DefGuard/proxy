@@ -1,0 +1,14 @@
+.page-process-end {
+  .icon[data-kind='check-circle'] {
+    path {
+      fill: var(--fg-success);
+    }
+  }
+
+  .page-content {
+    h1,
+    p {
+      text-align: center;
+    }
+  }
+}

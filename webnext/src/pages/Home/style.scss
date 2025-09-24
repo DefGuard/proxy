@@ -1,0 +1,39 @@
+#home-page {
+  .page-content {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    max-width: 100%;
+    overflow-x: hidden;
+
+    h1 {
+      font-size: 52px;
+      font-weight: 500;
+      line-height: 44px;
+      text-align: center;
+    }
+
+    & > .subtitle {
+      text-align: center;
+    }
+
+    & > footer {
+      margin-top: auto;
+      padding-top: 50px;
+
+      p {
+        text-align: center;
+
+        &:nth-child(1) {
+          font: var(--t-body-sm-400);
+          color: var(--fg-neutral);
+        }
+
+        &:nth-child(3) {
+          font: var(--t-body-xs-400);
+          color: var(--fg-muted);
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.icon {
+  display: inline-block;
+  overflow: hidden;
+  user-select: none;
+
+  svg {
+    width: inherit;
+    height: inherit;
+    transition-property: transform;
+
+    @include animate;
+
+    path {
+      @include animate(fill);
+    }
+
+    circle {
+      @include animate(stroke);
+    }
+  }
+}

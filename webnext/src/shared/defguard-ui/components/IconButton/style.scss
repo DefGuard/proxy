@@ -1,0 +1,33 @@
+.icon-button {
+  --icon-button-icon-color: var(--fg-neutral);
+
+  background-color: transparent;
+  border-radius: var(--button-border-radius-sm);
+  height: var(--button-size-primary);
+  width: var(--button-size-primary);
+  display: inline-flex;
+  flex-flow: column;
+  align-items: center;
+  justify-content: center;
+
+  @include animate(background-color);
+
+  &:not(.disabled) {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--bg-emphasis);
+    }
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    --icon-button-icon-color: var(--fg-disabled);
+  }
+
+  & > .icon svg path {
+    fill: var(--icon-button-icon-color);
+
+    @include animate(fill);
+  }
+}
