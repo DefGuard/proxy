@@ -1,11 +1,10 @@
 FROM node:24-alpine AS web
 
 WORKDIR /app
-COPY webnext/package.json webnext/pnpm-lock.yaml webnext/.npmrc ./
+COPY webnext/package.json webnext/pnpm-lock.yaml ./
 RUN npm i -g pnpm
 RUN pnpm install --ignore-scripts --frozen-lockfile
 COPY webnext/ .
-RUN pnpm run generate-translation-types
 RUN pnpm build
 
 FROM rust:1 AS chef
