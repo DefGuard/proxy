@@ -1,9 +1,7 @@
 FROM node:24-alpine AS web
 
 WORKDIR /app
-COPY webnext/package.json .
-COPY webnext/pnpm-lock.yaml .
-COPY webnext/.npmrc .
+COPY webnext/package.json webnext/pnpm-lock.yaml webnext/.npmrc ./
 RUN npm i -g pnpm
 RUN pnpm install --ignore-scripts --frozen-lockfile
 COPY webnext/ .
