@@ -59,12 +59,12 @@ async fn start_enrollment_process(
 
         Ok((private_cookies.add(cookie), Json(response)))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
 
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn activate_user(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -94,12 +94,12 @@ async fn activate_user(
         }
         Ok(private_cookies)
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
 
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn create_device(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -122,7 +122,7 @@ async fn create_device(
         info!("Added new device {name} {pubkey}");
         Ok(Json(response))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
@@ -150,7 +150,7 @@ async fn get_network_info(
         info!("Got network info for device {pubkey}");
         Ok(Json(response))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }

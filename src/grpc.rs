@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     collections::HashMap,
     net::SocketAddr,
     sync::{
@@ -21,7 +22,6 @@ use crate::{
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
-#[derive(Debug)]
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
@@ -45,7 +45,7 @@ impl ProxyServer {
 
     /// Sends message to the other side of RPC, with given `payload` and optional `device_info`.
     /// Returns `tokio::sync::oneshot::Reveicer` to let the caller await reply.
-    #[instrument(name = "send_grpc_message", level = "debug", skip(self))]
+    #[instrument(name = "send_grpc_message", level = "debug", skip(self, payload))]
     pub(crate) fn send(
         &self,
         payload: core_request::Payload,
@@ -127,13 +127,13 @@ impl proxy_server::Proxy for ProxyServer {
                 loop {
                     match stream.message().await {
                         Ok(Some(response)) => {
-                            debug!("Received message from Defguard core: {response:?}");
+                            debug!("Received message from Defguard Core ID={}", response.id);
                             connected.store(true, Ordering::Relaxed);
                             // Discard empty payloads.
                             if let Some(payload) = response.payload {
                                 if let Some(rx) = results.lock().unwrap().remove(&response.id) {
                                     if let Err(err) = rx.send(payload) {
-                                        error!("Failed to send message to rx: {err:?}");
+                                        error!("Failed to send message to rx {:?}", err.type_id());
                                     }
                                 } else {
                                     error!("Missing receiver for response #{}", response.id);
