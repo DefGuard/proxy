@@ -94,7 +94,7 @@ async fn auth_info(
         .send(core_request::Payload::AuthInfo(request), device_info)?;
     let payload = get_core_response(rx).await?;
     if let core_response::Payload::AuthInfo(response) = payload {
-        debug!("Received auth info {response:?}");
+        debug!("Received auth info response");
 
         let nonce_cookie = Cookie::build((NONCE_COOKIE_NAME, response.nonce))
             // .domain(cookie_domain)
@@ -117,7 +117,7 @@ async fn auth_info(
         let auth_info = AuthInfo::new(response.url, response.button_display_name);
         Ok((private_cookies, Json(auth_info)))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
@@ -188,7 +188,10 @@ async fn auth_callback(
         debug!("Received auth callback response {url:?} {token:?}");
         Ok((private_cookies, Json(CallbackResponseData { url, token })))
     } else {
-        error!("Received invalid gRPC response type during handling the OpenID authentication callback: {payload:#?}");
+        error!(
+            "Received invalid gRPC response type during handling the OpenID authentication \
+            callback"
+        );
         Err(ApiError::InvalidResponseType)
     }
 }

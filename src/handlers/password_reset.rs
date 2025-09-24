@@ -36,7 +36,7 @@ async fn request_password_reset(
         info!("Started password reset request for {}", req.email);
         Ok(())
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
@@ -70,12 +70,12 @@ async fn start_password_reset(
         info!("Started password reset process");
         Ok((private_cookies.add(cookie), Json(response)))
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
 
-#[instrument(level = "debug", skip(state))]
+#[instrument(level = "debug", skip(state, req))]
 async fn reset_password(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -100,7 +100,7 @@ async fn reset_password(
         }
         Ok(private_cookies)
     } else {
-        error!("Received invalid gRPC response type: {payload:#?}");
+        error!("Received invalid gRPC response type");
         Err(ApiError::InvalidResponseType)
     }
 }
