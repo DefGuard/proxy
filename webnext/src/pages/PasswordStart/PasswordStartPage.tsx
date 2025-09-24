@@ -51,10 +51,7 @@ export const PasswordStartPage = () => {
         <form.AppForm>
           <form.AppField name="email">
             {(field) => (
-              <field.FormInput
-                label={m.password_start_form_label_email()}
-                required
-              />
+              <field.FormInput label={m.password_start_form_label_email()} required />
             )}
           </form.AppField>
         </form.AppForm>
