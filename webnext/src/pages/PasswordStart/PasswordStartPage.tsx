@@ -54,7 +54,6 @@ export const PasswordStartPage = () => {
               <field.FormInput
                 label={m.password_start_form_label_email()}
                 required
-                errorPadding
               />
             )}
           </form.AppField>
