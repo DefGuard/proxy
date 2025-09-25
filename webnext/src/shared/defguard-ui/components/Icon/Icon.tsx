@@ -9,6 +9,7 @@ import { IconArrowBig } from './icons/IconArrowBig';
 import { IconArrowSmall } from './icons/IconArrowSmall';
 import { IconCheckCircle } from './icons/IconCheckCircle';
 import { IconCheckFilled } from './icons/IconCheckFilled';
+import { IconClose } from './icons/IconClose';
 import { IconDesktop } from './icons/IconDesktop';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
 import { IconLinux } from './icons/IconLinux';
@@ -89,8 +90,10 @@ export const Icon = <T extends IconKindValue>({
         return IconApple;
       case 'android':
         return IconAndroid;
+      case 'close':
+        return IconClose;
       default:
-        throw Error('Unimplemented icon kind');
+        throw Error(`Unimplemented icon kind: ${iconKind}`);
     }
   }, [iconKind]);
 

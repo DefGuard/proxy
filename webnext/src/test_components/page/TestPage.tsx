@@ -9,6 +9,8 @@ import { CounterLabel } from '../../shared/defguard-ui/components/CounterLabel/C
 import { Divider } from '../../shared/defguard-ui/components/Divider/Divider';
 import { EmptyState } from '../../shared/defguard-ui/components/EmptyState/EmptyState';
 import { IconButton } from '../../shared/defguard-ui/components/IconButton/IconButton';
+import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
+import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
 import { Radio } from '../../shared/defguard-ui/components/Radio/Radio';
 
 export const TestPage = () => {
@@ -117,6 +119,9 @@ export const TestPage = () => {
         <CounterLabel value={10000} variant="warning" />
         <CounterLabel value={100000} variant="default" />
       </TestRow>
+      <TestRow>
+        <TestModalButton />
+      </TestRow>
     </Page>
   );
 };
@@ -139,5 +144,32 @@ const TestButtonTransition = () => {
         }, 1000);
       }}
     />
+  );
+};
+
+const TestModalButton = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        text="Open test modal"
+        variant="primary"
+        size="big"
+        onClick={() => {
+          setIsOpen(true);
+        }}
+      />
+      <Modal
+        title="Test modal"
+        isOpen={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+        }}
+      >
+        <p>Test modal content text.</p>
+        <ModalControls />
+      </Modal>
+    </>
   );
 };

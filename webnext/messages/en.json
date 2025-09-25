@@ -2,6 +2,8 @@
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "controls_back": "Back",
   "controls_continue": "Continue",
+  "controls_cancel": "Cancel",
+  "controls_submit": "Submit",
   "form_error_min_len": "Minimum length of {length}",
   "form_error_email": "Enter valid email",
   "form_error_required": "Field is required",
