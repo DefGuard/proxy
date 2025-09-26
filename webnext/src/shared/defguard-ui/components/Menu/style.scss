@@ -1,0 +1,94 @@
+.menu {
+  display: flex;
+  flex-flow: column;
+  box-sizing: border-box;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-disabled);
+
+  .menu-spacer {
+    user-select: none;
+    padding: var(--spacing-sm);
+
+    & > .line {
+      display: block;
+      content: ' ';
+      background-color: var(--bg-active);
+      height: 1px;
+      width: 100%;
+    }
+  }
+
+  .menu-header {
+    display: flex;
+    flex-flow: row nowrap;
+    column-gap: var(--spacing-md);
+
+    p {
+      font: var(--t-menu-title);
+      color: var(--fg-muted);
+    }
+  }
+
+  .menu-item {
+    --bg-color: var(--bg-default);
+    --color: var(--fg-default);
+    --icon-fill: var(--fg-muted);
+
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    border-radius: var(--radius-md);
+    padding: 0 var(--spacing-sm);
+    column-gap: var(--spacing-md);
+    background-color: var(--bg-color);
+    cursor: pointer;
+    height: 36px;
+    color: var(--color);
+    position: relative;
+
+    @include animate(background-color);
+
+    &.disabled {
+      cursor: not-allowed;
+    }
+
+    &.nested {
+      // account for positioned icon on the right side
+      padding: 0 calc(var(--spacing-sm) + var(--spacing-md) + 20px) 0 var(--spacing-sm);
+    }
+
+    &.variant-danger {
+      --color: var(--fg-critical);
+      --icon-fill: var(--fg-critical);
+    }
+
+    &:not(.disabled) {
+      &:hover {
+        --bg-color: var(--bg-muted);
+      }
+    }
+
+    p {
+      font: var(--t-menu-text);
+      color: inherit;
+    }
+
+    & > .icon svg path {
+      fill: var(--icon-fill);
+    }
+
+    & > .suffix {
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      top: 50%;
+      right: var(--spacing-sm);
+      transform: translateY(-50%);
+
+      svg path {
+        fill: var(--fg-muted);
+      }
+    }
+  }
+}

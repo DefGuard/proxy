@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteImport } from './routes/test'
+import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
 import { Route as DownloadRouteImport } from './routes/download'
+import { Route as ClientSetupRouteImport } from './routes/client-setup'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PasswordIndexRouteImport } from './routes/password/index'
 import { Route as PasswordSentRouteImport } from './routes/password/sent'
@@ -22,9 +24,19 @@ const TestRoute = TestRouteImport.update({
   path: '/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EnrollmentStartRoute = EnrollmentStartRouteImport.update({
+  id: '/enrollment-start',
+  path: '/enrollment-start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DownloadRoute = DownloadRouteImport.update({
   id: '/download',
   path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientSetupRoute = ClientSetupRouteImport.update({
+  id: '/client-setup',
+  path: '/client-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -55,7 +67,9 @@ const PasswordFormFinishRoute = PasswordFormFinishRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
+  '/enrollment-start': typeof EnrollmentStartRoute
   '/test': typeof TestRoute
   '/password/sent': typeof PasswordSentRoute
   '/password': typeof PasswordIndexRoute
@@ -64,7 +78,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
+  '/enrollment-start': typeof EnrollmentStartRoute
   '/test': typeof TestRoute
   '/password/sent': typeof PasswordSentRoute
   '/password': typeof PasswordIndexRoute
@@ -74,7 +90,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
+  '/enrollment-start': typeof EnrollmentStartRoute
   '/test': typeof TestRoute
   '/password/sent': typeof PasswordSentRoute
   '/password/': typeof PasswordIndexRoute
@@ -85,7 +103,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/client-setup'
     | '/download'
+    | '/enrollment-start'
     | '/test'
     | '/password/sent'
     | '/password'
@@ -94,7 +114,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/client-setup'
     | '/download'
+    | '/enrollment-start'
     | '/test'
     | '/password/sent'
     | '/password'
@@ -103,7 +125,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/client-setup'
     | '/download'
+    | '/enrollment-start'
     | '/test'
     | '/password/sent'
     | '/password/'
@@ -113,7 +137,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ClientSetupRoute: typeof ClientSetupRoute
   DownloadRoute: typeof DownloadRoute
+  EnrollmentStartRoute: typeof EnrollmentStartRoute
   TestRoute: typeof TestRoute
   PasswordSentRoute: typeof PasswordSentRoute
   PasswordIndexRoute: typeof PasswordIndexRoute
@@ -130,11 +156,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/enrollment-start': {
+      id: '/enrollment-start'
+      path: '/enrollment-start'
+      fullPath: '/enrollment-start'
+      preLoaderRoute: typeof EnrollmentStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/download': {
       id: '/download'
       path: '/download'
       fullPath: '/download'
       preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-setup': {
+      id: '/client-setup'
+      path: '/client-setup'
+      fullPath: '/client-setup'
+      preLoaderRoute: typeof ClientSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -177,7 +217,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ClientSetupRoute: ClientSetupRoute,
   DownloadRoute: DownloadRoute,
+  EnrollmentStartRoute: EnrollmentStartRoute,
   TestRoute: TestRoute,
   PasswordSentRoute: PasswordSentRoute,
   PasswordIndexRoute: PasswordIndexRoute,

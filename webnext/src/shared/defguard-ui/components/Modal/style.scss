@@ -63,6 +63,10 @@
       & > .modal-content {
         box-sizing: border-box;
         padding: var(--spacing-xl);
+
+        & > p {
+          font: var(--t-body-sm-400);
+        }
       }
     }
   }

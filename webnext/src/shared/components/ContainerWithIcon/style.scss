@@ -1,0 +1,25 @@
+.container-with-icon {
+  & > .track {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    grid-template-rows: 1fr;
+    column-gap: var(--spacing-2xl);
+    align-items: start;
+
+    & > .container-icon {
+      user-select: none;
+      display: flex;
+      flex-flow: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 6px;
+      border-radius: var(--radius-full);
+      background-color: var(--bg-action-muted);
+
+      svg path {
+        fill: var(--fg-action);
+      }
+    }
+  }
+}

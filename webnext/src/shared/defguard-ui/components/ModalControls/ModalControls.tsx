@@ -28,8 +28,8 @@ export const ModalControls = ({ submitProps, cancelProps, children }: Props) => 
         />
         <Button
           {...submitProps}
-          variant={cancelProps?.variant ?? 'primary'}
-          text={cancelProps?.text ?? m.controls_submit()}
+          variant={submitProps?.variant ?? 'primary'}
+          text={submitProps?.text ?? m.controls_submit()}
         />
       </div>
     </div>

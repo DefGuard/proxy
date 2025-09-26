@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useState } from 'react';
+import { type PropsWithChildren, useMemo, useRef, useState } from 'react';
 import { Page } from '../../shared/components/Page/Page';
 import './style.scss';
 import { Avatar } from '../../shared/defguard-ui/components/Avatar/Avatar';
@@ -9,9 +9,12 @@ import { CounterLabel } from '../../shared/defguard-ui/components/CounterLabel/C
 import { Divider } from '../../shared/defguard-ui/components/Divider/Divider';
 import { EmptyState } from '../../shared/defguard-ui/components/EmptyState/EmptyState';
 import { IconButton } from '../../shared/defguard-ui/components/IconButton/IconButton';
+import { Menu } from '../../shared/defguard-ui/components/Menu/Menu';
+import type { MenuItemsGroup } from '../../shared/defguard-ui/components/Menu/types';
 import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
 import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
 import { Radio } from '../../shared/defguard-ui/components/Radio/Radio';
+import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
 
 export const TestPage = () => {
   return (
@@ -122,6 +125,7 @@ export const TestPage = () => {
       <TestRow>
         <TestModalButton />
       </TestRow>
+      <TestMenu />
     </Page>
   );
 };
@@ -170,6 +174,69 @@ const TestModalButton = () => {
         <p>Test modal content text.</p>
         <ModalControls />
       </Modal>
+    </>
+  );
+};
+
+const TestMenu = () => {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuGroup = useMemo(() => {
+    const res: MenuItemsGroup = {
+      items: [
+        {
+          text: 'LONG NAMEEEEEEEEEEEEEEEEEEEEEE',
+          icon: 'check-circle',
+        },
+        {
+          text: 'Danger',
+          variant: 'danger',
+          icon: 'check-circle',
+        },
+      ],
+    };
+    for (let i = 0; i < 5; i++) {
+      res.items.push({
+        text: `Option ${i + 1}`,
+        disabled: false,
+        variant: 'default',
+      });
+    }
+    res.items.push({
+      text: 'Option nested',
+      items: [
+        {
+          text: 'Option 1',
+        },
+        {
+          text: 'Option 2',
+        },
+      ],
+    });
+    return res;
+  }, []);
+
+  return (
+    <>
+      <TestRow>
+        <Button
+          ref={buttonRef}
+          text="Action menu test"
+          iconRight="arrow-small"
+          variant="outlined"
+          iconRightRotation="down"
+          onClick={() => {
+            setMenuOpen((s) => !s);
+          }}
+        />
+        <Menu
+          itemGroups={[menuGroup]}
+          referenceRef={buttonRef}
+          isOpen={menuOpen}
+          setOpen={setMenuOpen}
+        />
+      </TestRow>
+      <SizedBox height={500} />
     </>
   );
 };

@@ -14,6 +14,7 @@ export const Button = ({
   iconRight,
   onClick,
   ref,
+  iconRightRotation,
   size = 'primary',
   variant = 'primary',
   type = 'button',
@@ -42,7 +43,9 @@ export const Button = ({
     >
       {isPresent(iconLeft) && <Icon icon={iconLeft} size={20} />}
       <span className="text">{text}</span>
-      {isPresent(iconRight) && <Icon icon={iconRight} size={20} />}
+      {isPresent(iconRight) && (
+        <Icon icon={iconRight} size={20} rotationDirection={iconRightRotation} />
+      )}
       <AnimatePresence mode="wait">
         {loading && !disabled && (
           <motion.div

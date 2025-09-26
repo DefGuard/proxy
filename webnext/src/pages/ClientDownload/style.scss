@@ -11,6 +11,7 @@
       flex-flow: row nowrap;
       align-items: center;
       justify-content: flex-start;
+      column-gap: var(--spacing-lg);
 
       p {
         font: var(--t-body-sm-400);

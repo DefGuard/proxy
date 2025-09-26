@@ -12,6 +12,8 @@ import { IconCheckFilled } from './icons/IconCheckFilled';
 import { IconClose } from './icons/IconClose';
 import { IconDesktop } from './icons/IconDesktop';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
+import { IconFile } from './icons/IconFile';
+import { IconGlobe } from './icons/IconGlobe';
 import { IconLinux } from './icons/IconLinux';
 import { IconLoader } from './icons/IconLoader';
 import { IconLockOpen } from './icons/IconLock';
@@ -92,6 +94,10 @@ export const Icon = <T extends IconKindValue>({
         return IconAndroid;
       case 'close':
         return IconClose;
+      case 'file':
+        return IconFile;
+      case 'globe':
+        return IconGlobe;
       default:
         throw Error(`Unimplemented icon kind: ${iconKind}`);
     }

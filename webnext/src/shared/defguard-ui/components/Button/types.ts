@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, Ref } from 'react';
+import type { Direction } from '../../types';
 import type { IconKindValue } from '../Icon/icon-types';
 
 type DefaultButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
@@ -14,6 +15,7 @@ export type ButtonProps = {
   type?: DefaultButtonProps['type'];
   iconLeft?: IconKindValue;
   iconRight?: IconKindValue;
+  iconRightRotation?: Direction;
   testId?: string;
   disabled?: boolean;
   loading?: boolean;
