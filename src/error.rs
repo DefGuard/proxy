@@ -28,11 +28,13 @@ pub enum ApiError {
     EnterpriseNotEnabled,
     #[error("Precondition required: {0}")]
     PreconditionRequired(String),
+    #[error("Bad request: {0}")]
+    NotFound(String),
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        error!("{}", self);
+        error!("{self}");
         let (status, error_message) = match self {
             Self::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
@@ -42,15 +44,14 @@ impl IntoResponse for ApiError {
                 "Enterprise features are not enabled".to_string(),
             ),
             Self::PreconditionRequired(msg) => (StatusCode::PRECONDITION_REQUIRED, msg),
+            Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
             ),
         };
 
-        let body = Json(json!({
-            "error": error_message,
-        }));
+        let body = Json(json!({"error": error_message}));
 
         (status, body).into_response()
     }
@@ -78,6 +79,7 @@ impl From<CoreError> for ApiError {
                 _ => ApiError::PreconditionRequired(status.message().to_string()),
             },
             Code::Unavailable => ApiError::CoreTimeout,
+            Code::NotFound => ApiError::NotFound(status.to_string()),
             _ => ApiError::Unexpected(status.to_string()),
         }
     }

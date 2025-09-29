@@ -196,7 +196,7 @@ async fn finish_remote_mfa(
             if let Some(sender) = sender_option {
                 let _ = sender.send(response.preshared_key);
             }
-            // If desktop stopped listening for the result, there will be no palce to send the
+            // If desktop stopped listening for the result, there will be no place to send the
             // result.
             else {
                 error!("Remote MFA approve finished but session was not found.");
