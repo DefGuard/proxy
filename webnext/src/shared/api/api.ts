@@ -10,6 +10,7 @@ import type {
   OpenIdMfaCallbackRequest,
   PasswordResetFinishRequest,
   PasswordResetStartRequest,
+  PasswordResetStartResponse,
   TokenRequest,
 } from './types';
 
@@ -22,7 +23,7 @@ const api = {
     sendEmail: post<PasswordResetStartRequest, EmptyApiResponse>(
       '/password-reset/request',
     ),
-    start: post<TokenRequest, EmptyApiResponse>('/password-reset/start'),
+    start: post<TokenRequest, PasswordResetStartResponse>('/password-reset/start'),
     finish: post<PasswordResetFinishRequest, EmptyApiResponse>('/password-reset/reset'),
   },
   openId: {

@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: too generic to bother typing this strictly */
-/** biome-ignore-all lint/complexity/noBannedTypes: needed */
+/** biome-ignore-all lint/suspicious/noConfusingVoidType: same */
+/** biome-ignore-all lint/complexity/noBannedTypes: same */
 import type { QueryKey } from '@tanstack/react-query';
 import axios from 'axios';
 import qs from 'qs';
@@ -30,19 +31,26 @@ const RequestMethod = {
 
 type RequestMethodValue = (typeof RequestMethod)[keyof typeof RequestMethod];
 
-type UrlLike<Path = void> = string | ((path: Path) => string);
+type UrlLike<Path = never> = string | ((path: Path) => string);
+type PathFromUrl<U> = U extends (path: infer P) => string ? P : never;
 
-type PathProp<Path> = [Path] extends [undefined] ? { path?: undefined } : { path: Path };
+type PathProp<Path> = [Path] extends [never] ? { path?: never } : { path: Path };
+
+type ParamsProp<P> = [P] extends [never]
+  ? { params?: never }
+  : [P] extends [void]
+    ? { params?: undefined }
+    : { params: P };
 
 type GetDeleteProps<Params, Path> = PathProp<Path> &
-  (Params extends void ? { params?: undefined } : { params: Params }) & {
+  ParamsProp<Params> & {
     data?: never;
     abortSignal?: AbortSignal;
   };
 
 type PostPatchProps<Body, Params, Path> = PathProp<Path> & {
   data: Body;
-} & (Params extends never ? { params?: undefined } : { params: Params }) & {
+} & ParamsProp<Params> & {
     abortSignal?: AbortSignal;
   };
 
@@ -51,24 +59,31 @@ type RequestHandle<Fn> = {
   invalidateKeys?: QueryKey[];
 };
 
-type Cfg<M extends RequestMethodValue, Path> = {
+type Cfg<M extends RequestMethodValue, U extends UrlLike<any>> = {
   method: M;
-  url: UrlLike<Path>;
+  url: U;
   invalidateKeys?: QueryKey[];
 };
 
-function createRequest<Params = void, Res = unknown, Path = void>(
-  cfg: Cfg<typeof RequestMethod.Get, Path> | Cfg<typeof RequestMethod.Delete, Path>,
-): RequestHandle<(props: GetDeleteProps<Params, Path>) => Promise<ApiResponse<Res>>>;
-
-function createRequest<Body = unknown, Res = unknown, Params = never, Path = void>(
-  cfg: Cfg<typeof RequestMethod.Post, Path> | Cfg<typeof RequestMethod.Patch, Path>,
+function createRequest<U extends UrlLike<any>, Params = void, Res = unknown>(
+  cfg: Cfg<typeof RequestMethod.Get, U> | Cfg<typeof RequestMethod.Delete, U>,
 ): RequestHandle<
-  (props: PostPatchProps<Body, Params, Path>) => Promise<ApiResponse<Res>>
+  (props: GetDeleteProps<Params, PathFromUrl<U>>) => Promise<ApiResponse<Res>>
+>;
+
+function createRequest<
+  U extends UrlLike<any>,
+  Body = unknown,
+  Res = unknown,
+  Params = never,
+>(
+  cfg: Cfg<typeof RequestMethod.Post, U> | Cfg<typeof RequestMethod.Patch, U>,
+): RequestHandle<
+  (props: PostPatchProps<Body, Params, PathFromUrl<U>>) => Promise<ApiResponse<Res>>
 >;
 
 function createRequest(
-  cfg: Cfg<RequestMethodValue, any>,
+  cfg: Cfg<RequestMethodValue, UrlLike<any>>,
 ): RequestHandle<(props: any) => Promise<ApiResponse<any>>> {
   const callbackFn = async (props: any = {}): Promise<ApiResponse<any>> => {
     const { abortSignal, path, ...rest } = props ?? {};
@@ -81,7 +96,10 @@ function createRequest(
       throw new Error(`[${method.toUpperCase()}] requires 'data'.`);
     }
 
-    const finalUrl = typeof cfg.url === 'function' ? cfg.url(path) : cfg.url;
+    const finalUrl =
+      typeof cfg.url === 'function'
+        ? (cfg.url as (p: any) => string)(path)
+        : (cfg.url as string);
 
     const axiosRes = await client.request({
       url: finalUrl,
@@ -103,35 +121,71 @@ function createRequest(
 
 type HelperOpts = { invalidateKeys?: QueryKey[] };
 
-export const get = <Params = void, Res = unknown, Path = void>(url: UrlLike<Path>) =>
-  createRequest<Params, Res, Path>({ method: RequestMethod.Get, url });
-
-export const del = <Params = void, Res = unknown, Path = void>(
-  url: UrlLike<Path>,
+export function get<Res = unknown, Params = void>(
+  url: string,
   opts?: HelperOpts,
-) =>
-  createRequest<Params, Res, Path>({
+): RequestHandle<(props: GetDeleteProps<Params, never>) => Promise<ApiResponse<Res>>>;
+export function get<Res = unknown, Params = void, P = unknown>(
+  url: (path: P) => string,
+  opts?: HelperOpts,
+): RequestHandle<(props: GetDeleteProps<Params, P>) => Promise<ApiResponse<Res>>>;
+// implementation signature must be compatible with both overloads:
+export function get(url: UrlLike<unknown>, opts?: HelperOpts) {
+  return createRequest({
+    method: RequestMethod.Get,
+    url: url as UrlLike<any>,
+    invalidateKeys: opts?.invalidateKeys,
+  }) as any;
+}
+
+export function del<Res = unknown, Params = void>(
+  url: string,
+  opts?: HelperOpts,
+): RequestHandle<(props: GetDeleteProps<Params, never>) => Promise<ApiResponse<Res>>>;
+export function del<Res = unknown, Params = void, P = unknown>(
+  url: (path: P) => string,
+  opts?: HelperOpts,
+): RequestHandle<(props: GetDeleteProps<Params, P>) => Promise<ApiResponse<Res>>>;
+export function del(url: UrlLike<unknown>, opts?: HelperOpts) {
+  return createRequest({
     method: RequestMethod.Delete,
-    url,
+    url: url as UrlLike<any>,
     invalidateKeys: opts?.invalidateKeys,
-  });
+  }) as any;
+}
 
-export const post = <Body = unknown, Res = unknown, Params = never, Path = void>(
-  url: UrlLike<Path>,
+export function post<Body = unknown, Res = unknown, Params = never>(
+  url: string,
   opts?: HelperOpts,
-) =>
-  createRequest<Body, Res, Params, Path>({
+): RequestHandle<
+  (props: PostPatchProps<Body, Params, never>) => Promise<ApiResponse<Res>>
+>;
+export function post<Body = unknown, Res = unknown, Params = never, P = unknown>(
+  url: (path: P) => string,
+  opts?: HelperOpts,
+): RequestHandle<(props: PostPatchProps<Body, Params, P>) => Promise<ApiResponse<Res>>>;
+export function post(url: UrlLike<unknown>, opts?: HelperOpts) {
+  return createRequest({
     method: RequestMethod.Post,
-    url,
+    url: url as UrlLike<any>,
     invalidateKeys: opts?.invalidateKeys,
-  });
+  }) as any;
+}
 
-export const patch = <Body = unknown, Res = unknown, Params = never, Path = void>(
-  url: UrlLike<Path>,
+export function patch<Body = unknown, Res = unknown, Params = never>(
+  url: string,
   opts?: HelperOpts,
-) =>
-  createRequest<Body, Res, Params, Path>({
+): RequestHandle<
+  (props: PostPatchProps<Body, Params, never>) => Promise<ApiResponse<Res>>
+>;
+export function patch<Body = unknown, Res = unknown, Params = never, P = unknown>(
+  url: (path: P) => string,
+  opts?: HelperOpts,
+): RequestHandle<(props: PostPatchProps<Body, Params, P>) => Promise<ApiResponse<Res>>>;
+export function patch(url: UrlLike<unknown>, opts?: HelperOpts) {
+  return createRequest({
     method: RequestMethod.Patch,
-    url,
+    url: url as UrlLike<any>,
     invalidateKeys: opts?.invalidateKeys,
-  });
+  }) as any;
+}

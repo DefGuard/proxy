@@ -199,7 +199,7 @@ $source-code-pro:
   --t-badge-spacing: 0.3px;
 
   // Inputs
-  --t-input-title: normal 400 12px / 16px #{$geist};
+  --t-input-title: normal 500 12px / 16px #{$geist};
   --t-input-text-primary: normal 400 12px / 20px #{$geist};
   --t-input-text-big: normal 400 16px / 20px #{$geist};
   --t-input-error-message: normal 400 12px / 16px #{$geist};
@@ -209,6 +209,11 @@ $source-code-pro:
   --input-spacing-xs: var(--spacing-xs);
   --input-spacing-sm: var(--spacing-sm);
   --input-spacing-lg: var(--spacing-md);
+
+  // Tooltip
+  --t-tooltip: normal 400 12px / 16px #{$geist};
+  --tooltip-letter-spacing: 0.3;
+  --tooltip-spacing: var(--spacing-md);
 
   // custom
 

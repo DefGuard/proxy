@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router';
+import { useLoaderData, useNavigate } from '@tanstack/react-router';
 import { m } from '../../../paraglide/messages';
 import { ContainerWithIcon } from '../../../shared/components/ContainerWithIcon/ContainerWithIcon';
 import { Page } from '../../../shared/components/Page/Page';
@@ -7,10 +7,15 @@ import { EnrollmentStep } from '../../../shared/components/Step/Step';
 import { Divider } from '../../../shared/defguard-ui/components/Divider/Divider';
 import './style.scss';
 import { revalidateLogic } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import z from 'zod';
+import { api } from '../../../shared/api/api';
+import { Button } from '../../../shared/defguard-ui/components/Button/Button';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { useAppForm } from '../../../shared/defguard-ui/form';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
+import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
+import { useEnrollmentStore } from '../../../shared/hooks/useEnrollmentStore';
 
 const formSchema = z.object({
   token: z.string().trim().min(1, m.form_error_required()),
@@ -24,6 +29,17 @@ const defaultValues: FormFields = {
 
 export const EnrollmentStartPage = () => {
   const navigate = useNavigate();
+  const loaderData = useLoaderData({
+    from: '/enrollment-start',
+  });
+  const setEnrollment = useEnrollmentStore((s) => s.setState);
+
+  const { mutateAsync } = useMutation({
+    mutationFn: api.enrollment.start.callbackFn,
+    onError: (e) => {
+      console.error(e);
+    },
+  });
 
   const form = useAppForm({
     defaultValues,
@@ -35,15 +51,22 @@ export const EnrollmentStartPage = () => {
       onDynamic: formSchema,
       onSubmit: formSchema,
     },
-    onSubmit: (values) => {
-      console.table(values);
+    onSubmit: async ({ value }) => {
+      const response = await mutateAsync({
+        data: {
+          token: value.token,
+        },
+      });
+
+      setEnrollment({
+        enrollmentData: response.data,
+        token: value.token,
+      });
+
       navigate({
         to: '/client-setup',
         replace: true,
       });
-    },
-    onSubmitInvalid: (props) => {
-      console.log(props);
     },
   });
 
@@ -55,13 +78,26 @@ export const EnrollmentStartPage = () => {
         <p>{m.enrollment_start_subtitle()}</p>
       </header>
       <SizedBox height={ThemeSpacing.Xl5} />
-      <ContainerWithIcon icon="globe">
-        <header>
-          <h5>{m.enrollment_start_external_title()}</h5>
-          <p>{m.enrollment_start_external_subtitle()}</p>
-        </header>
-      </ContainerWithIcon>
-      <Divider text={m.misc_or()} orientation="horizontal" />
+      {isPresent(loaderData?.url) && isPresent(loaderData.button_display_name) && (
+        <>
+          <ContainerWithIcon icon="globe">
+            <header>
+              <h5>{m.enrollment_start_external_title()}</h5>
+              <p>{m.enrollment_start_external_subtitle()}</p>
+            </header>
+            <a href={loaderData.url} target="_blank">
+              <Button
+                size="big"
+                iconRight="open-in-new-window"
+                text={m.cmp_openid_button({
+                  provider: loaderData.button_display_name,
+                })}
+              />
+            </a>
+          </ContainerWithIcon>
+          <Divider text={m.misc_or()} orientation="horizontal" />
+        </>
+      )}
       <ContainerWithIcon icon="file">
         <header>
           <h5>{m.enrollment_start_internal_title()}</h5>

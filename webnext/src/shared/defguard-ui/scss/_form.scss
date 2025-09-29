@@ -1,0 +1,6 @@
+.form-col-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  column-gap: var(--spacing-md);
+}

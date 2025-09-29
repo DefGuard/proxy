@@ -4,9 +4,11 @@ import { Container } from '../../shared/components/Container/Container';
 import { Page } from '../../shared/components/Page/Page';
 import './style.scss';
 import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { useNavigate } from '@tanstack/react-router';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import clsx from 'clsx';
 import { useCallback } from 'react';
+import { api } from '../../shared/api/api';
 import { Button } from '../../shared/defguard-ui/components/Button/Button';
 import { Icon } from '../../shared/defguard-ui/components/Icon';
 import type { IconKindValue } from '../../shared/defguard-ui/components/Icon/icon-types';
@@ -91,7 +93,7 @@ const formSchema = z
         path: ['password'],
       });
     }
-    if (repeat.length) {
+    if (repeat.length && repeat !== password) {
       ctx.addIssue({
         message: m.password_form_check_repeat_match(),
         code: 'custom',
@@ -109,7 +111,18 @@ const defaultFormValues: FormFields = {
 };
 
 export const PasswordFormPage = () => {
+  const { token } = useSearch({
+    from: '/password-reset',
+  });
+
   const navigate = useNavigate();
+
+  const { mutateAsync } = useMutation({
+    mutationFn: api.password.finish.callbackFn,
+    onError: (e) => {
+      console.error(e);
+    },
+  });
 
   const form = useAppForm({
     defaultValues: defaultFormValues,
@@ -120,10 +133,15 @@ export const PasswordFormPage = () => {
     validators: {
       onDynamic: formSchema,
     },
-    onSubmit: (values) => {
-      console.table(values);
+    onSubmit: async ({ value }) => {
+      await mutateAsync({
+        data: {
+          password: value.password,
+          token,
+        },
+      });
       navigate({
-        to: '/password/form/finish',
+        to: '/password/finish',
         replace: true,
       });
     },
@@ -164,7 +182,15 @@ export const PasswordFormPage = () => {
               )}
             </form.AppField>
             <CheckList form={form} />
-            <Button size="big" type="submit" text={m.password_form_submit()} />
+            <Button
+              size="big"
+              type="submit"
+              text={m.password_form_submit()}
+              loading={form.state.isSubmitting}
+              onClick={() => {
+                form.handleSubmit();
+              }}
+            />
           </form.AppForm>
         </form>
       </Container>

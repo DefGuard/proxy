@@ -10,6 +10,8 @@ import { IconArrowSmall } from './icons/IconArrowSmall';
 import { IconCheckCircle } from './icons/IconCheckCircle';
 import { IconCheckFilled } from './icons/IconCheckFilled';
 import { IconClose } from './icons/IconClose';
+import { IconConfig } from './icons/IconConfig';
+import { IconCopy } from './icons/IconCopy';
 import { IconDesktop } from './icons/IconDesktop';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
 import { IconFile } from './icons/IconFile';
@@ -18,6 +20,7 @@ import { IconLinux } from './icons/IconLinux';
 import { IconLoader } from './icons/IconLoader';
 import { IconLockOpen } from './icons/IconLock';
 import { IconMobile } from './icons/IconMobile';
+import { IconOpenInNewWindow } from './icons/IconOpenInNewWindow';
 import { IconPlus } from './icons/IconPlus';
 import { IconStatusSimple } from './icons/IconStatusSimple';
 import { IconWindows } from './icons/IconWindows';
@@ -60,6 +63,12 @@ export const Icon = <T extends IconKindValue>({
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
+      case 'copy':
+        return IconCopy;
+      case 'config':
+        return IconConfig;
+      case 'open-in-new-window':
+        return IconOpenInNewWindow;
       case 'arrow-big':
         return IconArrowBig;
       case 'arrow-small':

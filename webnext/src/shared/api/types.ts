@@ -32,6 +32,7 @@ export type EnrollmentSettings = {
 export type EnrollmentStartResponse = {
   admin: AdminInfo;
   user: UserInfo;
+  instance: InstanceInfo;
   deadline_timestamp: number;
   final_page_content: string;
   settings: EnrollmentSettings;
@@ -42,13 +43,12 @@ export type PasswordResetStartRequest = {
 };
 
 export type PasswordResetStartResponse = {
-  admin: AdminInfo;
-  user: UserInfo;
   deadline_timestamp: number;
 };
 
 export type PasswordResetFinishRequest = {
   password: string;
+  token: string;
 };
 
 export type OpenIdType = 'enrollment' | 'mfa';
@@ -59,8 +59,8 @@ export type OpenIdAuthInfoRequest = {
 };
 
 export type OpenIdAuthInfoResponse = {
-  url: string;
-  button_display_name: string;
+  url?: string;
+  button_display_name?: string;
 };
 
 export type OpenIdCallbackRequest = {
@@ -78,4 +78,15 @@ export type OpenIdMfaCallbackRequest = {
   code: string;
   state: string;
   type: 'mfa';
+};
+
+export type InstanceInfo = {
+  id: string;
+  name: string;
+  url: string;
+  proxy_url: string;
+  username: string;
+  enterprise_enabled: boolean;
+  disable_all_traffic: boolean;
+  openid_display_name: string;
 };
