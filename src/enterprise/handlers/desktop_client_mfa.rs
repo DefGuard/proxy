@@ -21,23 +21,24 @@ pub(super) async fn mfa_auth_callback(
 ) -> Result<PrivateCookieJar, ApiError> {
     info!("Processing MFA authentication callback");
     debug!(
-        "Received payload: state={}, flow_type={}",
+        "Received payload: state={}, flow_type={:?}",
         payload.state, payload.flow_type
     );
 
-    let flow_type = payload.flow_type.parse::<FlowType>().map_err(|err| {
-        warn!("Failed to parse flow type '{}': {err:?}", payload.flow_type);
-        ApiError::BadRequest("Invalid flow type".into())
-    })?;
-
-    if flow_type != FlowType::Mfa {
-        warn!("Invalid flow type for MFA callback: {flow_type:?}");
-        return Err(ApiError::BadRequest(
-            "Invalid flow type for MFA callback".into(),
-        ));
+    match payload.flow_type {
+        FlowType::Mfa => (),
+        FlowType::Enrollment => {
+            warn!(
+                "Invalid flow type for MFA callback: {:?}",
+                payload.flow_type
+            );
+            return Err(ApiError::BadRequest(
+                "Invalid flow type for MFA callback".into(),
+            ));
+        }
     }
 
-    debug!("Flow type validation passed: {flow_type:?}");
+    debug!("Flow type validation passed: {:?}", payload.flow_type);
 
     let nonce = private_cookies
         .get(NONCE_COOKIE_NAME)
@@ -78,7 +79,7 @@ pub(super) async fn mfa_auth_callback(
     let request = ClientMfaOidcAuthenticateRequest {
         code: payload.code,
         nonce,
-        callback_url: state.callback_url(&flow_type).to_string(),
+        callback_url: state.callback_url(&payload.flow_type).to_string(),
         state: payload.state,
     };
 

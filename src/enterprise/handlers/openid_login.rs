@@ -44,29 +44,18 @@ impl AuthInfo {
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum FlowType {
     Enrollment,
     Mfa,
 }
 
-impl std::str::FromStr for FlowType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "enrollment" => Ok(FlowType::Enrollment),
-            "mfa" => Ok(FlowType::Mfa),
-            _ => Err(()),
-        }
-    }
-}
-
 #[derive(Deserialize, Debug)]
-struct RequestData {
+pub(crate) struct RequestData {
     state: Option<String>,
     #[serde(rename = "type")]
-    flow_type: String,
+    flow_type: FlowType,
 }
 
 /// Request external OAuth2/OpenID provider details from Defguard Core.
@@ -79,13 +68,8 @@ async fn auth_info(
 ) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
     debug!("Getting auth info for OAuth2/OpenID login");
 
-    let flow_type = request_data
-        .flow_type
-        .parse::<FlowType>()
-        .map_err(|()| ApiError::BadRequest("Invalid flow type".into()))?;
-
     let request = AuthInfoRequest {
-        redirect_url: state.callback_url(&flow_type).to_string(),
+        redirect_url: state.callback_url(&request_data.flow_type).to_string(),
         state: request_data.state,
     };
 
@@ -127,7 +111,7 @@ pub(super) struct AuthenticationResponse {
     pub(super) code: String,
     pub(super) state: String,
     #[serde(rename = "type")]
-    pub(super) flow_type: String,
+    pub(super) flow_type: FlowType,
 }
 
 #[derive(Serialize)]
@@ -143,15 +127,13 @@ async fn auth_callback(
     mut private_cookies: PrivateCookieJar,
     Json(payload): Json<AuthenticationResponse>,
 ) -> Result<(PrivateCookieJar, Json<CallbackResponseData>), ApiError> {
-    let flow_type = payload
-        .flow_type
-        .parse::<FlowType>()
-        .map_err(|()| ApiError::BadRequest("Invalid flow type".into()))?;
-
-    if flow_type != FlowType::Enrollment {
-        return Err(ApiError::BadRequest(
-            "Invalid flow type for OpenID enrollment callback".into(),
-        ));
+    match payload.flow_type {
+        FlowType::Enrollment => (),
+        FlowType::Mfa => {
+            return Err(ApiError::BadRequest(
+                "Invalid flow type for OpenID enrollment callback".into(),
+            ));
+        }
     }
 
     let nonce = private_cookies
@@ -176,7 +158,7 @@ async fn auth_callback(
     let request = AuthCallbackRequest {
         code: payload.code,
         nonce,
-        callback_url: state.callback_url(&flow_type).to_string(),
+        callback_url: state.callback_url(&payload.flow_type).to_string(),
     };
 
     let rx = state
