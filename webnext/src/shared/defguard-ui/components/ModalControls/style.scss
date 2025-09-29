@@ -1,0 +1,30 @@
+.modal-controls {
+  width: 100%;
+  padding-top: var(--spacing-2xl);
+
+  &:not(.extras) {
+    display: flex;
+    flex-flow: row nowrap;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  // todo: extend when will be needed
+  &.extras {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr;
+    column-gap: var(--spacing-xl);
+    align-items: center;
+    justify-content: end;
+  }
+
+  .buttons {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: flex-end;
+    justify-content: flex-end;
+    column-gap: var(--spacing-md);
+  }
+}

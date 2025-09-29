@@ -2,6 +2,7 @@ import { Button } from '../../defguard-ui/components/Button/Button';
 import './style.scss';
 
 type Props = {
+  loading?: boolean;
   nextText: string;
   backText: string;
   onNext?: () => void;
@@ -17,6 +18,7 @@ export const PageNavigation = ({
   nextDisabled,
   onBack,
   onNext,
+  loading = false,
 }: Props) => {
   return (
     <div className="page-nav">
@@ -24,11 +26,16 @@ export const PageNavigation = ({
         <div className="track">
           <Button
             text={backText}
-            disabled={backDisabled}
+            disabled={backDisabled || loading}
             variant="outlined"
             onClick={onBack}
           />
-          <Button text={nextText} disabled={nextDisabled} onClick={onNext} />
+          <Button
+            text={nextText}
+            disabled={nextDisabled}
+            loading={loading}
+            onClick={onNext}
+          />
         </div>
       </div>
     </div>

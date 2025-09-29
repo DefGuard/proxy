@@ -1,5 +1,6 @@
 import './style.scss';
 import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { Page } from '../../shared/components/Page/Page';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
@@ -7,6 +8,8 @@ import { EnrollmentStep } from '../../shared/components/Step/Step';
 import { Button } from '../../shared/defguard-ui/components/Button/Button';
 import { Icon } from '../../shared/defguard-ui/components/Icon';
 import type { IconKindValue } from '../../shared/defguard-ui/components/Icon/icon-types';
+import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
+import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
 import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
 import androidIcon from './assets/android.png';
@@ -15,6 +18,7 @@ import laptopIcon from './assets/laptop.png';
 import desktopIcon from './assets/pc-tower.png';
 
 export const ClientDownloadPage = () => {
+  const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
 
   return (
@@ -87,6 +91,31 @@ export const ClientDownloadPage = () => {
           icon={iosIcon}
         />
       </div>
+      <Modal
+        title={m.client_download_modal_title()}
+        size="small"
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+        }}
+      >
+        <p>{m.client_download_modal_content()}</p>
+        <ModalControls
+          cancelProps={{
+            text: m.client_download_modal_cancel(),
+            onClick: () => setModalOpen(false),
+          }}
+          submitProps={{
+            text: m.controls_continue(),
+            onClick: () => {
+              navigate({
+                to: '/enrollment-start',
+                replace: true,
+              });
+            },
+          }}
+        />
+      </Modal>
       <PageNavigation
         backText={m.controls_back()}
         onBack={() => {
@@ -97,7 +126,7 @@ export const ClientDownloadPage = () => {
         }}
         nextText={m.controls_continue()}
         onNext={() => {
-          console.log('todo');
+          setModalOpen(true);
         }}
       />
     </Page>

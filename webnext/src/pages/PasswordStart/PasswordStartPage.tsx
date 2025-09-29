@@ -7,9 +7,15 @@ import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox'
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
 
 import './style.scss';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { api } from '../../shared/api/api';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
 import { useAppForm } from '../../shared/defguard-ui/form';
+
+const {
+  password: { sendEmail },
+} = api;
 
 const formSchema = z.object({
   email: z.email(m.form_error_email()).trim().min(1, m.form_error_required()),
@@ -24,13 +30,25 @@ const defaults: FormFields = {
 export const PasswordStartPage = () => {
   const navigate = useNavigate();
 
+  const { mutateAsync } = useMutation({
+    mutationFn: sendEmail.callbackFn,
+    onError: (e) => {
+      console.error('Error while sending email.', e);
+    },
+  });
+
   const form = useAppForm({
     defaultValues: defaults,
     validators: {
       onChange: formSchema,
       onSubmit: formSchema,
     },
-    onSubmit: () => {
+    onSubmit: async ({ value }) => {
+      await mutateAsync({
+        data: {
+          email: value.email,
+        },
+      });
       navigate({
         to: '/password/sent',
         replace: true,
@@ -57,6 +75,7 @@ export const PasswordStartPage = () => {
         </form.AppForm>
       </Container>
       <PageNavigation
+        loading={form.state.isSubmitting}
         backText={m.controls_back()}
         nextText={m.password_start_submit()}
         onBack={() => {

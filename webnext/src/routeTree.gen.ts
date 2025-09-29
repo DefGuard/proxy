@@ -10,21 +10,38 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteImport } from './routes/test'
+import { Route as PasswordResetRouteImport } from './routes/password-reset'
+import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
 import { Route as DownloadRouteImport } from './routes/download'
+import { Route as ClientSetupRouteImport } from './routes/client-setup'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PasswordIndexRouteImport } from './routes/password/index'
 import { Route as PasswordSentRouteImport } from './routes/password/sent'
-import { Route as PasswordFormIndexRouteImport } from './routes/password/form/index'
-import { Route as PasswordFormFinishRouteImport } from './routes/password/form/finish'
+import { Route as PasswordFinishRouteImport } from './routes/password/finish'
 
 const TestRoute = TestRouteImport.update({
   id: '/test',
   path: '/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PasswordResetRoute = PasswordResetRouteImport.update({
+  id: '/password-reset',
+  path: '/password-reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnrollmentStartRoute = EnrollmentStartRouteImport.update({
+  id: '/enrollment-start',
+  path: '/enrollment-start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DownloadRoute = DownloadRouteImport.update({
   id: '/download',
   path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientSetupRoute = ClientSetupRouteImport.update({
+  id: '/client-setup',
+  path: '/client-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -42,83 +59,92 @@ const PasswordSentRoute = PasswordSentRouteImport.update({
   path: '/password/sent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PasswordFormIndexRoute = PasswordFormIndexRouteImport.update({
-  id: '/password/form/',
-  path: '/password/form/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PasswordFormFinishRoute = PasswordFormFinishRouteImport.update({
-  id: '/password/form/finish',
-  path: '/password/form/finish',
+const PasswordFinishRoute = PasswordFinishRouteImport.update({
+  id: '/password/finish',
+  path: '/password/finish',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
+  '/enrollment-start': typeof EnrollmentStartRoute
+  '/password-reset': typeof PasswordResetRoute
   '/test': typeof TestRoute
+  '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
   '/password': typeof PasswordIndexRoute
-  '/password/form/finish': typeof PasswordFormFinishRoute
-  '/password/form': typeof PasswordFormIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
+  '/enrollment-start': typeof EnrollmentStartRoute
+  '/password-reset': typeof PasswordResetRoute
   '/test': typeof TestRoute
+  '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
   '/password': typeof PasswordIndexRoute
-  '/password/form/finish': typeof PasswordFormFinishRoute
-  '/password/form': typeof PasswordFormIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
+  '/enrollment-start': typeof EnrollmentStartRoute
+  '/password-reset': typeof PasswordResetRoute
   '/test': typeof TestRoute
+  '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
   '/password/': typeof PasswordIndexRoute
-  '/password/form/finish': typeof PasswordFormFinishRoute
-  '/password/form/': typeof PasswordFormIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/client-setup'
     | '/download'
+    | '/enrollment-start'
+    | '/password-reset'
     | '/test'
+    | '/password/finish'
     | '/password/sent'
     | '/password'
-    | '/password/form/finish'
-    | '/password/form'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/client-setup'
     | '/download'
+    | '/enrollment-start'
+    | '/password-reset'
     | '/test'
+    | '/password/finish'
     | '/password/sent'
     | '/password'
-    | '/password/form/finish'
-    | '/password/form'
   id:
     | '__root__'
     | '/'
+    | '/client-setup'
     | '/download'
+    | '/enrollment-start'
+    | '/password-reset'
     | '/test'
+    | '/password/finish'
     | '/password/sent'
     | '/password/'
-    | '/password/form/finish'
-    | '/password/form/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ClientSetupRoute: typeof ClientSetupRoute
   DownloadRoute: typeof DownloadRoute
+  EnrollmentStartRoute: typeof EnrollmentStartRoute
+  PasswordResetRoute: typeof PasswordResetRoute
   TestRoute: typeof TestRoute
+  PasswordFinishRoute: typeof PasswordFinishRoute
   PasswordSentRoute: typeof PasswordSentRoute
   PasswordIndexRoute: typeof PasswordIndexRoute
-  PasswordFormFinishRoute: typeof PasswordFormFinishRoute
-  PasswordFormIndexRoute: typeof PasswordFormIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,11 +156,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/password-reset': {
+      id: '/password-reset'
+      path: '/password-reset'
+      fullPath: '/password-reset'
+      preLoaderRoute: typeof PasswordResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enrollment-start': {
+      id: '/enrollment-start'
+      path: '/enrollment-start'
+      fullPath: '/enrollment-start'
+      preLoaderRoute: typeof EnrollmentStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/download': {
       id: '/download'
       path: '/download'
       fullPath: '/download'
       preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-setup': {
+      id: '/client-setup'
+      path: '/client-setup'
+      fullPath: '/client-setup'
+      preLoaderRoute: typeof ClientSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -158,18 +205,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasswordSentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/password/form/': {
-      id: '/password/form/'
-      path: '/password/form'
-      fullPath: '/password/form'
-      preLoaderRoute: typeof PasswordFormIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/password/form/finish': {
-      id: '/password/form/finish'
-      path: '/password/form/finish'
-      fullPath: '/password/form/finish'
-      preLoaderRoute: typeof PasswordFormFinishRouteImport
+    '/password/finish': {
+      id: '/password/finish'
+      path: '/password/finish'
+      fullPath: '/password/finish'
+      preLoaderRoute: typeof PasswordFinishRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -177,12 +217,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ClientSetupRoute: ClientSetupRoute,
   DownloadRoute: DownloadRoute,
+  EnrollmentStartRoute: EnrollmentStartRoute,
+  PasswordResetRoute: PasswordResetRoute,
   TestRoute: TestRoute,
+  PasswordFinishRoute: PasswordFinishRoute,
   PasswordSentRoute: PasswordSentRoute,
   PasswordIndexRoute: PasswordIndexRoute,
-  PasswordFormFinishRoute: PasswordFormFinishRoute,
-  PasswordFormIndexRoute: PasswordFormIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

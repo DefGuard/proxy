@@ -17,12 +17,9 @@ export const HomePage = () => {
       <SizedBox height={ThemeSpacing.Xl6} />
       <HomeChoice />
       <footer>
-        <p>{m.start_footer_contact()}</p>
-        <SizedBox height={ThemeSpacing.Xs} />
         <p>{m.start_footer_copyright({ currentYear: currentYear.toString() })}</p>
         <SizedBox height={ThemeSpacing.Sm} />
       </footer>
-      <SizedBox height={28} />
     </Page>
   );
 };

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { m } from '../../../paraglide/messages';
-import { PageProcessEnd } from '../../../shared/components/PageProcessEnd/PageProcessEnd';
+import { m } from '../../paraglide/messages';
+import { PageProcessEnd } from '../../shared/components/PageProcessEnd/PageProcessEnd';
 
 const RouteComponent = () => {
   return (
@@ -13,6 +13,6 @@ const RouteComponent = () => {
   );
 };
 
-export const Route = createFileRoute('/password/form/finish')({
+export const Route = createFileRoute('/password/finish')({
   component: RouteComponent,
 });

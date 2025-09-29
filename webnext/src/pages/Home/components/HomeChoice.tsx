@@ -20,7 +20,7 @@ export const HomeChoice = () => {
         title={m.start_multi_enrollment_title()}
         subtitle={m.start_multi_enrollment_subtitle()}
         buttonText={m.start_multi_enrollment_button()}
-        buttonIcon="lock-open"
+        buttonIcon="arrow-big"
         link="/download"
         onClick={() => {}}
       />
