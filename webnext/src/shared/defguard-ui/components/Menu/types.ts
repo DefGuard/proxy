@@ -1,14 +1,9 @@
-import type { Placement } from '@floating-ui/react';
-import type { RefObject } from 'react';
+import type { HTMLAttributes, Ref } from 'react';
 import type { IconKindValue } from '../Icon/icon-types';
 
-export interface MenuProps {
+export interface MenuProps extends HTMLAttributes<HTMLDivElement> {
   itemGroups: MenuItemsGroup[];
-  referenceRef: RefObject<HTMLElement | null>;
-  placement?: Placement;
-  isOpen: boolean;
-  setOpen: (val: boolean) => void;
-  floatingOffset?: number;
+  ref?: Ref<HTMLDivElement>;
 }
 
 export interface MenuItemsGroup {
