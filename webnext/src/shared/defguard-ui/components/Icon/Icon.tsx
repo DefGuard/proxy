@@ -16,12 +16,14 @@ import { IconDesktop } from './icons/IconDesktop';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
 import { IconFile } from './icons/IconFile';
 import { IconGlobe } from './icons/IconGlobe';
+import { IconHide } from './icons/IconHide';
 import { IconLinux } from './icons/IconLinux';
 import { IconLoader } from './icons/IconLoader';
 import { IconLockOpen } from './icons/IconLock';
 import { IconMobile } from './icons/IconMobile';
 import { IconOpenInNewWindow } from './icons/IconOpenInNewWindow';
 import { IconPlus } from './icons/IconPlus';
+import { IconShow } from './icons/IconShow';
 import { IconStatusSimple } from './icons/IconStatusSimple';
 import { IconWindows } from './icons/IconWindows';
 
@@ -63,6 +65,10 @@ export const Icon = <T extends IconKindValue>({
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
+      case 'show':
+        return IconShow;
+      case 'hide':
+        return IconHide;
       case 'copy':
         return IconCopy;
       case 'config':

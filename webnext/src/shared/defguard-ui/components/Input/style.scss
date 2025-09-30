@@ -11,34 +11,16 @@
       user-select: none;
     }
 
-    .track {
-      --outline-width: 0;
-      --border-color: var(--border-default);
-      --background-color: var(--bg-default);
-      --input-size: var(--input-size-primary);
-
-      box-sizing: border-box;
-      cursor: pointer;
-      border: 1px solid var(--border-color);
-      border-radius: var(--input-border-radius);
-      position: relative;
-      padding: var(--input-spacing-sm) var(--input-spacing-lg);
-      display: flex;
-      flex-flow: row;
-      align-items: center;
-      outline: var(--outline-width) solid var(--border-action);
-      outline-offset: -2px;
-
-      @include animate(border-color, background-color);
-
+    .input-track {
       input {
         font: var(--t-input-text-primary);
         color: var(--fg-default);
         border: none;
         background: none;
         border-radius: 0;
-        height: var(--input-size);
         width: 100%;
+        max-width: 100%;
+        overflow: hidden;
         margin: 0;
         padding: 0;
 
@@ -46,30 +28,15 @@
           font: var(--t-input-text-primary);
           color: var(--fg-muted);
         }
-      }
 
-      &:not(.disabled) {
-        &:hover {
-          --border-color: var(--border-emphasis);
+        &:disabled {
+          cursor: not-allowed;
         }
-
-        &:focus-within {
-          --border-colo: var(--border-default);
-          --outline-width: 2px;
-        }
-      }
-
-      &.disabled {
-        --border-color: var(--border-disabled);
-        --background-color: var(--bg-disabled);
-
-        cursor: not-allowed;
-        pointer-events: none;
       }
     }
 
     &.disabled {
-      pointer-events: none;
+      user-select: none;
 
       & > .field-label {
         cursor: not-allowed;

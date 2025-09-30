@@ -9,6 +9,7 @@ import { CounterLabel } from '../../shared/defguard-ui/components/CounterLabel/C
 import { Divider } from '../../shared/defguard-ui/components/Divider/Divider';
 import { EmptyState } from '../../shared/defguard-ui/components/EmptyState/EmptyState';
 import { IconButton } from '../../shared/defguard-ui/components/IconButton/IconButton';
+import { Input } from '../../shared/defguard-ui/components/Input/Input';
 import { Menu } from '../../shared/defguard-ui/components/Menu/Menu';
 import type { MenuItemsGroup } from '../../shared/defguard-ui/components/Menu/types';
 import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
@@ -126,6 +127,29 @@ export const TestPage = () => {
         <TestModalButton />
       </TestRow>
       <TestMenu />
+      <TestRow>
+        <Input value="Test Value" placeholder="Placeholder" size="default" disabled />
+        <Input value="Test Value" placeholder="Placeholder" size="lg" />
+        <Input value="Test Value" placeholder="Placeholder" size="lg" disabled />
+      </TestRow>
+      <TestRow>
+        <Input value="" placeholder="Placeholder" size="default" />
+        <Input value="" placeholder="Placeholder" size="default" disabled />
+        <Input value="" placeholder="Placeholder" size="lg" />
+        <Input value="" placeholder="Placeholder" size="lg" disabled />
+      </TestRow>
+      <TestRow>
+        <Input value="" placeholder="Placeholder" size="default" type="password" />
+        <Input
+          value=""
+          placeholder="Placeholder"
+          size="default"
+          type="password"
+          disabled
+        />
+        <Input value="" placeholder="Placeholder" size="lg" type="password" />
+        <Input value="" placeholder="Placeholder" size="lg" type="password" disabled />
+      </TestRow>
     </Page>
   );
 };
