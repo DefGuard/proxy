@@ -62,7 +62,6 @@ export const Input = ({
           onInteractionClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log(e);
             if (isPassword) {
               setInputType((s) => {
                 if (s === 'password') {
