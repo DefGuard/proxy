@@ -1,16 +1,16 @@
-import { type PropsWithChildren, useMemo, useRef, useState } from 'react';
+import { type PropsWithChildren, useMemo, useState } from 'react';
 import { Page } from '../../shared/components/Page/Page';
 import './style.scss';
 import { Avatar } from '../../shared/defguard-ui/components/Avatar/Avatar';
 import { Badge } from '../../shared/defguard-ui/components/Badge/Badge';
 import { Button } from '../../shared/defguard-ui/components/Button/Button';
+import { ButtonMenu } from '../../shared/defguard-ui/components/ButtonMenu/MenuButton';
 import { Checkbox } from '../../shared/defguard-ui/components/Checkbox/Checkbox';
 import { CounterLabel } from '../../shared/defguard-ui/components/CounterLabel/CounterLabel';
 import { Divider } from '../../shared/defguard-ui/components/Divider/Divider';
 import { EmptyState } from '../../shared/defguard-ui/components/EmptyState/EmptyState';
 import { IconButton } from '../../shared/defguard-ui/components/IconButton/IconButton';
 import { Input } from '../../shared/defguard-ui/components/Input/Input';
-import { Menu } from '../../shared/defguard-ui/components/Menu/Menu';
 import type { MenuItemsGroup } from '../../shared/defguard-ui/components/Menu/types';
 import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
 import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
@@ -203,8 +203,6 @@ const TestModalButton = () => {
 };
 
 const TestMenu = () => {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const menuGroup = useMemo(() => {
     const res: MenuItemsGroup = {
       items: [
@@ -243,21 +241,12 @@ const TestMenu = () => {
   return (
     <>
       <TestRow>
-        <Button
-          ref={buttonRef}
+        <ButtonMenu
+          menuItems={[menuGroup]}
           text="Action menu test"
           iconRight="arrow-small"
           variant="outlined"
           iconRightRotation="down"
-          onClick={() => {
-            setMenuOpen((s) => !s);
-          }}
-        />
-        <Menu
-          itemGroups={[menuGroup]}
-          referenceRef={buttonRef}
-          isOpen={menuOpen}
-          setOpen={setMenuOpen}
         />
       </TestRow>
       <SizedBox height={500} />

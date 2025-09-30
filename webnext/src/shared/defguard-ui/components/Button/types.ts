@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, Ref } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, Ref } from 'react';
 import type { Direction } from '../../types';
 import type { IconKindValue } from '../Icon/icon-types';
 
@@ -19,6 +19,5 @@ export type ButtonProps = {
   testId?: string;
   disabled?: boolean;
   loading?: boolean;
-  onClick?: () => void;
   ref?: Ref<HTMLButtonElement>;
-};
+} & HTMLAttributes<HTMLElement>;

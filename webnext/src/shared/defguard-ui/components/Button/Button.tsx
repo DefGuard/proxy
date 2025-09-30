@@ -20,17 +20,19 @@ export const Button = ({
   type = 'button',
   disabled = false,
   loading = false,
+  ...props
 }: ButtonProps) => {
   return (
     <button
+      {...props}
       data-variant={variant}
       data-testid={testId}
       ref={ref}
       type={type}
       disabled={disabled || loading}
-      onClick={() => {
+      onClick={(e) => {
         if (!disabled && !loading) {
-          onClick?.();
+          onClick?.(e);
         }
       }}
       className={clsx('btn', `variant-${variant}`, `size-${size}`, {
