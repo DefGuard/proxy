@@ -1,9 +1,10 @@
-import type { HTMLAttributes, HTMLInputTypeAttribute, Ref } from 'react';
+import type { HTMLAttributes, HTMLInputAutoCompleteAttribute, Ref } from 'react';
+import type { FieldBoxProps, FieldSize } from '../FieldBox/types';
 
 export type InputProps = {
   value: string | null;
-  size?: 'default' | 'big';
-  type?: HTMLInputTypeAttribute;
+  size?: FieldSize;
+  type?: 'password' | 'text';
   ref?: Ref<HTMLInputElement>;
   error?: string;
   name?: string;
@@ -12,11 +13,13 @@ export type InputProps = {
   disabled?: boolean;
   placeholder?: string;
   onChange?: (value: string) => void;
+  boxProps?: Partial<FieldBoxProps>;
+  autocomplete?: HTMLInputAutoCompleteAttribute;
 } & Pick<HTMLAttributes<HTMLInputElement>, 'onBlur' | 'onFocus'>;
 
 export type FormInputProps = Pick<
   InputProps,
-  'name' | 'placeholder' | 'disabled' | 'required' | 'label'
+  'name' | 'placeholder' | 'disabled' | 'required' | 'label' | 'autocomplete' | 'type'
 > & {
   mapError?: (error: string) => string | undefined;
 };

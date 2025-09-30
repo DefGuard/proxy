@@ -1,4 +1,5 @@
 export const IconKind = {
+  Hide: 'hide',
   ArrowBig: 'arrow-big',
   ArrowSmall: 'arrow-small',
   PlusCircle: 'plus-circle',
@@ -43,7 +44,7 @@ export const IconKind = {
   Activity: 'activity',
   AccessSettings: 'access-settings',
   Profile: 'profile',
-  Attension: 'attension',
+  Attention: 'attention',
   Warning: 'warning',
   Download: 'download',
   Code: 'code',

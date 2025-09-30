@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import type { AxiosError } from 'axios';
 import { EnrollmentStartPage } from '../pages/enrollment/EnrollmentStart/EnrollmentStartPage';
 import { api } from '../shared/api/api';
@@ -6,6 +6,7 @@ import { api } from '../shared/api/api';
 export const Route = createFileRoute('/enrollment-start')({
   component: EnrollmentStartPage,
   loader: async () => {
+    // workaround cuz this endpoint throws 404 when openid is not configured
     const resp = await api.openId.authInfo
       .callbackFn({
         data: {
@@ -13,15 +14,8 @@ export const Route = createFileRoute('/enrollment-start')({
         },
       })
       .catch((e: AxiosError) => {
-        //FIXME: should redirect
-        if (e.status !== 500) {
-          throw redirect({
-            to: '/',
-            replace: true,
-          });
-        }
+        console.error(e);
       });
-    //FIXME
     return resp?.data;
   },
 });

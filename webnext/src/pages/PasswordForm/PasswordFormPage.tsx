@@ -167,6 +167,7 @@ export const PasswordFormPage = () => {
                 <field.FormInput
                   mapError={mapPasswordFieldError}
                   label={m.password_form_labels_password()}
+                  type="password"
                   required
                 />
               )}
@@ -178,7 +179,11 @@ export const PasswordFormPage = () => {
               }}
             >
               {(field) => (
-                <field.FormInput label={m.password_form_labels_repeat()} required />
+                <field.FormInput
+                  label={m.password_form_labels_repeat()}
+                  type="password"
+                  required
+                />
               )}
             </form.AppField>
             <CheckList form={form} />
