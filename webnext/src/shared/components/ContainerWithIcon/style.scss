@@ -7,18 +7,17 @@
     align-items: start;
 
     & > .container-icon {
-      user-select: none;
-      display: flex;
-      flex-flow: row;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      padding: 6px;
-      border-radius: var(--radius-full);
-      background-color: var(--bg-action-muted);
+      display: block;
+      max-height: 33px;
 
-      svg path {
-        fill: var(--fg-action);
+      svg {
+        rect {
+          fill: var(--bg-action-muted);
+        }
+
+        path {
+          fill: var(--fg-action);
+        }
       }
     }
   }

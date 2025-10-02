@@ -7,7 +7,7 @@ import { EnrollmentStep } from '../../../shared/components/Step/Step';
 import { Divider } from '../../../shared/defguard-ui/components/Divider/Divider';
 import './style.scss';
 import { revalidateLogic } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
 import z from 'zod';
 import { api } from '../../../shared/api/api';
 import { Button } from '../../../shared/defguard-ui/components/Button/Button';
@@ -34,13 +34,6 @@ export const EnrollmentStartPage = () => {
   });
   const setEnrollment = useEnrollmentStore((s) => s.setState);
 
-  const { mutateAsync } = useMutation({
-    mutationFn: api.enrollment.start.callbackFn,
-    onError: (e) => {
-      console.error(e);
-    },
-  });
-
   const form = useAppForm({
     defaultValues,
     validationLogic: revalidateLogic({
@@ -51,12 +44,28 @@ export const EnrollmentStartPage = () => {
       onDynamic: formSchema,
       onSubmit: formSchema,
     },
-    onSubmit: async ({ value }) => {
-      const response = await mutateAsync({
-        data: {
-          token: value.token,
-        },
-      });
+    onSubmit: async ({ value, formApi }) => {
+      const response = await api.enrollment.start
+        .callbackFn({
+          data: {
+            token: value.token,
+          },
+        })
+        .catch((e: AxiosError) => {
+          if (e.status === 401) {
+            formApi.setErrorMap({
+              onSubmit: {
+                fields: {
+                  token: m.form_error_token(),
+                },
+              },
+            });
+          }
+        });
+
+      if (!response) {
+        return;
+      }
 
       setEnrollment({
         enrollmentData: response.data,
@@ -83,17 +92,20 @@ export const EnrollmentStartPage = () => {
           <ContainerWithIcon icon="globe">
             <header>
               <h5>{m.enrollment_start_external_title()}</h5>
+              <SizedBox height={ThemeSpacing.Xs} />
               <p>{m.enrollment_start_external_subtitle()}</p>
             </header>
-            <a href={loaderData.url} target="_blank">
-              <Button
-                size="big"
-                iconRight="open-in-new-window"
-                text={m.cmp_openid_button({
-                  provider: loaderData.button_display_name,
-                })}
-              />
-            </a>
+            <div className="openid-link">
+              <a href={loaderData.url} target="_blank">
+                <Button
+                  size="big"
+                  iconRight="open-in-new-window"
+                  text={m.cmp_openid_button({
+                    provider: loaderData.button_display_name,
+                  })}
+                />
+              </a>
+            </div>
           </ContainerWithIcon>
           <Divider text={m.misc_or()} orientation="horizontal" />
         </>
@@ -101,6 +113,7 @@ export const EnrollmentStartPage = () => {
       <ContainerWithIcon icon="file">
         <header>
           <h5>{m.enrollment_start_internal_title()}</h5>
+          <SizedBox height={ThemeSpacing.Xs} />
           <p>{m.enrollment_start_internal_subtitle()}</p>
         </header>
         <form.AppForm>

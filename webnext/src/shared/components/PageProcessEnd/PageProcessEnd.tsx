@@ -25,6 +25,7 @@ export const PageProcessEnd = ({ link, linkText, subtitle, title }: Props) => {
       <AppText as="h1" font={TextStyle.TTitleH3}>
         {title}
       </AppText>
+      <SizedBox height={ThemeSpacing.Xs} />
       <AppText as="p" font={TextStyle.TBodyPrimary400}>
         {subtitle}
       </AppText>

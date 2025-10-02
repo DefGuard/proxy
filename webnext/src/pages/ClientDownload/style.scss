@@ -11,7 +11,7 @@
       flex-flow: row nowrap;
       align-items: center;
       justify-content: flex-start;
-      column-gap: var(--spacing-lg);
+      column-gap: var(--spacing-sm);
 
       p {
         font: var(--t-body-sm-400);
@@ -36,7 +36,7 @@
         height: 60px;
       }
 
-      & > .btn {
+      .btn {
         min-width: 212px;
       }
 

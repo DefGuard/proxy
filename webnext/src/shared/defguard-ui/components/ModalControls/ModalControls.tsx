@@ -21,16 +21,20 @@ export const ModalControls = ({ submitProps, cancelProps, children }: Props) => 
     >
       {isPresent(children) && <div className="extras">{children}</div>}
       <div className="buttons">
-        <Button
-          {...cancelProps}
-          variant={cancelProps?.variant ?? 'secondary'}
-          text={cancelProps?.text ?? m.controls_cancel()}
-        />
-        <Button
-          {...submitProps}
-          variant={submitProps?.variant ?? 'primary'}
-          text={submitProps?.text ?? m.controls_submit()}
-        />
+        {isPresent(cancelProps) && (
+          <Button
+            {...cancelProps}
+            variant={cancelProps?.variant ?? 'secondary'}
+            text={cancelProps?.text ?? m.controls_cancel()}
+          />
+        )}
+        {isPresent(submitProps) && (
+          <Button
+            {...submitProps}
+            variant={submitProps?.variant ?? 'primary'}
+            text={submitProps?.text ?? m.controls_submit()}
+          />
+        )}
       </div>
     </div>
   );

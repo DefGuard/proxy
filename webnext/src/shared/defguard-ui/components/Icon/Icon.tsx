@@ -16,6 +16,7 @@ import { IconDesktop } from './icons/IconDesktop';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
 import { IconFile } from './icons/IconFile';
 import { IconGlobe } from './icons/IconGlobe';
+import { IconHelp } from './icons/IconHelp';
 import { IconHide } from './icons/IconHide';
 import { IconLinux } from './icons/IconLinux';
 import { IconLoader } from './icons/IconLoader';
@@ -113,6 +114,8 @@ export const Icon = <T extends IconKindValue>({
         return IconFile;
       case 'globe':
         return IconGlobe;
+      case 'help':
+        return IconHelp;
       default:
         throw Error(`Unimplemented icon kind: ${iconKind}`);
     }

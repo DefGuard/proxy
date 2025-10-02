@@ -22,5 +22,6 @@ export interface MenuItemProps {
 
 export interface MenuHeaderProps {
   text: string;
+  tooltip?: string;
   onHelp?: () => void;
 }

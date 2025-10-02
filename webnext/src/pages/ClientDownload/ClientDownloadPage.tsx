@@ -1,25 +1,94 @@
 import './style.scss';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { Page } from '../../shared/components/Page/Page';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
 import { EnrollmentStep } from '../../shared/components/Step/Step';
+import { externalLink } from '../../shared/consts';
 import { Button } from '../../shared/defguard-ui/components/Button/Button';
+import { ButtonMenu } from '../../shared/defguard-ui/components/ButtonMenu/MenuButton';
 import { Icon } from '../../shared/defguard-ui/components/Icon';
 import type { IconKindValue } from '../../shared/defguard-ui/components/Icon/icon-types';
+import type { MenuItemsGroup } from '../../shared/defguard-ui/components/Menu/types';
 import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
 import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
 import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
+import { isPresent } from '../../shared/defguard-ui/utils/isPresent';
 import androidIcon from './assets/android.png';
 import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
 import desktopIcon from './assets/pc-tower.png';
 
+// open link in onClick handler
+const openLink = (value: string): void => {
+  const anchorElement = document.createElement('a');
+  anchorElement.style.display = 'none';
+  anchorElement.href = value;
+  anchorElement.target = '_blank';
+  anchorElement.rel = 'noopener noreferrer';
+  document.body.appendChild(anchorElement);
+  anchorElement.click();
+  anchorElement.remove();
+};
+
+const linuxMenu: MenuItemsGroup[] = [
+  {
+    items: [
+      {
+        text: 'Deb X86',
+        onClick: () => openLink(externalLink.client.desktop.linux.deb.amd),
+      },
+      {
+        text: 'Deb ARM',
+        onClick: () => openLink(externalLink.client.desktop.linux.deb.arm),
+      },
+      {
+        text: 'RPM X86',
+        onClick: () => openLink(externalLink.client.desktop.linux.rpm.amd),
+      },
+      {
+        text: 'RPM ARM',
+        onClick: () => openLink(externalLink.client.desktop.linux.rpm.arm),
+      },
+      {
+        text: 'ArchLinux',
+        onClick: () => openLink(externalLink.client.desktop.linux.arch),
+      },
+    ],
+  },
+];
+
 export const ClientDownloadPage = () => {
-  const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [_appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
+
+  const appleMenu = useMemo(
+    (): MenuItemsGroup[] => [
+      {
+        header: {
+          text: 'Apple',
+          onHelp: () => {
+            setAppleHelpModalOpen(true);
+          },
+        },
+        items: [
+          {
+            text: 'Intel',
+            onClick: () => openLink(externalLink.client.desktop.macos.intel),
+          },
+          {
+            text: 'ARM',
+            onClick: () => openLink(externalLink.client.desktop.macos.arm),
+          },
+        ],
+      },
+    ],
+    [],
+  );
 
   return (
     <Page id="client-download-page" nav>
@@ -42,6 +111,7 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'Windows' })}
           buttonIconKind="windows"
+          directLink={externalLink.client.desktop.windows}
           icon={desktopIcon}
         />
         <Platform
@@ -52,6 +122,7 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'Linux' })}
           buttonIconKind="linux"
+          menuItems={linuxMenu}
           icon={desktopIcon}
         />
         <Platform
@@ -62,6 +133,7 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'Mac' })}
           buttonIconKind="app-store"
+          menuItems={appleMenu}
           icon={laptopIcon}
         />
       </div>
@@ -78,6 +150,7 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'Android' })}
           buttonIconKind="android"
+          directLink={externalLink.client.mobile.google}
           icon={androidIcon}
         />
         <Platform
@@ -88,22 +161,23 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'iOS' })}
           buttonIconKind="apple"
+          directLink={externalLink.client.mobile.apple}
           icon={iosIcon}
         />
       </div>
       <Modal
         title={m.client_download_modal_title()}
         size="small"
-        isOpen={modalOpen}
+        isOpen={confirmModalOpen}
         onClose={() => {
-          setModalOpen(false);
+          setConfirmModalOpen(false);
         }}
       >
         <p>{m.client_download_modal_content()}</p>
         <ModalControls
           cancelProps={{
             text: m.client_download_modal_cancel(),
-            onClick: () => setModalOpen(false),
+            onClick: () => setConfirmModalOpen(false),
           }}
           submitProps={{
             text: m.controls_continue(),
@@ -126,7 +200,7 @@ export const ClientDownloadPage = () => {
         }}
         nextText={m.controls_continue()}
         onNext={() => {
-          setModalOpen(true);
+          setConfirmModalOpen(true);
         }}
       />
     </Page>
@@ -140,6 +214,8 @@ const Platform = ({
   subtitle,
   title,
   testId,
+  menuItems,
+  directLink,
 }: {
   icon: string;
   title: string;
@@ -147,6 +223,8 @@ const Platform = ({
   buttonText: string;
   buttonIconKind: IconKindValue;
   testId: string;
+  directLink?: string;
+  menuItems?: MenuItemsGroup[];
 }) => {
   return (
     <div className="platform" data-testid={testId}>
@@ -155,15 +233,19 @@ const Platform = ({
         <p>{title}</p>
         <p>{subtitle}</p>
       </div>
-      <Button
-        variant="outlined"
-        iconLeft={buttonIconKind}
-        text={buttonText}
-        onClick={() => {
-          //TODO: Links ?
-          console.log('todo');
-        }}
-      />
+      {isPresent(directLink) && (
+        <a href={directLink} target="_blank">
+          <Button variant="outlined" iconLeft={buttonIconKind} text={buttonText} />
+        </a>
+      )}
+      {isPresent(menuItems) && (
+        <ButtonMenu
+          variant="outlined"
+          menuItems={menuItems}
+          iconLeft={buttonIconKind}
+          text={buttonText}
+        />
+      )}
     </div>
   );
 };

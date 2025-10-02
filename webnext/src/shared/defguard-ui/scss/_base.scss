@@ -19,6 +19,12 @@ html {
   overflow: hidden;
 }
 
+// for apple
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: auto;
+}
+
 h1 {
   font: var(--t-title-h1);
 }
