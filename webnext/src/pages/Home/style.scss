@@ -14,7 +14,9 @@
     }
 
     & > .subtitle {
+      font: var(--t-body-primary-400);
       text-align: center;
+      color: var(--fg-muted);
     }
 
     & > footer {

@@ -1,9 +1,11 @@
-import type { PropsWithChildren } from 'react';
+import { type PropsWithChildren, useMemo } from 'react';
 import { Container } from '../Container/Container';
 import './style.scss';
 import clsx from 'clsx';
-import { Icon } from '../../defguard-ui/components/Icon';
-import type { IconKindValue } from '../../defguard-ui/components/Icon/icon-types';
+import { IconDesktop } from './icons/IconDesktop';
+import { IconFile } from './icons/IconFile';
+import { IconGlobe } from './icons/IconGlobe';
+import { IconPhone } from './icons/IconPhone';
 
 export const ContainerWithIcon = ({
   children,
@@ -11,15 +13,28 @@ export const ContainerWithIcon = ({
   id,
   icon,
 }: PropsWithChildren & {
-  icon: IconKindValue;
+  icon: 'phone' | 'file' | 'globe' | 'desktop';
   className?: string;
   id?: string;
 }) => {
+  const RenderIcon = useMemo(() => {
+    switch (icon) {
+      case 'desktop':
+        return IconDesktop;
+      case 'file':
+        return IconFile;
+      case 'globe':
+        return IconGlobe;
+      case 'phone':
+        return IconPhone;
+    }
+  }, [icon]);
+
   return (
     <Container id={id} className={clsx('container-with-icon', className)}>
       <div className="track">
-        <div className="container-icon">
-          <Icon icon={icon} />
+        <div className="container-icon" data-icon={icon}>
+          <RenderIcon />
         </div>
         <div className="content">{children}</div>
       </div>

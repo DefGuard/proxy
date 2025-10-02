@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { BehaviorSubject } from 'rxjs';
 import { motionTransitionStandard } from '../../../consts';
 import { isPresent } from '../../utils/isPresent';
-import { InteractionBox } from '../InteractionBox/InteractionBox';
+import { IconButton } from '../IconButton/IconButton';
 import type { ModalProps } from './types';
 
 const portalTarget = document.getElementById('modals-root') as HTMLElement;
@@ -146,11 +146,10 @@ export const Modal = ({
             >
               <div className="modal-header">
                 <p className="title">{title}</p>
-                <InteractionBox
+                <IconButton
                   icon="close"
-                  iconSize={20}
-                  disabled={!isPresent(onClose)}
                   onClick={onClose}
+                  disabled={!isPresent(onClose)}
                 />
               </div>
               <div className="modal-content">{children}</div>

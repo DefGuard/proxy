@@ -11,6 +11,7 @@
   "form_error_min_len": "Minimum length of {length}",
   "form_error_email": "Enter valid email",
   "form_error_required": "Field is required",
+  "form_error_token": "Token is not valid",
   "form_label_token": "Token",
   "form_label_email": "email",
   "form_label_url": "URL",

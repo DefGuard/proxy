@@ -12,8 +12,14 @@
     }
 
     .input-track {
+      --input-font: var(--t-input-text-primary);
+
+      &.size-lg {
+        --input-font: var(--t-input-text-big);
+      }
+
       input {
-        font: var(--t-input-text-primary);
+        font: var(--input-font);
         color: var(--fg-default);
         border: none;
         background: none;
@@ -25,7 +31,7 @@
         padding: 0;
 
         &::placeholder {
-          font: var(--t-input-text-primary);
+          font: var(--input-font);
           color: var(--fg-muted);
         }
 
@@ -41,10 +47,6 @@
       & > .field-label {
         cursor: not-allowed;
       }
-    }
-
-    &.size-big {
-      --input-size: var(--input-size-lg);
     }
   }
 }
