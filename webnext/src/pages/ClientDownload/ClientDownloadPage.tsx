@@ -17,6 +17,7 @@ import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox'
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
 import { isPresent } from '../../shared/defguard-ui/utils/isPresent';
 import androidIcon from './assets/android.png';
+import apple_video_src from './assets/apple_hardware_help.mp4';
 import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
 import desktopIcon from './assets/pc-tower.png';
@@ -64,13 +65,13 @@ export const ClientDownloadPage = () => {
   const navigate = useNavigate();
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [_appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
+  const [appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
 
   const appleMenu = useMemo(
     (): MenuItemsGroup[] => [
       {
         header: {
-          text: 'Apple',
+          text: m.client_download_apple_help_header(),
           onHelp: () => {
             setAppleHelpModalOpen(true);
           },
@@ -186,6 +187,37 @@ export const ClientDownloadPage = () => {
                 to: '/enrollment-start',
                 replace: true,
               });
+            },
+          }}
+        />
+      </Modal>
+      <Modal
+        title={m.client_download_apple_help_title()}
+        size="small"
+        isOpen={appleHelpModalOpen}
+        onClose={() => {
+          setAppleHelpModalOpen(false);
+        }}
+      >
+        <p>{m.client_download_apple_help_content_1()}</p>
+        <SizedBox height={ThemeSpacing.Xl} />
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          src={apple_video_src}
+          style={{
+            width: '100%',
+            height: 'auto',
+          }}
+        />
+        <SizedBox height={ThemeSpacing.Xl} />
+        <p>{m.client_download_apple_help_content_2()}</p>
+        <ModalControls
+          submitProps={{
+            text: m.controls_got_it(),
+            onClick: () => {
+              setAppleHelpModalOpen(false);
             },
           }}
         />

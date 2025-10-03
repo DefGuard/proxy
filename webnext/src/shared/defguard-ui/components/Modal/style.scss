@@ -45,11 +45,11 @@
 
       & > .modal-header {
         box-sizing: border-box;
-        padding: var(--spacing-md) var(--spacing-xl);
+        padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) var(--spacing-lg);
         border-top-left-radius: var(--radius-lg);
         border-top-right-radius: var(--radius-lg);
         display: grid;
-        grid-template-columns: 1fr 20px;
+        grid-template-columns: 1fr 36px;
         grid-template-rows: 1fr;
         align-items: center;
         user-select: none;
