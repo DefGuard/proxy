@@ -96,12 +96,12 @@ async fn app_info<'a>() -> Result<Json<AppInfo<'a>>, ApiError> {
 }
 
 async fn healthcheck() -> &'static str {
-    "I'm alive!"
+    "alive"
 }
 
 async fn healthcheckgrpc(State(state): State<AppState>) -> (StatusCode, &'static str) {
     if state.grpc_server.connected.load(Ordering::Relaxed) {
-        (StatusCode::OK, "Alive")
+        (StatusCode::OK, "alive")
     } else {
         (
             StatusCode::SERVICE_UNAVAILABLE,
