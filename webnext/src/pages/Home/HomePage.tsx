@@ -17,8 +17,13 @@ export const HomePage = () => {
       <SizedBox height={ThemeSpacing.Xl6} />
       <HomeChoice />
       <footer>
-        <p>{m.start_footer_copyright({ currentYear: currentYear.toString() })}</p>
-        <SizedBox height={ThemeSpacing.Sm} />
+        <p className="copyright">
+          <span>Copyright ©2023-{currentYear.toString()} </span>
+          <a href="https://defguard.net" target="_blank" rel="noopener noreferrer">
+            Defguard
+          </a>
+          <span> Sp. z o.o.</span>
+        </p>
       </footer>
     </Page>
   );
