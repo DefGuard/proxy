@@ -49,6 +49,7 @@ const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
+const X_POWERED_BY: &str = "x-powered-by";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -155,6 +156,13 @@ async fn core_version_middleware(
         .headers_mut()
         .insert(DEFGUARD_CORE_CONNECTED_HEADER, core_connected_header);
 
+    response
+}
+
+async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
+    response
+        .headers_mut()
+        .insert(X_POWERED_BY, HeaderValue::from_static("Defguard"));
     response
 }
 
@@ -278,6 +286,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 .route("/info", get(app_info)),
         )
         .fallback_service(get(handle_404))
+        .layer(middleware::map_response(powered_by_header))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             core_version_middleware,
