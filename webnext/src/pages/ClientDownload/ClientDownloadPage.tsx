@@ -16,45 +16,37 @@ import { ModalControls } from '../../shared/defguard-ui/components/ModalControls
 import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
 import { isPresent } from '../../shared/defguard-ui/utils/isPresent';
+import { openVirtualLink } from '../../shared/utils/openVirtualLink';
 import androidIcon from './assets/android.png';
+import apple_video_src from './assets/apple_hardware_help.mp4';
 import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
 import desktopIcon from './assets/pc-tower.png';
 
 // open link in onClick handler
-const openLink = (value: string): void => {
-  const anchorElement = document.createElement('a');
-  anchorElement.style.display = 'none';
-  anchorElement.href = value;
-  anchorElement.target = '_blank';
-  anchorElement.rel = 'noopener noreferrer';
-  document.body.appendChild(anchorElement);
-  anchorElement.click();
-  anchorElement.remove();
-};
 
 const linuxMenu: MenuItemsGroup[] = [
   {
     items: [
       {
         text: 'Deb X86',
-        onClick: () => openLink(externalLink.client.desktop.linux.deb.amd),
+        onClick: () => openVirtualLink(externalLink.client.desktop.linux.deb.amd),
       },
       {
         text: 'Deb ARM',
-        onClick: () => openLink(externalLink.client.desktop.linux.deb.arm),
+        onClick: () => openVirtualLink(externalLink.client.desktop.linux.deb.arm),
       },
       {
         text: 'RPM X86',
-        onClick: () => openLink(externalLink.client.desktop.linux.rpm.amd),
+        onClick: () => openVirtualLink(externalLink.client.desktop.linux.rpm.amd),
       },
       {
         text: 'RPM ARM',
-        onClick: () => openLink(externalLink.client.desktop.linux.rpm.arm),
+        onClick: () => openVirtualLink(externalLink.client.desktop.linux.rpm.arm),
       },
       {
         text: 'ArchLinux',
-        onClick: () => openLink(externalLink.client.desktop.linux.arch),
+        onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
       },
     ],
   },
@@ -64,13 +56,13 @@ export const ClientDownloadPage = () => {
   const navigate = useNavigate();
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [_appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
+  const [appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
 
   const appleMenu = useMemo(
     (): MenuItemsGroup[] => [
       {
         header: {
-          text: 'Apple',
+          text: m.client_download_apple_help_header(),
           onHelp: () => {
             setAppleHelpModalOpen(true);
           },
@@ -78,11 +70,11 @@ export const ClientDownloadPage = () => {
         items: [
           {
             text: 'Intel',
-            onClick: () => openLink(externalLink.client.desktop.macos.intel),
+            onClick: () => openVirtualLink(externalLink.client.desktop.macos.intel),
           },
           {
             text: 'ARM',
-            onClick: () => openLink(externalLink.client.desktop.macos.arm),
+            onClick: () => openVirtualLink(externalLink.client.desktop.macos.arm),
           },
         ],
       },
@@ -97,7 +89,7 @@ export const ClientDownloadPage = () => {
         <h1>{m.client_download_title()}</h1>
         <p>{m.client_download_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl5} />
+      <SizedBox height={ThemeSpacing.Xl4} />
       <div className="platforms">
         <div className="label">
           <Icon icon="desktop" size={20} /> <p>{m.client_download_label_desktop()}</p>
@@ -127,7 +119,7 @@ export const ClientDownloadPage = () => {
         />
         <Platform
           testId="macos"
-          title={m.client_download_for({ platform: 'Windows' })}
+          title={m.client_download_for({ platform: 'MacOS' })}
           subtitle={m.client_download_supports_newer({
             platform: 'macOS 14 (Sonoma)',
           })}
@@ -186,6 +178,37 @@ export const ClientDownloadPage = () => {
                 to: '/enrollment-start',
                 replace: true,
               });
+            },
+          }}
+        />
+      </Modal>
+      <Modal
+        title={m.client_download_apple_help_title()}
+        size="small"
+        isOpen={appleHelpModalOpen}
+        onClose={() => {
+          setAppleHelpModalOpen(false);
+        }}
+      >
+        <p>{m.client_download_apple_help_content_1()}</p>
+        <SizedBox height={ThemeSpacing.Xl} />
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          src={apple_video_src}
+          style={{
+            width: '100%',
+            height: 'auto',
+          }}
+        />
+        <SizedBox height={ThemeSpacing.Xl} />
+        <p>{m.client_download_apple_help_content_2()}</p>
+        <ModalControls
+          submitProps={{
+            text: m.controls_got_it(),
+            onClick: () => {
+              setAppleHelpModalOpen(false);
             },
           }}
         />

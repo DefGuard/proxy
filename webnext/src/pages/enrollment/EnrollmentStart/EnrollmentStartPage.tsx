@@ -134,7 +134,7 @@ export const EnrollmentStartPage = () => {
         backText={m.controls_back()}
         onBack={() => {
           navigate({
-            to: '/',
+            to: '/download',
           });
         }}
         nextText={m.controls_continue()}
