@@ -1,4 +1,6 @@
-export const openVirtualLink = (value: string): void => {
+export const openVirtualLink = (value?: string): void => {
+  if (!value) return;
+
   const anchorElement = document.createElement('a');
   anchorElement.style.display = 'none';
   anchorElement.href = value;

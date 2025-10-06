@@ -1,5 +1,5 @@
 import './style.scss';
-import { useNavigate } from '@tanstack/react-router';
+import { useLoaderData, useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { Page } from '../../shared/components/Page/Page';
@@ -25,34 +25,10 @@ import desktopIcon from './assets/pc-tower.png';
 
 // open link in onClick handler
 
-const linuxMenu: MenuItemsGroup[] = [
-  {
-    items: [
-      {
-        text: 'Deb X86',
-        onClick: () => openVirtualLink(externalLink.client.desktop.linux.deb.amd),
-      },
-      {
-        text: 'Deb ARM',
-        onClick: () => openVirtualLink(externalLink.client.desktop.linux.deb.arm),
-      },
-      {
-        text: 'RPM X86',
-        onClick: () => openVirtualLink(externalLink.client.desktop.linux.rpm.amd),
-      },
-      {
-        text: 'RPM ARM',
-        onClick: () => openVirtualLink(externalLink.client.desktop.linux.rpm.arm),
-      },
-      {
-        text: 'ArchLinux',
-        onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
-      },
-    ],
-  },
-];
-
 export const ClientDownloadPage = () => {
+  const pageData = useLoaderData({
+    from: '/download',
+  });
   const navigate = useNavigate();
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -70,16 +46,46 @@ export const ClientDownloadPage = () => {
         items: [
           {
             text: 'Intel',
-            onClick: () => openVirtualLink(externalLink.client.desktop.macos.intel),
+            onClick: () => openVirtualLink(pageData?.macos_amd64),
           },
           {
             text: 'ARM',
-            onClick: () => openVirtualLink(externalLink.client.desktop.macos.arm),
+            onClick: () => openVirtualLink(pageData?.macos_arm64),
           },
         ],
       },
     ],
-    [],
+    [pageData],
+  );
+
+  const linuxMenu: MenuItemsGroup[] = useMemo(
+    () => [
+      {
+        items: [
+          {
+            text: 'Deb X86',
+            onClick: () => openVirtualLink(pageData?.deb_amd64),
+          },
+          {
+            text: 'Deb ARM',
+            onClick: () => openVirtualLink(pageData?.deb_arm64),
+          },
+          {
+            text: 'RPM X86',
+            onClick: () => openVirtualLink(pageData?.rpm_amd64),
+          },
+          {
+            text: 'RPM ARM',
+            onClick: () => openVirtualLink(pageData?.rpm_arm64),
+          },
+          {
+            text: 'Arch Linux',
+            onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
+          },
+        ],
+      },
+    ],
+    [pageData],
   );
 
   return (
@@ -103,7 +109,7 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'Windows' })}
           buttonIconKind="windows"
-          directLink={externalLink.client.desktop.windows}
+          directLink={pageData?.windows_amd64}
           icon={desktopIcon}
         />
         <Platform

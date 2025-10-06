@@ -3,6 +3,7 @@ import z from 'zod';
 import { ConfigureClientPage } from '../pages/enrollment/ConfigureClient/ConfigureClientPage';
 import { api } from '../shared/api/api';
 import type { EnrollmentStartResponse } from '../shared/api/types';
+import { updateServiceApi } from '../shared/api/update-service';
 import { isPresent } from '../shared/defguard-ui/utils/isPresent';
 import { useEnrollmentStore } from '../shared/hooks/useEnrollmentStore';
 
@@ -38,6 +39,7 @@ export const Route = createFileRoute('/client-setup')({
     };
   },
   loader: async ({ context: { openid } }) => {
+    const clientDownload = await updateServiceApi.getClientArtifacts().catch(() => null);
     if (openid) {
       try {
         const openIdResponse = await api.openId.enrollmentCallback.callbackFn({
@@ -68,6 +70,7 @@ export const Route = createFileRoute('/client-setup')({
     }
     const state = useEnrollmentStore.getState();
     return {
+      clientDownload,
       token: state.token as string,
       enrollmentData: state.enrollmentData as EnrollmentStartResponse,
     };

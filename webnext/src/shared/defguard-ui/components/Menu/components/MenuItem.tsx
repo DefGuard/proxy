@@ -9,6 +9,7 @@ export const MenuItem = ({
   icon,
   items,
   onClick,
+  onClose,
   variant,
 }: MenuItemProps) => {
   const hasItems = isPresent(items) && items.length > 0;
@@ -27,6 +28,9 @@ export const MenuItem = ({
       onClick={() => {
         if (!disabled) {
           onClick?.();
+          if (!hasItems) {
+            onClose?.();
+          }
         }
       }}
     >
