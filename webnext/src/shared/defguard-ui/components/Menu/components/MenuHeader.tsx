@@ -3,7 +3,7 @@ import { isPresent } from '../../../utils/isPresent';
 import { InteractionBox } from '../../InteractionBox/InteractionBox';
 import type { MenuHeaderProps } from '../types';
 
-export const MenuHeader = ({ text, onHelp }: MenuHeaderProps) => {
+export const MenuHeader = ({ text, onHelp, onClose }: MenuHeaderProps) => {
   return (
     <div
       className={clsx('menu-header', {
@@ -16,7 +16,10 @@ export const MenuHeader = ({ text, onHelp }: MenuHeaderProps) => {
           className="menu-header-help"
           icon="help"
           iconSize={20}
-          onClick={onHelp}
+          onClick={() => {
+            onClose?.();
+            onHelp();
+          }}
         />
       )}
     </div>

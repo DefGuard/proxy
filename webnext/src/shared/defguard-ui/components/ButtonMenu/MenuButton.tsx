@@ -58,6 +58,9 @@ export const ButtonMenu = ({
             itemGroups={menuItems}
             ref={refs.setFloating}
             style={floatingStyles}
+            onClose={() => {
+              setOpen(false);
+            }}
             {...getFloatingProps()}
           />
         </FloatingPortal>

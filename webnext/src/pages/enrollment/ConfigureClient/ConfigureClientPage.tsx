@@ -1,8 +1,9 @@
 import './style.scss';
 
 import { useLoaderData } from '@tanstack/react-router';
+import { capitalCase } from 'change-case';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { m } from '../../../paraglide/messages';
 import { ContactFooter } from '../../../shared/components/ContactFooter/ContactFooter';
 import { ContainerWithIcon } from '../../../shared/components/ContainerWithIcon/ContainerWithIcon';
@@ -10,17 +11,86 @@ import { Page } from '../../../shared/components/Page/Page';
 import { EnrollmentStep } from '../../../shared/components/Step/Step';
 import { externalLink } from '../../../shared/consts';
 import { Button } from '../../../shared/defguard-ui/components/Button/Button';
+import { ButtonMenu } from '../../../shared/defguard-ui/components/ButtonMenu/MenuButton';
 import { CopyField } from '../../../shared/defguard-ui/components/CopyField/CopyField';
 import { Divider } from '../../../shared/defguard-ui/components/Divider/Divider';
 import { Fold } from '../../../shared/defguard-ui/components/Fold/Fold';
 import { Icon } from '../../../shared/defguard-ui/components/Icon';
+import type { MenuItemsGroup } from '../../../shared/defguard-ui/components/Menu/types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
+import { openVirtualLink } from '../../../shared/utils/openVirtualLink';
 
 export const ConfigureClientPage = () => {
   const pageData = useLoaderData({
     from: '/client-setup',
   });
+  const clientLinks = pageData.clientDownload;
+
+  const clientDownloadMenu = useMemo(
+    (): MenuItemsGroup[] => [
+      {
+        items: [
+          {
+            text: 'Windows',
+            icon: 'windows',
+            onClick: () => openVirtualLink(clientLinks?.windows_amd64),
+          },
+        ],
+      },
+      {
+        header: {
+          text: m.client_download_apple_help_header(),
+        },
+        items: [
+          {
+            icon: 'apple',
+            text: 'Intel',
+            onClick: () => openVirtualLink(clientLinks?.macos_amd64),
+          },
+          {
+            icon: 'apple',
+            text: 'ARM',
+            onClick: () => openVirtualLink(clientLinks?.macos_arm64),
+          },
+        ],
+      },
+      {
+        header: {
+          text: `${capitalCase(m.misc_for())} Linux`,
+        },
+        items: [
+          {
+            icon: 'linux',
+            text: 'Deb X86',
+            onClick: () => openVirtualLink(clientLinks?.deb_amd64),
+          },
+          {
+            icon: 'linux',
+            text: 'Deb ARM',
+            onClick: () => openVirtualLink(clientLinks?.deb_arm64),
+          },
+          {
+            icon: 'linux',
+            text: 'RPM X86',
+            onClick: () => openVirtualLink(clientLinks?.rpm_amd64),
+          },
+          {
+            icon: 'linux',
+            text: 'RPM ARM',
+            onClick: () => openVirtualLink(clientLinks?.rpm_arm64),
+          },
+          {
+            icon: 'linux',
+            text: 'Arch Linux',
+            onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
+          },
+        ],
+      },
+    ],
+    [clientLinks],
+  );
+
   const [manualOpen, setManualOpen] = useState(false);
 
   const deepLink = () =>
@@ -60,6 +130,13 @@ export const ConfigureClientPage = () => {
               iconRight="open-in-new-window"
             />
           </a>
+          <ButtonMenu
+            variant="outlined"
+            menuItems={clientDownloadMenu}
+            text={m.client_setup_desktop_auto_button_download()}
+            iconRight="arrow-small"
+            iconRightRotation="down"
+          />
         </div>
         <Divider orientation="horizontal" />
         <Fold open={manualOpen} contentClassName="manual">

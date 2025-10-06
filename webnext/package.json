@@ -24,6 +24,7 @@
     "@tanstack/react-router-devtools": "^1.132.2",
     "@uidotdev/usehooks": "^2.4.1",
     "axios": "^1.12.2",
+    "change-case": "^5.4.4",
     "clsx": "^2.1.1",
     "lodash-es": "^4.17.21",
     "motion": "^12.23.21",

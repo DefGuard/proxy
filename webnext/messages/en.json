@@ -2,6 +2,7 @@
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "misc_or": "or",
   "misc_and": "and",
+  "misc_for": "for",
   "controls_back": "Back",
   "controls_continue": "Continue",
   "controls_cancel": "Cancel",
