@@ -1,5 +1,6 @@
 import './style.scss';
-import { useLoaderData, useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { Page } from '../../shared/components/Page/Page';
@@ -16,6 +17,7 @@ import { ModalControls } from '../../shared/defguard-ui/components/ModalControls
 import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
 import { isPresent } from '../../shared/defguard-ui/utils/isPresent';
+import { getClientArtifactsQueryOptions } from '../../shared/query/queryOptions';
 import { openVirtualLink } from '../../shared/utils/openVirtualLink';
 import androidIcon from './assets/android.png';
 import apple_video_src from './assets/apple_hardware_help.mp4';
@@ -23,12 +25,9 @@ import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
 import desktopIcon from './assets/pc-tower.png';
 
-// open link in onClick handler
-
 export const ClientDownloadPage = () => {
-  const pageData = useLoaderData({
-    from: '/download',
-  });
+  const { data: pageData } = useQuery(getClientArtifactsQueryOptions);
+
   const navigate = useNavigate();
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);

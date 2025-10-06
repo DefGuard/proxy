@@ -8,9 +8,10 @@ export const MenuItem = ({
   text,
   icon,
   items,
+  testId,
+  variant,
   onClick,
   onClose,
-  variant,
 }: MenuItemProps) => {
   const hasItems = isPresent(items) && items.length > 0;
   const hasIcon = isPresent(icon);
@@ -25,6 +26,7 @@ export const MenuItem = ({
         'grid-full': hasIcon && hasItems,
         nested: hasItems,
       })}
+      data-testid={testId}
       onClick={() => {
         if (!disabled) {
           onClick?.();

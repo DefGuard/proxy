@@ -1,5 +1,6 @@
 import './style.scss';
 
+import { useQuery } from '@tanstack/react-query';
 import { useLoaderData } from '@tanstack/react-router';
 import { capitalCase } from 'change-case';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -19,13 +20,15 @@ import { Icon } from '../../../shared/defguard-ui/components/Icon';
 import type { MenuItemsGroup } from '../../../shared/defguard-ui/components/Menu/types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
+import { getClientArtifactsQueryOptions } from '../../../shared/query/queryOptions';
 import { openVirtualLink } from '../../../shared/utils/openVirtualLink';
 
 export const ConfigureClientPage = () => {
   const pageData = useLoaderData({
     from: '/client-setup',
   });
-  const clientLinks = pageData.clientDownload;
+
+  const { data: clientLinks } = useQuery(getClientArtifactsQueryOptions);
 
   const clientDownloadMenu = useMemo(
     (): MenuItemsGroup[] => [
