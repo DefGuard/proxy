@@ -128,7 +128,7 @@ export const ClientDownloadPage = () => {
         />
         <Platform
           testId="macos"
-          title={m.client_download_for({ platform: 'Windows' })}
+          title={m.client_download_for({ platform: 'MacOS' })}
           subtitle={m.client_download_supports_newer({
             platform: 'macOS 14 (Sonoma)',
           })}
