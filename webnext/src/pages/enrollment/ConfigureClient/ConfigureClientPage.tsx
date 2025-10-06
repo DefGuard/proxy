@@ -95,7 +95,7 @@ export const ConfigureClientPage = () => {
         </button>
       </ContainerWithIcon>
       <SizedBox height={ThemeSpacing.Md} />
-      <ContainerWithIcon id="setup-mobile" icon="mobile">
+      <ContainerWithIcon id="setup-mobile" icon="phone">
         <header>
           <h5>{m.client_setup_mobile_title()}</h5>
           <p>{m.client_setup_mobile_subtitle()}</p>

@@ -1,15 +1,14 @@
 {
   "name": "webnext",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc --noEmit",
-    "check-types": "tsc --noEmit",
+    "build": "vite build && tsc -b",
     "preview": "vite preview",
     "biome": "biome",
-    "lint": "biome check ./src/ && prettier src/**/*.scss --check --log-level error && stylelint \"src/**/*.scss\" -c ./.stylelintrc.json",
+    "lint": "biome check ./src/ && prettier src/**/*.scss --check --log-level error && stylelint \"src/**/*.scss\" -c ./.stylelintrc.json && tsc -b",
     "fix": "biome check ./src/ --write --unsafe && prettier src/**/*.scss -w --log-level silent",
     "tsc": "tsc"
   },
