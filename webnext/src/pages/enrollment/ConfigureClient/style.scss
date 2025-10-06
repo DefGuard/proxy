@@ -10,11 +10,13 @@
 
   footer {
     p {
+      text-align: center;
       font: var(--t-body-xs-500);
       color: var(--fg-muted);
 
       &.finish {
         color: var(--fg-success);
+        padding-bottom: var(--spacing-sm);
       }
     }
   }

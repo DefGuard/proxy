@@ -26,6 +26,11 @@
         text-align: center;
         font: var(--t-body-xs-400);
         color: var(--fg-muted);
+
+        span,
+        a {
+          color: inherit;
+        }
       }
     }
   }
