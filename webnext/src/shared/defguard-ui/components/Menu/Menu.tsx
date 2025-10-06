@@ -7,9 +7,16 @@ import { MenuHeader } from './components/MenuHeader';
 import { MenuSpacer } from './components/MenuSpacer';
 import type { MenuProps } from './types';
 
-export const Menu = ({ itemGroups, ref, className, onClose, ...props }: MenuProps) => {
+export const Menu = ({
+  itemGroups,
+  ref,
+  className,
+  onClose,
+  testId,
+  ...props
+}: MenuProps) => {
   return (
-    <div className={clsx('menu', className)} ref={ref} {...props}>
+    <div className={clsx('menu', className)} ref={ref} data-testid={testId} {...props}>
       {itemGroups.map((group, groupIndex) => (
         <Fragment key={group.header?.text ?? groupIndex}>
           {isPresent(group.header) && <MenuHeader {...group.header} onClose={onClose} />}

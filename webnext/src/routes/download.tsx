@@ -1,13 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { queryClient } from '../app/query';
 import { ClientDownloadPage } from '../pages/ClientDownload/ClientDownloadPage';
-import { updateServiceApi } from '../shared/api/update-service';
+import { getClientArtifactsQueryOptions } from '../shared/query/queryOptions';
 
 export const Route = createFileRoute('/download')({
   component: ClientDownloadPage,
-  loader: async () => {
-    const clientVersionData = await updateServiceApi
-      .getClientArtifacts()
-      .catch(() => null);
-    return clientVersionData;
-  },
+  loader: () => queryClient.ensureQueryData(getClientArtifactsQueryOptions),
 });

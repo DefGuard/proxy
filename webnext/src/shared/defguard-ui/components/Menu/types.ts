@@ -3,8 +3,9 @@ import type { IconKindValue } from '../Icon/icon-types';
 
 export interface MenuProps extends HTMLAttributes<HTMLDivElement> {
   itemGroups: MenuItemsGroup[];
-  onClose?: () => void;
   ref?: Ref<HTMLDivElement>;
+  testId?: string;
+  onClose?: () => void;
 }
 
 export interface MenuItemsGroup {
@@ -15,9 +16,10 @@ export interface MenuItemsGroup {
 export interface MenuItemProps {
   text: string;
   variant?: 'default' | 'danger';
+  disabled?: boolean;
   icon?: IconKindValue;
   items?: MenuItemProps[];
-  disabled?: boolean;
+  testId?: string;
   onClick?: () => void;
   onClose?: () => void;
 }
@@ -25,6 +27,7 @@ export interface MenuItemProps {
 export interface MenuHeaderProps {
   text: string;
   tooltip?: string;
+  testId?: string;
   onClose?: () => void;
   onHelp?: () => void;
 }

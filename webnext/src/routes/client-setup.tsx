@@ -1,11 +1,12 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
+import { queryClient } from '../app/query';
 import { ConfigureClientPage } from '../pages/enrollment/ConfigureClient/ConfigureClientPage';
 import { api } from '../shared/api/api';
 import type { EnrollmentStartResponse } from '../shared/api/types';
-import { updateServiceApi } from '../shared/api/update-service';
 import { isPresent } from '../shared/defguard-ui/utils/isPresent';
 import { useEnrollmentStore } from '../shared/hooks/useEnrollmentStore';
+import { getClientArtifactsQueryOptions } from '../shared/query/queryOptions';
 
 const schema = z.object({
   code: z.string().trim().optional(),
@@ -39,7 +40,8 @@ export const Route = createFileRoute('/client-setup')({
     };
   },
   loader: async ({ context: { openid } }) => {
-    const clientDownload = await updateServiceApi.getClientArtifacts().catch(() => null);
+    void queryClient.ensureQueryData(getClientArtifactsQueryOptions);
+
     if (openid) {
       try {
         const openIdResponse = await api.openId.enrollmentCallback.callbackFn({
@@ -70,7 +72,6 @@ export const Route = createFileRoute('/client-setup')({
     }
     const state = useEnrollmentStore.getState();
     return {
-      clientDownload,
       token: state.token as string,
       enrollmentData: state.enrollmentData as EnrollmentStartResponse,
     };
