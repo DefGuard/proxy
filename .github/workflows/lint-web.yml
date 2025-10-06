@@ -37,6 +37,7 @@ jobs:
           npm i -g pnpm
           pnpm i --frozen-lockfile
       - name: Build translations
+        working-directory: ./webnext
         run: pnpm dlx @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/paraglide
       - name: Lint
         working-directory: ./webnext
