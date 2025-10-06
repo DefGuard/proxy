@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
+import { AppleHelpModal } from '../../shared/components/AppleHelpModal/AppleHelpModal';
 import { Page } from '../../shared/components/Page/Page';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
 import { EnrollmentStep } from '../../shared/components/Step/Step';
@@ -20,7 +21,6 @@ import { isPresent } from '../../shared/defguard-ui/utils/isPresent';
 import { getClientArtifactsQueryOptions } from '../../shared/query/queryOptions';
 import { openVirtualLink } from '../../shared/utils/openVirtualLink';
 import androidIcon from './assets/android.png';
-import apple_video_src from './assets/apple_hardware_help.mp4';
 import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
 import desktopIcon from './assets/pc-tower.png';
@@ -162,6 +162,12 @@ export const ClientDownloadPage = () => {
           icon={iosIcon}
         />
       </div>
+      <AppleHelpModal
+        isOpen={appleHelpModalOpen}
+        onClose={() => {
+          setAppleHelpModalOpen(false);
+        }}
+      />
       <Modal
         title={m.client_download_modal_title()}
         size="small"
@@ -183,37 +189,6 @@ export const ClientDownloadPage = () => {
                 to: '/enrollment-start',
                 replace: true,
               });
-            },
-          }}
-        />
-      </Modal>
-      <Modal
-        title={m.client_download_apple_help_title()}
-        size="small"
-        isOpen={appleHelpModalOpen}
-        onClose={() => {
-          setAppleHelpModalOpen(false);
-        }}
-      >
-        <p>{m.client_download_apple_help_content_1()}</p>
-        <SizedBox height={ThemeSpacing.Xl} />
-        <video
-          controls
-          playsInline
-          preload="metadata"
-          src={apple_video_src}
-          style={{
-            width: '100%',
-            height: 'auto',
-          }}
-        />
-        <SizedBox height={ThemeSpacing.Xl} />
-        <p>{m.client_download_apple_help_content_2()}</p>
-        <ModalControls
-          submitProps={{
-            text: m.controls_got_it(),
-            onClick: () => {
-              setAppleHelpModalOpen(false);
             },
           }}
         />
