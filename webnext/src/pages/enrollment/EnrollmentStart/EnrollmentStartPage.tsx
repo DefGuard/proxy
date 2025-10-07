@@ -73,7 +73,7 @@ export const EnrollmentStartPage = () => {
       });
 
       navigate({
-        to: '/client-setup',
+        to: '/download',
         replace: true,
       });
     },
@@ -131,7 +131,8 @@ export const EnrollmentStartPage = () => {
         backText={m.controls_back()}
         onBack={() => {
           navigate({
-            to: '/download',
+            to: '/',
+            replace: true,
           });
         }}
         nextText={m.controls_continue()}

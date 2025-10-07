@@ -13,6 +13,7 @@ import { IconClose } from './icons/IconClose';
 import { IconConfig } from './icons/IconConfig';
 import { IconCopy } from './icons/IconCopy';
 import { IconDesktop } from './icons/IconDesktop';
+import { IconDisabled } from './icons/IconDisabled';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
 import { IconFile } from './icons/IconFile';
 import { IconGlobe } from './icons/IconGlobe';
@@ -66,6 +67,8 @@ export const Icon = <T extends IconKindValue>({
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
+      case 'disabled':
+        return IconDisabled;
       case 'show':
         return IconShow;
       case 'hide':

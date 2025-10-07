@@ -87,6 +87,7 @@ export const IconKind = {
   StatusAttention: 'status-attention',
   StatusAvailable: 'status-available',
   StatusImportant: 'status-important',
+  Disabled: 'disabled',
 } as const;
 
 export type IconKindValue = (typeof IconKind)[keyof typeof IconKind];

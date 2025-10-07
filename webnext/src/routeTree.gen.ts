@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteImport } from './routes/test'
+import { Route as SessionEndRouteImport } from './routes/session-end'
 import { Route as PasswordResetRouteImport } from './routes/password-reset'
 import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
 import { Route as DownloadRouteImport } from './routes/download'
@@ -23,6 +24,11 @@ import { Route as OpenidCallbackRouteImport } from './routes/openid/callback'
 const TestRoute = TestRouteImport.update({
   id: '/test',
   path: '/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionEndRoute = SessionEndRouteImport.update({
+  id: '/session-end',
+  path: '/session-end',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PasswordResetRoute = PasswordResetRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
   '/password-reset': typeof PasswordResetRoute
+  '/session-end': typeof SessionEndRoute
   '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/password/finish': typeof PasswordFinishRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
   '/password-reset': typeof PasswordResetRoute
+  '/session-end': typeof SessionEndRoute
   '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/password/finish': typeof PasswordFinishRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
   '/password-reset': typeof PasswordResetRoute
+  '/session-end': typeof SessionEndRoute
   '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/password/finish': typeof PasswordFinishRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/enrollment-start'
     | '/password-reset'
+    | '/session-end'
     | '/test'
     | '/openid/callback'
     | '/password/finish'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/enrollment-start'
     | '/password-reset'
+    | '/session-end'
     | '/test'
     | '/openid/callback'
     | '/password/finish'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/enrollment-start'
     | '/password-reset'
+    | '/session-end'
     | '/test'
     | '/openid/callback'
     | '/password/finish'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   EnrollmentStartRoute: typeof EnrollmentStartRoute
   PasswordResetRoute: typeof PasswordResetRoute
+  SessionEndRoute: typeof SessionEndRoute
   TestRoute: typeof TestRoute
   OpenidCallbackRoute: typeof OpenidCallbackRoute
   PasswordFinishRoute: typeof PasswordFinishRoute
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/test'
       fullPath: '/test'
       preLoaderRoute: typeof TestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/session-end': {
+      id: '/session-end'
+      path: '/session-end'
+      fullPath: '/session-end'
+      preLoaderRoute: typeof SessionEndRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/password-reset': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   EnrollmentStartRoute: EnrollmentStartRoute,
   PasswordResetRoute: PasswordResetRoute,
+  SessionEndRoute: SessionEndRoute,
   TestRoute: TestRoute,
   OpenidCallbackRoute: OpenidCallbackRoute,
   PasswordFinishRoute: PasswordFinishRoute,

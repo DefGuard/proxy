@@ -26,6 +26,7 @@
     "axios": "^1.12.2",
     "change-case": "^5.4.4",
     "clsx": "^2.1.1",
+    "dayjs": "^1.11.18",
     "lodash-es": "^4.17.21",
     "motion": "^12.23.21",
     "qrcode.react": "^4.2.0",

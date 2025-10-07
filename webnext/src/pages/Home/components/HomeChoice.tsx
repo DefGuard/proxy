@@ -22,7 +22,7 @@ export const HomeChoice = () => {
         subtitle={m.start_multi_enrollment_subtitle()}
         buttonText={m.start_multi_enrollment_button()}
         buttonIcon="arrow-big"
-        link="/download"
+        link="/enrollment-start"
         onClick={() => {}}
       />
       <Card
@@ -41,7 +41,7 @@ export const HomeChoice = () => {
 
 type CardProps = {
   img: 'enroll' | 'password';
-  link: '/password' | '/download';
+  link: '/password' | '/enrollment-start';
   buttonIcon: IconKindValue;
   buttonText: string;
   subtitle: string;

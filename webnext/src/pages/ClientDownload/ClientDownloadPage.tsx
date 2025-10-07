@@ -202,13 +202,6 @@ export const ClientDownloadPage = () => {
         />
       </Modal>
       <PageNavigation
-        backText={m.controls_back()}
-        onBack={() => {
-          navigate({
-            to: '/',
-            replace: true,
-          });
-        }}
         nextText={m.controls_continue()}
         onNext={() => {
           setConfirmModalOpen(true);
