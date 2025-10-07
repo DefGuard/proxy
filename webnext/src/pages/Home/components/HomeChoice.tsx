@@ -17,6 +17,7 @@ export const HomeChoice = () => {
     <div id="home-choice">
       <Card
         img="enroll"
+        testId="start-enrollment"
         title={m.start_multi_enrollment_title()}
         subtitle={m.start_multi_enrollment_subtitle()}
         buttonText={m.start_multi_enrollment_button()}
@@ -26,6 +27,7 @@ export const HomeChoice = () => {
       />
       <Card
         img="password"
+        testId="start-password-reset"
         title={m.start_multi_password_title()}
         subtitle={m.start_multi_password_subtitle()}
         buttonText={m.start_multi_password_button()}
@@ -45,6 +47,7 @@ type CardProps = {
   subtitle: string;
   title: string;
   card?: boolean;
+  testId?: string;
   onClick: () => void;
 };
 
@@ -53,9 +56,10 @@ const Card = ({
   buttonText,
   subtitle,
   title,
-  onClick,
   link,
   img,
+  testId,
+  onClick,
 }: CardProps) => {
   return (
     <div className={clsx('choice')}>
@@ -78,7 +82,7 @@ const Card = ({
       <SizedBox height={ThemeSpacing.Md} />
       <p className="subtitle">{subtitle}</p>
       <SizedBox height={ThemeSpacing.Xl2} />
-      <Link to={link}>
+      <Link to={link} data-testId={testId}>
         <Button
           size="primary"
           variant="primary"

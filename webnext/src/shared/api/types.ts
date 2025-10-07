@@ -17,6 +17,8 @@ export type UserInfo = {
   email: string;
   phone_number?: string;
   is_admin: boolean;
+  is_active: boolean;
+  enrolled: boolean;
 };
 
 export type AppInfo = {

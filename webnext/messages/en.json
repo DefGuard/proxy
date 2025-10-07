@@ -21,7 +21,7 @@
   "cmp_enrol_final": "Final step",
   "cmp_openid_button": "Sign in with {provider}",
   "cmp_copy_field_tooltip": "Copied",
-  "footer_contact": "If you need assistance, please contact your defguard administrator at",
+  "footer_contact": "If you need assistance, please contact your defguard administrator at.",
   "start_footer_copyright": "Copyright ©2023-{currentYear} Defguard Sp. z o.o.",
   "start_multi_title": "Get Started with Defguard",
   "start_multi_subtitle": "Please select the option that suits your needs.",

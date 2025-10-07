@@ -16,10 +16,11 @@ export const Input = ({
   ref,
   name,
   placeholder,
+  boxProps,
+  testId,
   onChange,
   onBlur,
   onFocus,
-  boxProps,
   size = 'default',
   type = 'text',
   required = false,
@@ -77,6 +78,7 @@ export const Input = ({
             ref={mergeRefs([ref, innerRef])}
             id={id}
             autoComplete={autocomplete}
+            data-testid={testId}
             value={value ?? ''}
             name={name}
             type={inputTypeInner}

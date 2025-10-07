@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { m } from '../../paraglide/messages';
 import { Container } from '../../shared/components/Container/Container';
 import { Page } from '../../shared/components/Page/Page';
-import { EnrollmentStep } from '../../shared/components/Step/Step';
 import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
 
@@ -58,12 +57,11 @@ export const PasswordStartPage = () => {
 
   return (
     <Page id="password-start-page" variant="default" nav>
-      <EnrollmentStep current={0} max={1} />
       <header>
         <h1>{m.password_start_title()}</h1>
         <p>{m.password_start_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl5} />
+      <SizedBox height={ThemeSpacing.Xl3} />
       <Container>
         <p>{m.password_start_form_explain()}</p>
         <form.AppForm>

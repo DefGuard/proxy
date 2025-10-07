@@ -31,6 +31,8 @@
         max-width: 100%;
         text-overflow: ellipsis;
         white-space: nowrap;
+        overflow: hidden;
+        min-width: 0;
       }
 
       button {

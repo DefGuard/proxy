@@ -48,6 +48,7 @@ export const FormInput = ({ mapError, ...props }: FormInputProps) => {
 
   return (
     <Input
+      testId={`field-${field.name}`}
       onBlur={field.handleBlur}
       onChange={field.handleChange}
       value={field.state.value}
