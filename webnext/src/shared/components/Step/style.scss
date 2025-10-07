@@ -13,6 +13,10 @@
 
   @include animate(background-color);
 
+  &.final {
+    --color: var(--bg-success);
+  }
+
   span {
     text-align: center;
     color: inherit;

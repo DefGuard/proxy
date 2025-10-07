@@ -153,7 +153,7 @@ export const PasswordFormPage = () => {
         <h1>{m.password_form_title()}</h1>
         <p>{m.password_form_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl5} />
+      <SizedBox height={ThemeSpacing.Xl3} />
       <Container>
         <form
           onSubmit={(e) => {
@@ -188,6 +188,7 @@ export const PasswordFormPage = () => {
             </form.AppField>
             <CheckList form={form} />
             <Button
+              testId="form-submit"
               size="big"
               type="submit"
               text={m.password_form_submit()}

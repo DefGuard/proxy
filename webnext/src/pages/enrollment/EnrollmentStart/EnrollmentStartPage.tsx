@@ -10,8 +10,8 @@ import { revalidateLogic } from '@tanstack/react-form';
 import type { AxiosError } from 'axios';
 import z from 'zod';
 import { api } from '../../../shared/api/api';
-import { Button } from '../../../shared/defguard-ui/components/Button/Button';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
+import { OIDCButton } from '../../../shared/defguard-ui/components/SSOButton/OIDCButton';
 import { useAppForm } from '../../../shared/defguard-ui/form';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
@@ -86,7 +86,7 @@ export const EnrollmentStartPage = () => {
         <h1>{m.enrollment_start_title()}</h1>
         <p>{m.enrollment_start_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl5} />
+      <SizedBox height={ThemeSpacing.Xl3} />
       {isPresent(loaderData?.url) && isPresent(loaderData.button_display_name) && (
         <>
           <ContainerWithIcon icon="globe">
@@ -96,15 +96,12 @@ export const EnrollmentStartPage = () => {
               <p>{m.enrollment_start_external_subtitle()}</p>
             </header>
             <div className="openid-link">
-              <a href={loaderData.url} target="_blank">
-                <Button
-                  size="big"
-                  iconRight="open-in-new-window"
-                  text={m.cmp_openid_button({
-                    provider: loaderData.button_display_name,
-                  })}
-                />
-              </a>
+              <OIDCButton
+                url={loaderData.url}
+                text={m.cmp_openid_button({
+                  provider: loaderData.button_display_name,
+                })}
+              />
             </div>
           </ContainerWithIcon>
           <Divider text={m.misc_or()} orientation="horizontal" />

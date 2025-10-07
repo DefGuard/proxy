@@ -25,12 +25,14 @@ export const PageNavigation = ({
       <div className="content">
         <div className="track">
           <Button
+            testId="page-nav-back"
             text={backText}
             disabled={backDisabled || loading}
             variant="outlined"
             onClick={onBack}
           />
           <Button
+            testId="page-nav-next"
             text={nextText}
             disabled={nextDisabled}
             loading={loading}

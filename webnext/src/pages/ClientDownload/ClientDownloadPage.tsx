@@ -1,6 +1,6 @@
 import './style.scss';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { type RouterState, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { AppleHelpModal } from '../../shared/components/AppleHelpModal/AppleHelpModal';
@@ -27,6 +27,7 @@ import desktopIcon from './assets/pc-tower.png';
 
 export const ClientDownloadPage = () => {
   const { data: pageData } = useQuery(getClientArtifactsQueryOptions);
+  const routerLoading = useRouterState({ select: (s: RouterState) => s.isLoading });
 
   const navigate = useNavigate();
 
@@ -172,18 +173,25 @@ export const ClientDownloadPage = () => {
         title={m.client_download_modal_title()}
         size="small"
         isOpen={confirmModalOpen}
-        onClose={() => {
-          setConfirmModalOpen(false);
-        }}
+        onClose={
+          !routerLoading
+            ? () => {
+                setConfirmModalOpen(false);
+              }
+            : undefined
+        }
       >
         <p>{m.client_download_modal_content()}</p>
         <ModalControls
           cancelProps={{
             text: m.client_download_modal_cancel(),
             onClick: () => setConfirmModalOpen(false),
+            disabled: routerLoading,
           }}
           submitProps={{
             text: m.controls_continue(),
+            testId: 'modal-confirm-download-submit',
+            loading: routerLoading,
             onClick: () => {
               navigate({
                 to: '/enrollment-start',

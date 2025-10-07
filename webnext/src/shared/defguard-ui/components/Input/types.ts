@@ -15,6 +15,7 @@ export type InputProps = {
   onChange?: (value: string) => void;
   boxProps?: Partial<FieldBoxProps>;
   autocomplete?: HTMLInputAutoCompleteAttribute;
+  testId?: string;
 } & Pick<HTMLAttributes<HTMLInputElement>, 'onBlur' | 'onFocus'>;
 
 export type FormInputProps = Pick<

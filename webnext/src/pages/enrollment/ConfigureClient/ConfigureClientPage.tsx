@@ -119,7 +119,7 @@ export const ConfigureClientPage = () => {
         <h1>{m.client_setup_title()}</h1>
         <p>{m.client_setup_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl5} />
+      <SizedBox height={ThemeSpacing.Xl3} />
       <ContainerWithIcon icon="desktop" id="setup-desktop">
         <header>
           <h5>{m.client_setup_desktop_title()}</h5>
@@ -129,6 +129,7 @@ export const ConfigureClientPage = () => {
             <span>{m.client_setup_desktop_auto_explain_2()}</span>
           </p>
         </header>
+        <SizedBox height={ThemeSpacing.Xl} />
         <div className="buttons">
           <a href={deepLink()} target="_blank">
             <Button
@@ -173,7 +174,7 @@ export const ConfigureClientPage = () => {
           <Icon icon="config" />
           <span>
             {m.client_setup_desktop_manual_fold({
-              intent: m.controls_show(),
+              intent: manualOpen ? m.controls_hide() : m.controls_show(),
             })}
           </span>
         </button>
