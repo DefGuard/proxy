@@ -23,6 +23,7 @@ import { openVirtualLink } from '../../shared/utils/openVirtualLink';
 import androidIcon from './assets/android.png';
 import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
+import linuxIcon from './assets/linux.png';
 import desktopIcon from './assets/pc-tower.png';
 
 export const ClientDownloadPage = () => {
@@ -58,35 +59,62 @@ export const ClientDownloadPage = () => {
     [pageData],
   );
 
-  const linuxMenu: MenuItemsGroup[] = useMemo(
-    () => [
+  const linuxMenu: MenuItemsGroup[] = useMemo(() => {
+    const res: MenuItemsGroup[] = [
       {
         items: [
           {
-            text: 'Deb X86',
-            onClick: () => openVirtualLink(pageData?.deb_amd64),
-          },
-          {
-            text: 'Deb ARM',
+            icon: 'ubuntu',
+            text: 'Ubuntu 24.04 ARM',
             onClick: () => openVirtualLink(pageData?.deb_arm64),
           },
           {
-            text: 'RPM X86',
-            onClick: () => openVirtualLink(pageData?.rpm_amd64),
+            icon: 'ubuntu',
+            text: 'Ubuntu 24.04 AMD64',
+            onClick: () => openVirtualLink(pageData?.deb_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'debian',
+            text: 'Ubuntu 22.04 / Debian 12&13 ARM',
+            onClick: () => openVirtualLink(pageData?.deb_arm64),
           },
           {
+            icon: 'debian',
+            text: 'Ubuntu 22.04 / Debian 12&13 AMD64',
+            onClick: () => openVirtualLink(pageData?.deb_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'linux',
             text: 'RPM ARM',
             onClick: () => openVirtualLink(pageData?.rpm_arm64),
           },
           {
+            icon: 'linux',
+            text: 'RPM AMD64',
+            onClick: () => openVirtualLink(pageData?.rpm_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'arch-linux',
             text: 'Arch Linux',
             onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
           },
         ],
       },
-    ],
-    [pageData],
-  );
+    ];
+    return res;
+  }, [pageData]);
 
   return (
     <Page id="client-download-page" nav>
@@ -95,7 +123,7 @@ export const ClientDownloadPage = () => {
         <h1>{m.client_download_title()}</h1>
         <p>{m.client_download_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl4} />
+      <SizedBox height={ThemeSpacing.Xl3} />
       <div className="platforms">
         <div className="label">
           <Icon icon="desktop" size={20} /> <p>{m.client_download_label_desktop()}</p>
@@ -121,7 +149,7 @@ export const ClientDownloadPage = () => {
           buttonText={m.client_download_for({ platform: 'Linux' })}
           buttonIconKind="linux"
           menuItems={linuxMenu}
-          icon={desktopIcon}
+          icon={linuxIcon}
         />
         <Platform
           testId="macos"
@@ -194,7 +222,7 @@ export const ClientDownloadPage = () => {
             loading: routerLoading,
             onClick: () => {
               navigate({
-                to: '/enrollment-start',
+                to: '/client-setup',
                 replace: true,
               });
             },

@@ -82,7 +82,7 @@ const Card = ({
       <SizedBox height={ThemeSpacing.Md} />
       <p className="subtitle">{subtitle}</p>
       <SizedBox height={ThemeSpacing.Xl2} />
-      <Link to={link} data-testId={testId}>
+      <Link to={link} data-testid={testId}>
         <Button
           size="primary"
           variant="primary"

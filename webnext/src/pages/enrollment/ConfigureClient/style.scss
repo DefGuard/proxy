@@ -18,11 +18,18 @@
     .finish {
       color: var(--fg-success);
       padding-bottom: var(--spacing-sm);
+      font: var(--t-body-xs-500);
     }
   }
 }
 
 #configure-client-page #setup-desktop {
+  header {
+    h5 {
+      padding-bottom: var(--spacing-xl);
+    }
+  }
+
   .buttons {
     display: flex;
     flex-flow: row;

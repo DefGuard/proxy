@@ -112,6 +112,8 @@ export const ConfigureClientPage = () => {
     );
   };
 
+  console.log(pageData);
+
   return (
     <Page id="configure-client-page">
       <EnrollmentStep current={2} max={2} />
@@ -129,7 +131,6 @@ export const ConfigureClientPage = () => {
             <span>{m.client_setup_desktop_auto_explain_2()}</span>
           </p>
         </header>
-        <SizedBox height={ThemeSpacing.Xl} />
         <div className="buttons">
           <a href={deepLink()} target="_blank">
             <Button
@@ -179,45 +180,49 @@ export const ConfigureClientPage = () => {
           </span>
         </button>
       </ContainerWithIcon>
-      <SizedBox height={ThemeSpacing.Md} />
-      <ContainerWithIcon id="setup-mobile" icon="phone">
-        <header>
-          <h5>{m.client_setup_mobile_title()}</h5>
-          <p>{m.client_setup_mobile_subtitle()}</p>
-        </header>
-        <div className="bottom">
-          <div className="qr">
-            <QRCodeCanvas value={qrData()} size={100} />
-          </div>
-          <div className="download">
-            <p>{m.client_setup_mobile_forgot()}</p>
-            <div className="links">
-              <a
-                href={externalLink.client.mobile.google}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button
-                  variant="outlined"
-                  iconLeft="android"
-                  text={m.client_setup_mobile_google()}
-                />
-              </a>
-              <a
-                href={externalLink.client.mobile.apple}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button
-                  variant="outlined"
-                  iconLeft="apple"
-                  text={m.client_setup_mobile_apple()}
-                />
-              </a>
+      {pageData.enrollmentData.user.enrolled && (
+        <>
+          <SizedBox height={ThemeSpacing.Md} />
+          <ContainerWithIcon id="setup-mobile" icon="phone">
+            <header>
+              <h5>{m.client_setup_mobile_title()}</h5>
+              <p>{m.client_setup_mobile_subtitle()}</p>
+            </header>
+            <div className="bottom">
+              <div className="qr">
+                <QRCodeCanvas value={qrData()} size={100} />
+              </div>
+              <div className="download">
+                <p>{m.client_setup_mobile_forgot()}</p>
+                <div className="links">
+                  <a
+                    href={externalLink.client.mobile.google}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button
+                      variant="outlined"
+                      iconLeft="android"
+                      text={m.client_setup_mobile_google()}
+                    />
+                  </a>
+                  <a
+                    href={externalLink.client.mobile.apple}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button
+                      variant="outlined"
+                      iconLeft="apple"
+                      text={m.client_setup_mobile_apple()}
+                    />
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </ContainerWithIcon>
+          </ContainerWithIcon>
+        </>
+      )}
       <footer>
         <p className="finish">{m.client_setup_footer_extra()}</p>
         <ContactFooter email={pageData.enrollmentData.admin.email} />

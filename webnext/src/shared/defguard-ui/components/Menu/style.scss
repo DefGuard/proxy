@@ -7,6 +7,7 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-disabled);
   background-color: var(--bg-default);
+  z-index: 3;
 
   .menu-spacer {
     user-select: none;
