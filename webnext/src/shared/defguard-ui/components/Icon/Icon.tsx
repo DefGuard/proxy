@@ -30,6 +30,7 @@ import { IconPlus } from './icons/IconPlus';
 import { IconShow } from './icons/IconShow';
 import { IconStatusSimple } from './icons/IconStatusSimple';
 import { IconUbuntu } from './icons/IconUbuntu';
+import { IconWarning } from './icons/IconWarning';
 import { IconWindows } from './icons/IconWindows';
 
 type Props<T extends IconKindValue = IconKindValue> = {
@@ -70,6 +71,8 @@ export const Icon = <T extends IconKindValue>({
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
+      case 'warning':
+        return IconWarning;
       case 'ubuntu':
         return IconUbuntu;
       case 'debian':
