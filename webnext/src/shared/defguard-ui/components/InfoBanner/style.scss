@@ -27,7 +27,7 @@
     }
 
     &.variant-warning {
-      --bg-color: var(--bg-warning);
+      --bg-color: var(--bg-warning-transparent);
       --color: var(--fg-attention);
       --icon-color: var(--fg-attention);
     }
