@@ -1,6 +1,11 @@
 import './style.scss';
 import { useQuery } from '@tanstack/react-query';
-import { type RouterState, useNavigate, useRouterState } from '@tanstack/react-router';
+import {
+  type RouterState,
+  useLoaderData,
+  useNavigate,
+  useRouterState,
+} from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { AppleHelpModal } from '../../shared/components/AppleHelpModal/AppleHelpModal';
@@ -12,6 +17,7 @@ import { Button } from '../../shared/defguard-ui/components/Button/Button';
 import { ButtonMenu } from '../../shared/defguard-ui/components/ButtonMenu/MenuButton';
 import { Icon } from '../../shared/defguard-ui/components/Icon';
 import type { IconKindValue } from '../../shared/defguard-ui/components/Icon/icon-types';
+import { InfoBanner } from '../../shared/defguard-ui/components/InfoBanner/InfoBanner';
 import type { MenuItemsGroup } from '../../shared/defguard-ui/components/Menu/types';
 import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
 import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
@@ -28,6 +34,9 @@ import desktopIcon from './assets/pc-tower.png';
 
 export const ClientDownloadPage = () => {
   const { data: pageData } = useQuery(getClientArtifactsQueryOptions);
+  const { enrollmentState } = useLoaderData({
+    from: '/download',
+  });
   const routerLoading = useRouterState({ select: (s: RouterState) => s.isLoading });
 
   const navigate = useNavigate();
@@ -164,33 +173,42 @@ export const ClientDownloadPage = () => {
         />
       </div>
       <SizedBox height={ThemeSpacing.Xl3} />
-      <div className="platforms">
-        <div className="label">
-          <Icon icon="mobile" size={20} /> <p>{m.client_download_label_mobile()}</p>
+      {enrollmentState.enrollmentData.user.enrolled && (
+        <div className="platforms">
+          <div className="label">
+            <Icon icon="mobile" size={20} /> <p>{m.client_download_label_mobile()}</p>
+          </div>
+          <Platform
+            testId="android"
+            title={m.client_download_for({ platform: 'Android' })}
+            subtitle={m.client_download_supports_newer({
+              platform: 'Android 12.0 (Snow Cone)',
+            })}
+            buttonText={m.client_download_for({ platform: 'Android' })}
+            buttonIconKind="android"
+            directLink={externalLink.client.mobile.google}
+            icon={androidIcon}
+          />
+          <Platform
+            testId="iOS"
+            title={m.client_download_for({ platform: 'iOS' })}
+            subtitle={m.client_download_supports_newer({
+              platform: 'iOS 15+',
+            })}
+            buttonText={m.client_download_for({ platform: 'iOS' })}
+            buttonIconKind="apple"
+            directLink={externalLink.client.mobile.apple}
+            icon={iosIcon}
+          />
         </div>
-        <Platform
-          testId="android"
-          title={m.client_download_for({ platform: 'Android' })}
-          subtitle={m.client_download_supports_newer({
-            platform: 'Android 12.0 (Snow Cone)',
-          })}
-          buttonText={m.client_download_for({ platform: 'Android' })}
-          buttonIconKind="android"
-          directLink={externalLink.client.mobile.google}
-          icon={androidIcon}
+      )}
+      {!enrollmentState.enrollmentData.user.enrolled && (
+        <InfoBanner
+          variant="warning"
+          icon="warning"
+          text={m.client_download_mobile_warning()}
         />
-        <Platform
-          testId="iOS"
-          title={m.client_download_for({ platform: 'iOS' })}
-          subtitle={m.client_download_supports_newer({
-            platform: 'iOS 15+',
-          })}
-          buttonText={m.client_download_for({ platform: 'iOS' })}
-          buttonIconKind="apple"
-          directLink={externalLink.client.mobile.apple}
-          icon={iosIcon}
-        />
-      </div>
+      )}
       <AppleHelpModal
         isOpen={appleHelpModalOpen}
         onClose={() => {

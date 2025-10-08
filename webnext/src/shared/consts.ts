@@ -5,6 +5,9 @@ export const motionTransitionStandard = {
 } as const;
 
 export const externalLink = {
+  defguard: {
+    download: 'https://defguard.net/download',
+  },
   client: {
     desktop: {
       linux: {
