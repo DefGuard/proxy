@@ -127,7 +127,7 @@ export const ClientDownloadPage = () => {
 
   return (
     <Page id="client-download-page" nav>
-      <EnrollmentStep current={0} max={2} />
+      <EnrollmentStep current={1} max={2} />
       <header>
         <h1>{m.client_download_title()}</h1>
         <p>{m.client_download_subtitle()}</p>
