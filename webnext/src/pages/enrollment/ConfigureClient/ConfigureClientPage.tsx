@@ -132,8 +132,6 @@ export const ConfigureClientPage = () => {
     );
   };
 
-  console.log(pageData);
-
   return (
     <Page id="configure-client-page">
       <EnrollmentStep current={2} max={2} />
