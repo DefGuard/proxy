@@ -14,7 +14,8 @@
   @include animate(background-color);
 
   &.final {
-    --color: var(--bg-success);
+    --color: var(--fg-white);
+    --bg-color: var(--bg-success);
   }
 
   span {
