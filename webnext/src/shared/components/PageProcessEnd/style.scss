@@ -5,6 +5,12 @@
     }
   }
 
+  .icon[data-kind='disabled'] {
+    path {
+      fill: var(--fg-critical);
+    }
+  }
+
   .page-content {
     h1,
     p {

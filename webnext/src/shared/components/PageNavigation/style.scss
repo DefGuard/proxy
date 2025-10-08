@@ -32,4 +32,15 @@
       column-gap: var(--size-xs);
     }
   }
+
+  .element-fill {
+    display: block;
+    padding: 0;
+    margin: 0;
+    content: ' ';
+    width: 1px;
+    height: 1px;
+    user-select: none;
+    pointer-events: none;
+  }
 }

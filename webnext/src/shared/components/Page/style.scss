@@ -1,15 +1,47 @@
 .page {
-  --content-cols: 4 / 10;
+  --content-cols: 1 / 13;
 
   width: 100%;
   min-height: inherit;
 
-  &.variant-home {
+  @include break-up(md) {
+    --content-cols: 2 / 12;
+  }
+
+  @include break-up(lg) {
     --content-cols: 3 / 11;
   }
 
+  @include break-up(xl) {
+    --content-cols: 4 / 10;
+  }
+
+  &.variant-home {
+    --content-cols: 1 / 13;
+
+    @include break-up(lg) {
+      --content-cols: 2 / 12;
+    }
+
+    @include break-up(xl) {
+      --content-cols: 3 / 11;
+    }
+  }
+
   &.variant-small {
-    --content-cols: 5 / 9;
+    --content-cols: 1 / 13;
+
+    @include break-up(sm) {
+      --content-cols: 2 / 12;
+    }
+
+    @include break-up(md) {
+      --content-cols: 4 / 10;
+    }
+
+    @include break-up(xl) {
+      --content-cols: 5 / 9;
+    }
   }
 
   &.nav {

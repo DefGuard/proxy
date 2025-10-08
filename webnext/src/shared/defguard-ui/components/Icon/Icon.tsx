@@ -5,6 +5,7 @@ import type { Direction } from '../../types';
 import { IconAndroid } from './icons/IconAndroid';
 import { IconApple } from './icons/IconApple';
 import { IconAppStore } from './icons/IconAppstore';
+import { IconArchLinux } from './icons/IconArchLinux';
 import { IconArrowBig } from './icons/IconArrowBig';
 import { IconArrowSmall } from './icons/IconArrowSmall';
 import { IconCheckCircle } from './icons/IconCheckCircle';
@@ -12,7 +13,9 @@ import { IconCheckFilled } from './icons/IconCheckFilled';
 import { IconClose } from './icons/IconClose';
 import { IconConfig } from './icons/IconConfig';
 import { IconCopy } from './icons/IconCopy';
+import { IconDebian } from './icons/IconDebian';
 import { IconDesktop } from './icons/IconDesktop';
+import { IconDisabled } from './icons/IconDisabled';
 import { IconEmptyPoint } from './icons/IconEmptyPoint';
 import { IconFile } from './icons/IconFile';
 import { IconGlobe } from './icons/IconGlobe';
@@ -26,6 +29,7 @@ import { IconOpenInNewWindow } from './icons/IconOpenInNewWindow';
 import { IconPlus } from './icons/IconPlus';
 import { IconShow } from './icons/IconShow';
 import { IconStatusSimple } from './icons/IconStatusSimple';
+import { IconUbuntu } from './icons/IconUbuntu';
 import { IconWindows } from './icons/IconWindows';
 
 type Props<T extends IconKindValue = IconKindValue> = {
@@ -66,6 +70,14 @@ export const Icon = <T extends IconKindValue>({
 }: Props<T>) => {
   const IconToRender = useMemo(() => {
     switch (iconKind) {
+      case 'ubuntu':
+        return IconUbuntu;
+      case 'debian':
+        return IconDebian;
+      case 'arch-linux':
+        return IconArchLinux;
+      case 'disabled':
+        return IconDisabled;
       case 'show':
         return IconShow;
       case 'hide':

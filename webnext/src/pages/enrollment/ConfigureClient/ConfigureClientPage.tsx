@@ -13,11 +13,12 @@ import { Page } from '../../../shared/components/Page/Page';
 import { EnrollmentStep } from '../../../shared/components/Step/Step';
 import { externalLink } from '../../../shared/consts';
 import { Button } from '../../../shared/defguard-ui/components/Button/Button';
-import { ButtonMenu } from '../../../shared/defguard-ui/components/ButtonMenu/MenuButton';
 import { CopyField } from '../../../shared/defguard-ui/components/CopyField/CopyField';
 import { Divider } from '../../../shared/defguard-ui/components/Divider/Divider';
 import { Fold } from '../../../shared/defguard-ui/components/Fold/Fold';
 import { Icon } from '../../../shared/defguard-ui/components/Icon';
+import { IconButton } from '../../../shared/defguard-ui/components/IconButton/IconButton';
+import { IconButtonMenu } from '../../../shared/defguard-ui/components/IconButtonMenu/IconButtonMenu';
 import type { MenuItemsGroup } from '../../../shared/defguard-ui/components/Menu/types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
@@ -33,17 +34,8 @@ export const ConfigureClientPage = () => {
 
   const [appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
 
-  const clientDownloadMenu = useMemo(
+  const appleMenu = useMemo(
     (): MenuItemsGroup[] => [
-      {
-        items: [
-          {
-            text: 'Windows',
-            icon: 'windows',
-            onClick: () => openVirtualLink(clientLinks?.windows_amd64),
-          },
-        ],
-      },
       {
         header: {
           text: m.client_download_apple_help_header(),
@@ -62,26 +54,45 @@ export const ConfigureClientPage = () => {
           },
         ],
       },
+    ],
+    [clientLinks],
+  );
+
+  const linuxMenu = useMemo(() => {
+    const res: MenuItemsGroup[] = [
       {
         header: {
           text: `${capitalCase(m.misc_for())} Linux`,
         },
         items: [
           {
-            icon: 'linux',
-            text: 'Deb X86',
-            onClick: () => openVirtualLink(clientLinks?.deb_amd64),
-          },
-          {
-            icon: 'linux',
-            text: 'Deb ARM',
+            icon: 'ubuntu',
+            text: 'Ubuntu 24.04 ARM',
             onClick: () => openVirtualLink(clientLinks?.deb_arm64),
           },
           {
-            icon: 'linux',
-            text: 'RPM X86',
-            onClick: () => openVirtualLink(clientLinks?.rpm_amd64),
+            icon: 'ubuntu',
+            text: 'Ubuntu 24.04 AMD64',
+            onClick: () => openVirtualLink(clientLinks?.deb_amd64),
           },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'debian',
+            text: 'Ubuntu 22.04 / Debian 12&13 ARM',
+            onClick: () => openVirtualLink(clientLinks?.deb_arm64),
+          },
+          {
+            icon: 'debian',
+            text: 'Ubuntu 22.04 / Debian 12&13 AMD64',
+            onClick: () => openVirtualLink(clientLinks?.deb_amd64),
+          },
+        ],
+      },
+      {
+        items: [
           {
             icon: 'linux',
             text: 'RPM ARM',
@@ -89,14 +100,23 @@ export const ConfigureClientPage = () => {
           },
           {
             icon: 'linux',
+            text: 'RPM AMD64',
+            onClick: () => openVirtualLink(clientLinks?.rpm_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'arch-linux',
             text: 'Arch Linux',
             onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
           },
         ],
       },
-    ],
-    [clientLinks],
-  );
+    ];
+    return res;
+  }, [clientLinks]);
 
   const [manualOpen, setManualOpen] = useState(false);
 
@@ -129,7 +149,6 @@ export const ConfigureClientPage = () => {
             <span>{m.client_setup_desktop_auto_explain_2()}</span>
           </p>
         </header>
-        <SizedBox height={ThemeSpacing.Xl} />
         <div className="buttons">
           <a href={deepLink()} target="_blank">
             <Button
@@ -138,13 +157,18 @@ export const ConfigureClientPage = () => {
               iconRight="open-in-new-window"
             />
           </a>
-          <ButtonMenu
-            variant="outlined"
-            menuItems={clientDownloadMenu}
-            text={m.client_setup_desktop_auto_button_download()}
-            iconRight="arrow-small"
-            iconRightRotation="down"
-          />
+          <div className="download">
+            <p>{m.client_setup_download_label()}</p>
+            <a
+              href={clientLinks?.windows_amd64 ?? externalLink.defguard.download}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <IconButton icon="windows" />
+            </a>
+            <IconButtonMenu icon="apple" menuItems={appleMenu} />
+            <IconButtonMenu icon="linux" menuItems={linuxMenu} />
+          </div>
         </div>
         <Divider orientation="horizontal" />
         <Fold open={manualOpen} contentClassName="manual">
@@ -179,45 +203,49 @@ export const ConfigureClientPage = () => {
           </span>
         </button>
       </ContainerWithIcon>
-      <SizedBox height={ThemeSpacing.Md} />
-      <ContainerWithIcon id="setup-mobile" icon="phone">
-        <header>
-          <h5>{m.client_setup_mobile_title()}</h5>
-          <p>{m.client_setup_mobile_subtitle()}</p>
-        </header>
-        <div className="bottom">
-          <div className="qr">
-            <QRCodeCanvas value={qrData()} size={100} />
-          </div>
-          <div className="download">
-            <p>{m.client_setup_mobile_forgot()}</p>
-            <div className="links">
-              <a
-                href={externalLink.client.mobile.google}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button
-                  variant="outlined"
-                  iconLeft="android"
-                  text={m.client_setup_mobile_google()}
-                />
-              </a>
-              <a
-                href={externalLink.client.mobile.apple}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button
-                  variant="outlined"
-                  iconLeft="apple"
-                  text={m.client_setup_mobile_apple()}
-                />
-              </a>
+      {pageData.enrollmentData.user.enrolled && (
+        <>
+          <SizedBox height={ThemeSpacing.Md} />
+          <ContainerWithIcon id="setup-mobile" icon="phone">
+            <header>
+              <h5>{m.client_setup_mobile_title()}</h5>
+              <p>{m.client_setup_mobile_subtitle()}</p>
+            </header>
+            <div className="bottom">
+              <div className="qr">
+                <QRCodeCanvas value={qrData()} size={100} />
+              </div>
+              <div className="download">
+                <p>{m.client_setup_mobile_forgot()}</p>
+                <div className="links">
+                  <a
+                    href={externalLink.client.mobile.google}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button
+                      variant="outlined"
+                      iconLeft="android"
+                      text={m.client_setup_mobile_google()}
+                    />
+                  </a>
+                  <a
+                    href={externalLink.client.mobile.apple}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button
+                      variant="outlined"
+                      iconLeft="apple"
+                      text={m.client_setup_mobile_apple()}
+                    />
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </ContainerWithIcon>
+          </ContainerWithIcon>
+        </>
+      )}
       <footer>
         <p className="finish">{m.client_setup_footer_extra()}</p>
         <ContactFooter email={pageData.enrollmentData.admin.email} />

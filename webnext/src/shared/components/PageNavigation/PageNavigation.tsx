@@ -1,10 +1,11 @@
 import { Button } from '../../defguard-ui/components/Button/Button';
+import { isPresent } from '../../defguard-ui/utils/isPresent';
 import './style.scss';
 
 type Props = {
   loading?: boolean;
   nextText: string;
-  backText: string;
+  backText?: string;
   onNext?: () => void;
   onBack?: () => void;
   backDisabled?: boolean;
@@ -24,13 +25,16 @@ export const PageNavigation = ({
     <div className="page-nav">
       <div className="content">
         <div className="track">
-          <Button
-            testId="page-nav-back"
-            text={backText}
-            disabled={backDisabled || loading}
-            variant="outlined"
-            onClick={onBack}
-          />
+          {!isPresent(backText) && <div className="element-fill"></div>}
+          {isPresent(backText) && (
+            <Button
+              testId="page-nav-back"
+              text={backText}
+              disabled={backDisabled || loading}
+              variant="outlined"
+              onClick={onBack}
+            />
+          )}
           <Button
             testId="page-nav-next"
             text={nextText}

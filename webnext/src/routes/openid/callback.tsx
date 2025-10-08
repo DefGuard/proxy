@@ -1,5 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
+import { api } from '../../shared/api/api';
+import { useEnrollmentStore } from '../../shared/hooks/useEnrollmentStore';
 
 const schema = z.object({
   state: z.string().trim().min(1),
@@ -11,10 +13,27 @@ export const Route = createFileRoute('/openid/callback')({
   component: RouteComponent,
   validateSearch: schema,
   loaderDeps: ({ search }) => ({ search }),
-  beforeLoad: ({ search }) => {
+  beforeLoad: async ({ search }) => {
+    const openIdResponse = await api.openId.enrollmentCallback.callbackFn({
+      data: {
+        code: search.code,
+        state: search.state,
+        type: 'enrollment',
+      },
+    });
+    const enrollmentStartResponse = await api.enrollment.start.callbackFn({
+      data: {
+        token: openIdResponse.data.token,
+      },
+    });
+    useEnrollmentStore.setState({
+      enrollmentData: enrollmentStartResponse.data,
+      token: openIdResponse.data.token,
+    });
     throw redirect({
-      to: '/client-setup',
+      to: '/download',
       search: search,
+      replace: true,
     });
   },
 });

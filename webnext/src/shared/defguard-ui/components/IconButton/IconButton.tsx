@@ -1,26 +1,18 @@
 import './style.scss';
 import clsx from 'clsx';
-import type { Ref } from 'react';
 import { Icon } from '../Icon/Icon';
-import type { IconKindValue } from '../Icon/icon-types';
+import type { IconButtonProps } from './types';
 
-type Props = {
-  icon: IconKindValue;
-  disabled?: boolean;
-  ref?: Ref<HTMLDivElement>;
-  onClick?: () => void;
-};
-
-export const IconButton = ({ icon, ref, disabled = false, onClick }: Props) => {
+export const IconButton = ({ icon, ref, disabled = false, onClick }: IconButtonProps) => {
   return (
     <div
       ref={ref}
       className={clsx('icon-button', {
         disabled,
       })}
-      onClick={() => {
+      onClick={(e) => {
         if (!disabled) {
-          onClick?.();
+          onClick?.(e);
         }
       }}
     >

@@ -10,20 +10,22 @@ import {
   useInteractions,
 } from '@floating-ui/react';
 import { useState } from 'react';
-import { Button } from '../Button/Button';
-import type { ButtonProps } from '../Button/types';
+import { mergeRefs } from '../../utils/mergeRefs';
+import { IconButton } from '../IconButton/IconButton';
+import type { IconButtonProps } from '../IconButton/types';
 import { Menu } from '../Menu/Menu';
 import type { MenuItemsGroup } from '../Menu/types';
 
-export const ButtonMenu = ({
+export const IconButtonMenu = ({
   menuItems,
-  ...props
-}: Omit<ButtonProps, 'ref'> & {
+  ref,
+  ...buttonProps
+}: IconButtonProps & {
   menuItems: MenuItemsGroup[];
 }) => {
   const [isOpen, setOpen] = useState(false);
   const { refs, context, floatingStyles } = useFloating({
-    placement: 'bottom-start',
+    placement: 'bottom-end',
     whileElementsMounted: autoUpdate,
     onOpenChange: setOpen,
     open: isOpen,
@@ -39,7 +41,6 @@ export const ButtonMenu = ({
       }),
     ],
   });
-
   const click = useClick(context, {
     toggle: true,
   });
@@ -54,7 +55,11 @@ export const ButtonMenu = ({
 
   return (
     <>
-      <Button ref={refs.setReference} {...props} {...getReferenceProps()} />
+      <IconButton
+        {...buttonProps}
+        {...getReferenceProps()}
+        ref={mergeRefs([ref, refs.setReference])}
+      />
       {isOpen && (
         <FloatingPortal>
           <Menu

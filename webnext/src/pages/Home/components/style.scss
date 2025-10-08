@@ -1,8 +1,13 @@
 #home-choice {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
-  column-gap: var(--spacing-4xl);
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--spacing-4xl);
+
+  @include break-up(md) {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+  }
 
   & > .choice {
     --border-color: var(--border-default);
@@ -14,6 +19,10 @@
     transition-timing-function: ease-out;
     transition-duration: 400ms;
     transition-property: border-color;
+
+    @include break-down(md) {
+      max-width: 390px;
+    }
 
     .title {
       color: var(--fg-faded);

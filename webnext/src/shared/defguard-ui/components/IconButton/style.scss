@@ -1,5 +1,5 @@
 .icon-button {
-  --icon-button-icon-color: var(--fg-neutral);
+  --icon-color: var(--fg-muted);
 
   background-color: transparent;
   border-radius: var(--button-border-radius-sm);
@@ -16,17 +16,19 @@
     cursor: pointer;
 
     &:hover {
+      --icon-color: var(--fg-neutral);
+
       background-color: var(--bg-emphasis);
     }
   }
 
   &.disabled {
     cursor: not-allowed;
-    --icon-button-icon-color: var(--fg-disabled);
+    --icon-color: var(--fg-disabled);
   }
 
   & > .icon svg path {
-    fill: var(--icon-button-icon-color);
+    fill: var(--icon-color);
 
     @include animate(fill);
   }

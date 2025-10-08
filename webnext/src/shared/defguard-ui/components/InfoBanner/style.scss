@@ -1,0 +1,69 @@
+.info-banner {
+  & > .inner {
+    --bg-color: transparent;
+    --icon-color: transparent;
+    --color: transparent;
+
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    grid-template-rows: 1fr;
+    column-gap: var(--spacing-md);
+    background-color: var(--bg-color);
+    border-radius: var(--radius-lg);
+    box-sizing: border-box;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    align-items: start;
+    justify-content: start;
+
+    @include animate(background-color);
+
+    &.variant-info {
+      --bg-color: var(--bg-disabled);
+      --color: var(--fg-muted);
+      --icon-color: var(--fg-muted);
+    }
+
+    &.variant-warning {
+      --bg-color: var(--bg-warning);
+      --color: var(--fg-attention);
+      --icon-color: var(--fg-attention);
+    }
+
+    & > .icon-track {
+      display: block;
+      width: 20px;
+      height: 20px;
+      user-select: none;
+
+      svg {
+        path {
+          fill: var(--icon-color);
+
+          @include animate(fill);
+        }
+      }
+    }
+
+    & > .content {
+      p {
+        max-width: 100%;
+        overflow: hidden;
+        text-wrap: wrap;
+        text-wrap: balance;
+        text-align: left;
+      }
+
+      p,
+      span,
+      a {
+        font: var(--t-body-xs-500);
+        color: var(--color);
+
+        @include animate(color);
+      }
+    }
+  }
+}

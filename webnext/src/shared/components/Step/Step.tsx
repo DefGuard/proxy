@@ -15,8 +15,8 @@ export const EnrollmentStep = ({ current, max }: Props) => {
       className={clsx('enrollment-step', {
         final: isFinal,
       })}
-      data-stepCurrent={current}
-      data-stepMax={max}
+      data-step-current={current}
+      data-step-max={max}
     >
       <span>
         {isFinal

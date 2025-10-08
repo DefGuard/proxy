@@ -18,6 +18,7 @@
     .finish {
       color: var(--fg-success);
       padding-bottom: var(--spacing-sm);
+      font: var(--t-body-xs-500);
     }
   }
 }
@@ -25,9 +26,23 @@
 #configure-client-page #setup-desktop {
   .buttons {
     display: flex;
-    flex-flow: row;
+    flex-flow: row wrap;
     align-items: center;
     justify-content: space-between;
+    gap: var(--spacing-lg);
+
+    & > .download {
+      display: flex;
+      flex-flow: row;
+      align-items: center;
+      justify-content: flex-end;
+      column-gap: var(--spacing-md);
+
+      & > p {
+        font: var(--t-body-xs-400);
+        color: var(--fg-muted);
+      }
+    }
   }
 
   .divider {
@@ -57,6 +72,10 @@
   }
 
   header {
+    h5 {
+      padding-bottom: var(--spacing-xl);
+    }
+
     p {
       &:nth-child(2) {
         font: var(--t-body-sm-600);

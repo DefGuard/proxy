@@ -13,6 +13,7 @@
   display: grid;
   grid-template-columns: 20px auto;
   align-items: center;
+  column-gap: var(--spacing-sm);
   justify-content: center;
   box-sizing: border-box;
   margin: 0;
@@ -20,6 +21,7 @@
   border: 1px solid var(--border-color);
   background-color: var(--background-color);
   cursor: pointer;
+  border-radius: var(--radius-md);
 
   @include animate(border-color, background-color);
 

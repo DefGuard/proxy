@@ -73,7 +73,7 @@ export const EnrollmentStartPage = () => {
       });
 
       navigate({
-        to: '/client-setup',
+        to: '/download',
         replace: true,
       });
     },
@@ -81,7 +81,7 @@ export const EnrollmentStartPage = () => {
 
   return (
     <Page id="enrollment-start-page" nav>
-      <EnrollmentStep current={1} max={2} />
+      <EnrollmentStep current={0} max={2} />
       <header>
         <h1>{m.enrollment_start_title()}</h1>
         <p>{m.enrollment_start_subtitle()}</p>
@@ -131,7 +131,8 @@ export const EnrollmentStartPage = () => {
         backText={m.controls_back()}
         onBack={() => {
           navigate({
-            to: '/download',
+            to: '/',
+            replace: true,
           });
         }}
         nextText={m.controls_continue()}

@@ -87,6 +87,10 @@ export const IconKind = {
   StatusAttention: 'status-attention',
   StatusAvailable: 'status-available',
   StatusImportant: 'status-important',
+  Disabled: 'disabled',
+  ArchLinux: 'arch-linux',
+  Debian: 'debian',
+  Ubuntu: 'ubuntu',
 } as const;
 
 export type IconKindValue = (typeof IconKind)[keyof typeof IconKind];

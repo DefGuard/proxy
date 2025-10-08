@@ -1,6 +1,11 @@
 import './style.scss';
 import { useQuery } from '@tanstack/react-query';
-import { type RouterState, useNavigate, useRouterState } from '@tanstack/react-router';
+import {
+  type RouterState,
+  useLoaderData,
+  useNavigate,
+  useRouterState,
+} from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { AppleHelpModal } from '../../shared/components/AppleHelpModal/AppleHelpModal';
@@ -12,6 +17,7 @@ import { Button } from '../../shared/defguard-ui/components/Button/Button';
 import { ButtonMenu } from '../../shared/defguard-ui/components/ButtonMenu/MenuButton';
 import { Icon } from '../../shared/defguard-ui/components/Icon';
 import type { IconKindValue } from '../../shared/defguard-ui/components/Icon/icon-types';
+import { InfoBanner } from '../../shared/defguard-ui/components/InfoBanner/InfoBanner';
 import type { MenuItemsGroup } from '../../shared/defguard-ui/components/Menu/types';
 import { Modal } from '../../shared/defguard-ui/components/Modal/Modal';
 import { ModalControls } from '../../shared/defguard-ui/components/ModalControls/ModalControls';
@@ -23,10 +29,14 @@ import { openVirtualLink } from '../../shared/utils/openVirtualLink';
 import androidIcon from './assets/android.png';
 import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
+import linuxIcon from './assets/linux.png';
 import desktopIcon from './assets/pc-tower.png';
 
 export const ClientDownloadPage = () => {
   const { data: pageData } = useQuery(getClientArtifactsQueryOptions);
+  const { enrollmentState } = useLoaderData({
+    from: '/download',
+  });
   const routerLoading = useRouterState({ select: (s: RouterState) => s.isLoading });
 
   const navigate = useNavigate();
@@ -58,44 +68,71 @@ export const ClientDownloadPage = () => {
     [pageData],
   );
 
-  const linuxMenu: MenuItemsGroup[] = useMemo(
-    () => [
+  const linuxMenu: MenuItemsGroup[] = useMemo(() => {
+    const res: MenuItemsGroup[] = [
       {
         items: [
           {
-            text: 'Deb X86',
-            onClick: () => openVirtualLink(pageData?.deb_amd64),
-          },
-          {
-            text: 'Deb ARM',
+            icon: 'ubuntu',
+            text: 'Ubuntu 24.04 ARM',
             onClick: () => openVirtualLink(pageData?.deb_arm64),
           },
           {
-            text: 'RPM X86',
-            onClick: () => openVirtualLink(pageData?.rpm_amd64),
+            icon: 'ubuntu',
+            text: 'Ubuntu 24.04 AMD64',
+            onClick: () => openVirtualLink(pageData?.deb_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'debian',
+            text: 'Ubuntu 22.04 / Debian 12&13 ARM',
+            onClick: () => openVirtualLink(pageData?.deb_arm64),
           },
           {
+            icon: 'debian',
+            text: 'Ubuntu 22.04 / Debian 12&13 AMD64',
+            onClick: () => openVirtualLink(pageData?.deb_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'linux',
             text: 'RPM ARM',
             onClick: () => openVirtualLink(pageData?.rpm_arm64),
           },
           {
+            icon: 'linux',
+            text: 'RPM AMD64',
+            onClick: () => openVirtualLink(pageData?.rpm_amd64),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            icon: 'arch-linux',
             text: 'Arch Linux',
             onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
           },
         ],
       },
-    ],
-    [pageData],
-  );
+    ];
+    return res;
+  }, [pageData]);
 
   return (
     <Page id="client-download-page" nav>
-      <EnrollmentStep current={0} max={2} />
+      <EnrollmentStep current={1} max={2} />
       <header>
         <h1>{m.client_download_title()}</h1>
         <p>{m.client_download_subtitle()}</p>
       </header>
-      <SizedBox height={ThemeSpacing.Xl4} />
+      <SizedBox height={ThemeSpacing.Xl3} />
       <div className="platforms">
         <div className="label">
           <Icon icon="desktop" size={20} /> <p>{m.client_download_label_desktop()}</p>
@@ -121,7 +158,7 @@ export const ClientDownloadPage = () => {
           buttonText={m.client_download_for({ platform: 'Linux' })}
           buttonIconKind="linux"
           menuItems={linuxMenu}
-          icon={desktopIcon}
+          icon={linuxIcon}
         />
         <Platform
           testId="macos"
@@ -136,33 +173,42 @@ export const ClientDownloadPage = () => {
         />
       </div>
       <SizedBox height={ThemeSpacing.Xl3} />
-      <div className="platforms">
-        <div className="label">
-          <Icon icon="mobile" size={20} /> <p>{m.client_download_label_mobile()}</p>
+      {enrollmentState.enrollmentData.user.enrolled && (
+        <div className="platforms">
+          <div className="label">
+            <Icon icon="mobile" size={20} /> <p>{m.client_download_label_mobile()}</p>
+          </div>
+          <Platform
+            testId="android"
+            title={m.client_download_for({ platform: 'Android' })}
+            subtitle={m.client_download_supports_newer({
+              platform: 'Android 12.0 (Snow Cone)',
+            })}
+            buttonText={m.client_download_for({ platform: 'Android' })}
+            buttonIconKind="android"
+            directLink={externalLink.client.mobile.google}
+            icon={androidIcon}
+          />
+          <Platform
+            testId="iOS"
+            title={m.client_download_for({ platform: 'iOS' })}
+            subtitle={m.client_download_supports_newer({
+              platform: 'iOS 15+',
+            })}
+            buttonText={m.client_download_for({ platform: 'iOS' })}
+            buttonIconKind="apple"
+            directLink={externalLink.client.mobile.apple}
+            icon={iosIcon}
+          />
         </div>
-        <Platform
-          testId="android"
-          title={m.client_download_for({ platform: 'Android' })}
-          subtitle={m.client_download_supports_newer({
-            platform: 'Android 12.0 (Snow Cone)',
-          })}
-          buttonText={m.client_download_for({ platform: 'Android' })}
-          buttonIconKind="android"
-          directLink={externalLink.client.mobile.google}
-          icon={androidIcon}
+      )}
+      {!enrollmentState.enrollmentData.user.enrolled && (
+        <InfoBanner
+          variant="warning"
+          icon="warning"
+          text={m.client_download_mobile_warning()}
         />
-        <Platform
-          testId="iOS"
-          title={m.client_download_for({ platform: 'iOS' })}
-          subtitle={m.client_download_supports_newer({
-            platform: 'iOS 15+',
-          })}
-          buttonText={m.client_download_for({ platform: 'iOS' })}
-          buttonIconKind="apple"
-          directLink={externalLink.client.mobile.apple}
-          icon={iosIcon}
-        />
-      </div>
+      )}
       <AppleHelpModal
         isOpen={appleHelpModalOpen}
         onClose={() => {
@@ -194,7 +240,7 @@ export const ClientDownloadPage = () => {
             loading: routerLoading,
             onClick: () => {
               navigate({
-                to: '/enrollment-start',
+                to: '/client-setup',
                 replace: true,
               });
             },
@@ -202,13 +248,6 @@ export const ClientDownloadPage = () => {
         />
       </Modal>
       <PageNavigation
-        backText={m.controls_back()}
-        onBack={() => {
-          navigate({
-            to: '/',
-            replace: true,
-          });
-        }}
         nextText={m.controls_continue()}
         onNext={() => {
           setConfirmModalOpen(true);

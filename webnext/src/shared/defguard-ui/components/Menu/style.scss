@@ -7,10 +7,12 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-disabled);
   background-color: var(--bg-default);
+  overflow: hidden auto;
+  z-index: 3;
 
   .menu-spacer {
     user-select: none;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
 
     & > .line {
       display: block;
@@ -26,6 +28,7 @@
     flex-flow: row nowrap;
     column-gap: var(--spacing-md);
     justify-content: space-between;
+    flex: none;
 
     p {
       font: var(--t-menu-title);
@@ -56,6 +59,7 @@
 
     display: flex;
     flex-flow: row nowrap;
+    flex: none;
     align-items: center;
     border-radius: var(--radius-md);
     padding: 0 var(--spacing-sm);
