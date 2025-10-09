@@ -1,6 +1,11 @@
-export const openVirtualLink = (value?: string): void => {
-  if (!value) return;
+import { externalLink } from '../consts';
 
+export const openClientLink = (value?: string): void => {
+  const href = value ?? externalLink.defguard.download;
+  openVirtualLink(href);
+};
+
+export const openVirtualLink = (value: string): void => {
   const anchorElement = document.createElement('a');
   anchorElement.style.display = 'none';
   anchorElement.href = value;

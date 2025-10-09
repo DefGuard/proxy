@@ -23,7 +23,7 @@ import type { MenuItemsGroup } from '../../../shared/defguard-ui/components/Menu
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { getClientArtifactsQueryOptions } from '../../../shared/query/queryOptions';
-import { openVirtualLink } from '../../../shared/utils/openVirtualLink';
+import { openClientLink } from '../../../shared/utils/openVirtualLink';
 
 export const ConfigureClientPage = () => {
   const pageData = useLoaderData({
@@ -45,12 +45,12 @@ export const ConfigureClientPage = () => {
           {
             icon: 'apple',
             text: 'Intel',
-            onClick: () => openVirtualLink(clientLinks?.macos_amd64),
+            onClick: () => openClientLink(clientLinks?.macos_amd64),
           },
           {
             icon: 'apple',
             text: 'ARM',
-            onClick: () => openVirtualLink(clientLinks?.macos_arm64),
+            onClick: () => openClientLink(clientLinks?.macos_arm64),
           },
         ],
       },
@@ -68,12 +68,12 @@ export const ConfigureClientPage = () => {
           {
             icon: 'ubuntu',
             text: 'Ubuntu 24.04 ARM',
-            onClick: () => openVirtualLink(clientLinks?.deb_arm64),
+            onClick: () => openClientLink(clientLinks?.deb_arm64),
           },
           {
             icon: 'ubuntu',
             text: 'Ubuntu 24.04 AMD64',
-            onClick: () => openVirtualLink(clientLinks?.deb_amd64),
+            onClick: () => openClientLink(clientLinks?.deb_amd64),
           },
         ],
       },
@@ -82,12 +82,12 @@ export const ConfigureClientPage = () => {
           {
             icon: 'debian',
             text: 'Ubuntu 22.04 / Debian 12&13 ARM',
-            onClick: () => openVirtualLink(clientLinks?.deb_arm64),
+            onClick: () => openClientLink(clientLinks?.deb_legacy_arm64),
           },
           {
             icon: 'debian',
             text: 'Ubuntu 22.04 / Debian 12&13 AMD64',
-            onClick: () => openVirtualLink(clientLinks?.deb_amd64),
+            onClick: () => openClientLink(clientLinks?.deb_legacy_amd64),
           },
         ],
       },
@@ -96,12 +96,12 @@ export const ConfigureClientPage = () => {
           {
             icon: 'linux',
             text: 'RPM ARM',
-            onClick: () => openVirtualLink(clientLinks?.rpm_arm64),
+            onClick: () => openClientLink(clientLinks?.rpm_arm64),
           },
           {
             icon: 'linux',
             text: 'RPM AMD64',
-            onClick: () => openVirtualLink(clientLinks?.rpm_amd64),
+            onClick: () => openClientLink(clientLinks?.rpm_amd64),
           },
         ],
       },
@@ -110,7 +110,7 @@ export const ConfigureClientPage = () => {
           {
             icon: 'arch-linux',
             text: 'Arch Linux',
-            onClick: () => openVirtualLink(externalLink.client.desktop.linux.arch),
+            onClick: () => openClientLink(externalLink.client.desktop.linux.arch),
           },
         ],
       },

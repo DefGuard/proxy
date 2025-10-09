@@ -20,6 +20,8 @@ export type ClientVersionCheck = {
   windows_amd64?: string;
   deb_amd64?: string;
   deb_arm64?: string;
+  deb_legacy_arm64?: string;
+  deb_legacy_amd64?: string;
   rpm_amd64?: string;
   rpm_arm64?: string;
   macos_amd64?: string;
