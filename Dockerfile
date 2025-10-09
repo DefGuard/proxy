@@ -39,11 +39,8 @@ RUN cargo install --locked --path . --root /build
 
 # run
 FROM debian:13-slim AS runtime
-RUN apt-get update -y && \
-    apt-get install --no-install-recommends -y ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-# make sure we run latest patch for openssl and ssl lib
-RUN apt-get install -y --only-upgrade libssl3t64 openssl && \
+RUN apt-get update -y && apt upgrade -y && \
+    apt-get install --no-install-recommends -y ca-certificates libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /build/bin/defguard-proxy .
