@@ -39,8 +39,6 @@ RUN cargo install --locked --path . --root /build
 
 # run
 FROM debian:13-slim AS runtime
-RUN echo "deb http://security.debian.org/ trixie-security main" \
-  >> /etc/apt/sources.list
 RUN apt-get update -y && apt upgrade -y && \
     apt-get install --no-install-recommends -y ca-certificates libssl-dev && \
     rm -rf /var/lib/apt/lists/*
