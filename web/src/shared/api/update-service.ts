@@ -6,7 +6,7 @@ const baseUrl = import.meta.env.VITE_UPDATE_BASE_URL as string | undefined;
 const clientDownloadFallback = 'https://defguard.net/download';
 
 const client = axios.create({
-  baseURL: baseUrl ?? 'http://pkgs.defguard.net/api',
+  baseURL: baseUrl ?? 'https://pkgs.defguard.net/api',
   headers: { 'Content-Type': 'application/json' },
   paramsSerializer: {
     serialize: (params) =>
