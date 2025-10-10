@@ -1,0 +1,14 @@
+#password-start-page {
+  .page-content {
+    .container {
+      display: flex;
+      flex-flow: column;
+      row-gap: var(--spacing-2xl);
+
+      & > p {
+        font: var(--t-body-sm-400);
+        color: var(--fg-neutral);
+      }
+    }
+  }
+}

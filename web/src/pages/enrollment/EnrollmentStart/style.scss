@@ -1,0 +1,25 @@
+#enrollment-start-page .page-content {
+  .container-with-icon {
+    width: 100%;
+
+    header {
+      padding-bottom: var(--spacing-2xl);
+
+      p {
+        font: var(--t-body-sm-400);
+        color: var(--fg-neutral);
+      }
+    }
+
+    .openid-link {
+      display: flex;
+      flex-flow: row;
+      align-items: center;
+      justify-content: flex-start;
+    }
+  }
+
+  .divider {
+    padding: var(--spacing-lg) 0;
+  }
+}

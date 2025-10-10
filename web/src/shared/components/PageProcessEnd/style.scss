@@ -1,0 +1,24 @@
+.page-process-end {
+  .icon[data-kind='check-circle'] {
+    path {
+      fill: var(--fg-success);
+    }
+  }
+
+  .icon[data-kind='disabled'] {
+    path {
+      fill: var(--fg-critical);
+    }
+  }
+
+  .page-content {
+    h1,
+    p {
+      text-align: center;
+    }
+
+    p {
+      color: var(--fg-muted);
+    }
+  }
+}

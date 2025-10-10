@@ -1,23 +1,27 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import './shared/defguard-ui/scss/index.scss';
+
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import './shared/defguard-ui/scss/index.scss';
-import './shared/scss/index.scss';
+import { App } from './app/App';
 
-import { App } from './components/App/App';
-import { ToastManager } from './shared/defguard-ui/components/Layout/ToastManager/ToastManager';
-
-const queryClient = new QueryClient();
-
-const rootElement = document.getElementById('root') as HTMLElement;
-
-const root = createRoot(rootElement);
-
-root.render(
+// biome-ignore lint/style/noNonNullAssertion: always there
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <ToastManager />
-    </QueryClientProvider>
+    <App />
+    <TanStackDevtools
+      plugins={[
+        {
+          name: 'TanStack Router',
+          render: <TanStackRouterDevtoolsPanel />,
+        },
+        {
+          name: 'TanStack Query',
+          render: <ReactQueryDevtoolsPanel />,
+        },
+      ]}
+    />
   </StrictMode>,
 );

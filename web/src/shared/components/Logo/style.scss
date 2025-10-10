@@ -1,0 +1,11 @@
+.logo {
+  path {
+    &:nth-child(1) {
+      fill: var(--bg-inverted);
+    }
+
+    &:nth-child(2) {
+      fill: var(--bg-action);
+    }
+  }
+}

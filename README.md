@@ -23,25 +23,28 @@ Find us on Matrix: [#defguard:teonite.com](https://matrix.to/#/#defguard:teonite
 
 Please review the [Contributing guide](https://defguard.gitbook.io/defguard/for-developers/contributing) for information on how to get started contributing to the project. You might also find our [environment setup guide](https://defguard.gitbook.io/defguard/for-developers/dev-env-setup) handy.
 
-
 ## Development
 
 Clone repository:
+
 ```bash
 git@github.com:DefGuard/client.git
 ```
 
 Initialize `proto` submodule:
+
 ```bash
 git submodule update --init --recursive
 ```
 
 To run API server:
+
 ```bash
 cargo run
 ```
 
 To run webapp dev server:
+
 ```bash
 cd web/
 pnpm install
@@ -76,5 +79,3 @@ All release assets (binaries, packages, etc.) include SHA256 checksums that are 
    # Linux/macOS
    echo known_sha256_checksum_of_the_file path/to/file | sha256sum --check
    ```
-
-
