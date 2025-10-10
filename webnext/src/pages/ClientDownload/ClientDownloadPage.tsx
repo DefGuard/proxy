@@ -152,9 +152,7 @@ export const ClientDownloadPage = () => {
         <Platform
           testId="linux"
           title={m.client_download_for({ platform: 'Linux' })}
-          subtitle={m.client_download_supports_newer({
-            platform: 'TODO',
-          })}
+          subtitle={m.client_download_supports_linux()}
           buttonText={m.client_download_for({ platform: 'Linux' })}
           buttonIconKind="linux"
           menuItems={linuxMenu}

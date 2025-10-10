@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 project.inlang/cache
+.env.development
 
 # Editor directories and files
 .vscode/*
