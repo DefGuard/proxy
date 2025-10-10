@@ -1,10 +1,10 @@
 FROM node:24-alpine AS web
 
 WORKDIR /app
-COPY webnext/package.json webnext/pnpm-lock.yaml ./
+COPY web/package.json web/pnpm-lock.yaml ./
 RUN npm i -g pnpm
 RUN pnpm install --ignore-scripts --frozen-lockfile
-COPY webnext/ .
+COPY web/ .
 RUN pnpm build
 
 FROM rust:1 AS chef
@@ -28,7 +28,7 @@ COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # build project
-COPY --from=web /app/dist ./webnext/dist
+COPY --from=web /app/dist ./web/dist
 RUN apt-get update && apt-get -y install protobuf-compiler libprotobuf-dev
 COPY Cargo.toml Cargo.lock build.rs ./
 # for vergen

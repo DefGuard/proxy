@@ -32,16 +32,16 @@ jobs:
         with:
           node-version: 24
       - name: install deps
-        working-directory: ./webnext
+        working-directory: ./web
         run: |
           npm i -g pnpm
           pnpm i --frozen-lockfile
       - name: Build translations
-        working-directory: ./webnext
+        working-directory: ./web
         run: pnpm dlx @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/paraglide
       - name: Lint
-        working-directory: ./webnext
+        working-directory: ./web
         run: pnpm lint
       - name: Audit
-        working-directory: ./webnext
+        working-directory: ./web
         run: pnpm audit --prod

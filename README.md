@@ -46,7 +46,7 @@ cargo run
 To run webapp dev server:
 
 ```bash
-cd webnext/
+cd web/
 pnpm install
 pnpm run dev
 ```
