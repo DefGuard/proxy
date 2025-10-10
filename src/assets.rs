@@ -16,7 +16,7 @@ pub async fn index() -> impl IntoResponse {
 }
 
 #[derive(Embed)]
-#[folder = "webnext/"]
+#[folder = "web/"]
 #[include = "dist/*"]
 struct WebAsset;
 

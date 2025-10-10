@@ -4,6 +4,3 @@
 [submodule "web/src/shared/defguard-ui"]
 	path = web/src/shared/defguard-ui
 	url = git@github.com:DefGuard/ui.git
-[submodule "webnext/src/shared/defguard-ui"]
-	path = webnext/src/shared/defguard-ui
-	url = git@github.com:DefGuard/ui.git

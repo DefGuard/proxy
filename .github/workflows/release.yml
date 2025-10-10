@@ -122,15 +122,15 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-          cache-dependency-path: ./webnext/pnpm-lock.yaml
+          cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Install frontend dependencies
         run: pnpm install --ignore-scripts --frozen-lockfile
-        working-directory: webnext
+        working-directory: web
 
       - name: Build frontend
         run: pnpm build
-        working-directory: webnext
+        working-directory: web
 
       - name: Build release binary
         uses: actions-rs/cargo@v1

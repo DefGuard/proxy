@@ -8,11 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-./node_modules
-./node_modules/*
 dist
 dist-ssr
 *.local
+project.inlang/cache
+.env.development
 
 # Editor directories and files
 .vscode/*
@@ -24,3 +24,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.tanstack
