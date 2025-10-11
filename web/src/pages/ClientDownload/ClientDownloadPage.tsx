@@ -6,9 +6,8 @@ import {
   useNavigate,
   useRouterState,
 } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
-import { AppleHelpModal } from '../../shared/components/AppleHelpModal/AppleHelpModal';
 import { Page } from '../../shared/components/Page/Page';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
 import { EnrollmentStep } from '../../shared/components/Step/Step';
@@ -31,6 +30,11 @@ import iosIcon from './assets/ios.png';
 import laptopIcon from './assets/laptop.png';
 import linuxIcon from './assets/linux.png';
 import desktopIcon from './assets/pc-tower.png';
+
+const AppleHelpModal = lazy(async () => ({
+  default: (await import('../../shared/components/AppleHelpModal/AppleHelpModal'))
+    .AppleHelpModal,
+}));
 
 export const ClientDownloadPage = () => {
   const { data: pageData } = useQuery(getClientArtifactsQueryOptions);
@@ -207,12 +211,14 @@ export const ClientDownloadPage = () => {
           text={m.client_download_mobile_warning()}
         />
       )}
-      <AppleHelpModal
-        isOpen={appleHelpModalOpen}
-        onClose={() => {
-          setAppleHelpModalOpen(false);
-        }}
-      />
+      <Suspense fallback={null}>
+        <AppleHelpModal
+          isOpen={appleHelpModalOpen}
+          onClose={() => {
+            setAppleHelpModalOpen(false);
+          }}
+        />
+      </Suspense>
       <Modal
         title={m.client_download_modal_title()}
         size="small"

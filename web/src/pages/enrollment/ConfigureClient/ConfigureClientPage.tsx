@@ -4,9 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useLoaderData } from '@tanstack/react-router';
 import { capitalCase } from 'change-case';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { m } from '../../../paraglide/messages';
-import { AppleHelpModal } from '../../../shared/components/AppleHelpModal/AppleHelpModal';
 import { ContactFooter } from '../../../shared/components/ContactFooter/ContactFooter';
 import { ContainerWithIcon } from '../../../shared/components/ContainerWithIcon/ContainerWithIcon';
 import { Page } from '../../../shared/components/Page/Page';
@@ -24,6 +23,11 @@ import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedB
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { getClientArtifactsQueryOptions } from '../../../shared/query/queryOptions';
 import { openClientLink } from '../../../shared/utils/openVirtualLink';
+
+const AppleHelpModal = lazy(async () => ({
+  default: (await import('../../../shared/components/AppleHelpModal/AppleHelpModal'))
+    .AppleHelpModal,
+}));
 
 export const ConfigureClientPage = () => {
   const pageData = useLoaderData({
@@ -250,12 +254,14 @@ export const ConfigureClientPage = () => {
         <p className="finish">{m.client_setup_footer_extra()}</p>
         <ContactFooter email={pageData.enrollmentData.admin.email} />
       </footer>
-      <AppleHelpModal
-        isOpen={appleHelpModalOpen}
-        onClose={() => {
-          setAppleHelpModalOpen(false);
-        }}
-      />
+      <Suspense fallback={null}>
+        <AppleHelpModal
+          isOpen={appleHelpModalOpen}
+          onClose={() => {
+            setAppleHelpModalOpen(false);
+          }}
+        />
+      </Suspense>
     </Page>
   );
 };

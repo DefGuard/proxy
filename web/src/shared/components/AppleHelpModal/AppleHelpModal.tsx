@@ -1,3 +1,4 @@
+import './style.scss';
 import { m } from '../../../paraglide/messages';
 import { Modal } from '../../defguard-ui/components/Modal/Modal';
 import { ModalControls } from '../../defguard-ui/components/ModalControls/ModalControls';
@@ -17,19 +18,13 @@ export const AppleHelpModal = ({ isOpen, onClose }: Props) => {
       size="small"
       isOpen={isOpen}
       onClose={onClose}
+      id="apple-hardware-help"
     >
       <p>{m.client_download_apple_help_content_1()}</p>
       <SizedBox height={ThemeSpacing.Xl} />
-      <video
-        controls
-        playsInline
-        preload="metadata"
-        src={apple_video_src}
-        style={{
-          width: '100%',
-          height: 'auto',
-        }}
-      />
+      <video autoPlay loop playsInline preload="auto">
+        <source src={`${apple_video_src}#t=0.1`} type="video/mp4" />
+      </video>
       <SizedBox height={ThemeSpacing.Xl} />
       <p>{m.client_download_apple_help_content_2()}</p>
       <ModalControls
