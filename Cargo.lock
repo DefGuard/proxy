@@ -530,7 +530,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "defguard-proxy"
-version = "1.5.1"
+version = "1.6.0"
 dependencies = [
  "ammonia",
  "anyhow",
