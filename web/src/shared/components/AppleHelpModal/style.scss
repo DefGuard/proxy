@@ -1,0 +1,13 @@
+#apple-hardware-help .modal-content {
+  video {
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+
+  p {
+    font: var(--t-body-sm-400);
+    color: var(--fg-default);
+  }
+}
