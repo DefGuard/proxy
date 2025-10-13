@@ -22,7 +22,7 @@ export const AppleHelpModal = ({ isOpen, onClose }: Props) => {
     >
       <p>{m.client_download_apple_help_content_1()}</p>
       <SizedBox height={ThemeSpacing.Xl} />
-      <video autoPlay loop playsInline preload="auto">
+      <video loop playsInline controls autoPlay preload="auto">
         <source src={`${apple_video_src}#t=0.1`} type="video/mp4" />
       </video>
       <SizedBox height={ThemeSpacing.Xl} />
