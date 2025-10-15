@@ -98,5 +98,10 @@
   "client_setup_mobile_forgot": "If you forgot to install the mobile app, click one of the buttons bellow.",
   "client_setup_mobile_google": "Google Play",
   "client_setup_mobile_apple": "Apple Store",
-  "client_setup_footer_extra": "Once your Defguard client is configured, you can close this window."
+  "client_setup_footer_extra": "Once your Defguard client is configured, you can close this window.",
+  "openid_mfa_redirect_error_title": "Authentication Error",
+  "openid_mfa_redirect_error_message": "No token provided in the URL. Please ensure you have a valid token to proceed with OpenID authentication.",
+  "openid_mfa_redirect_error_missing_args": "Missing code or state in the callback's URL. The provider might not be configured correctly.",
+  "openid_mfa_complete_title": "Authentication Completed",
+  "openid_mfa_complete_subtitle": "You have been successfully authenticated. Please close this window and get back to the Defguard VPN Client"
 }
