@@ -19,7 +19,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PasswordIndexRouteImport } from './routes/password/index'
 import { Route as PasswordSentRouteImport } from './routes/password/sent'
 import { Route as PasswordFinishRouteImport } from './routes/password/finish'
+import { Route as OpenidErrorRouteImport } from './routes/openid/error'
 import { Route as OpenidCallbackRouteImport } from './routes/openid/callback'
+import { Route as OpenidMfaIndexRouteImport } from './routes/openid/mfa/index'
+import { Route as OpenidMfaCallbackRouteImport } from './routes/openid/mfa/callback'
 
 const TestRoute = TestRouteImport.update({
   id: '/test',
@@ -71,9 +74,24 @@ const PasswordFinishRoute = PasswordFinishRouteImport.update({
   path: '/password/finish',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OpenidErrorRoute = OpenidErrorRouteImport.update({
+  id: '/openid/error',
+  path: '/openid/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpenidCallbackRoute = OpenidCallbackRouteImport.update({
   id: '/openid/callback',
   path: '/openid/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenidMfaIndexRoute = OpenidMfaIndexRouteImport.update({
+  id: '/openid/mfa/',
+  path: '/openid/mfa/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenidMfaCallbackRoute = OpenidMfaCallbackRouteImport.update({
+  id: '/openid/mfa/callback',
+  path: '/openid/mfa/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -86,9 +104,12 @@ export interface FileRoutesByFullPath {
   '/session-end': typeof SessionEndRoute
   '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
+  '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
   '/password': typeof PasswordIndexRoute
+  '/openid/mfa/callback': typeof OpenidMfaCallbackRoute
+  '/openid/mfa': typeof OpenidMfaIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,9 +120,12 @@ export interface FileRoutesByTo {
   '/session-end': typeof SessionEndRoute
   '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
+  '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
   '/password': typeof PasswordIndexRoute
+  '/openid/mfa/callback': typeof OpenidMfaCallbackRoute
+  '/openid/mfa': typeof OpenidMfaIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,9 +137,12 @@ export interface FileRoutesById {
   '/session-end': typeof SessionEndRoute
   '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
+  '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
   '/password/': typeof PasswordIndexRoute
+  '/openid/mfa/callback': typeof OpenidMfaCallbackRoute
+  '/openid/mfa/': typeof OpenidMfaIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -128,9 +155,12 @@ export interface FileRouteTypes {
     | '/session-end'
     | '/test'
     | '/openid/callback'
+    | '/openid/error'
     | '/password/finish'
     | '/password/sent'
     | '/password'
+    | '/openid/mfa/callback'
+    | '/openid/mfa'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -141,9 +171,12 @@ export interface FileRouteTypes {
     | '/session-end'
     | '/test'
     | '/openid/callback'
+    | '/openid/error'
     | '/password/finish'
     | '/password/sent'
     | '/password'
+    | '/openid/mfa/callback'
+    | '/openid/mfa'
   id:
     | '__root__'
     | '/'
@@ -154,9 +187,12 @@ export interface FileRouteTypes {
     | '/session-end'
     | '/test'
     | '/openid/callback'
+    | '/openid/error'
     | '/password/finish'
     | '/password/sent'
     | '/password/'
+    | '/openid/mfa/callback'
+    | '/openid/mfa/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -168,9 +204,12 @@ export interface RootRouteChildren {
   SessionEndRoute: typeof SessionEndRoute
   TestRoute: typeof TestRoute
   OpenidCallbackRoute: typeof OpenidCallbackRoute
+  OpenidErrorRoute: typeof OpenidErrorRoute
   PasswordFinishRoute: typeof PasswordFinishRoute
   PasswordSentRoute: typeof PasswordSentRoute
   PasswordIndexRoute: typeof PasswordIndexRoute
+  OpenidMfaCallbackRoute: typeof OpenidMfaCallbackRoute
+  OpenidMfaIndexRoute: typeof OpenidMfaIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -245,11 +284,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasswordFinishRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/openid/error': {
+      id: '/openid/error'
+      path: '/openid/error'
+      fullPath: '/openid/error'
+      preLoaderRoute: typeof OpenidErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/openid/callback': {
       id: '/openid/callback'
       path: '/openid/callback'
       fullPath: '/openid/callback'
       preLoaderRoute: typeof OpenidCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/openid/mfa/': {
+      id: '/openid/mfa/'
+      path: '/openid/mfa'
+      fullPath: '/openid/mfa'
+      preLoaderRoute: typeof OpenidMfaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/openid/mfa/callback': {
+      id: '/openid/mfa/callback'
+      path: '/openid/mfa/callback'
+      fullPath: '/openid/mfa/callback'
+      preLoaderRoute: typeof OpenidMfaCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -264,9 +324,12 @@ const rootRouteChildren: RootRouteChildren = {
   SessionEndRoute: SessionEndRoute,
   TestRoute: TestRoute,
   OpenidCallbackRoute: OpenidCallbackRoute,
+  OpenidErrorRoute: OpenidErrorRoute,
   PasswordFinishRoute: PasswordFinishRoute,
   PasswordSentRoute: PasswordSentRoute,
   PasswordIndexRoute: PasswordIndexRoute,
+  OpenidMfaCallbackRoute: OpenidMfaCallbackRoute,
+  OpenidMfaIndexRoute: OpenidMfaIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

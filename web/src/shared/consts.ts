@@ -1,9 +1,3 @@
-export const motionTransitionStandard = {
-  type: 'tween',
-  ease: 'easeOut',
-  duration: 0.16,
-} as const;
-
 export const externalLink = {
   defguard: {
     download: 'https://defguard.net/download',

@@ -27,24 +27,25 @@ export const PageProcessEnd = ({
 }: Props) => {
   return (
     <Page className="page-process-end">
-      <SizedBox height={ThemeSpacing.Xl9} />
-      <Icon icon={icon} size={32} />
-      <SizedBox height={ThemeSpacing.Xl} />
-      <AppText as="h1" font={TextStyle.TTitleH3}>
-        {title}
-      </AppText>
-      <SizedBox height={ThemeSpacing.Xs} />
-      <AppText as="p" font={TextStyle.TBodyPrimary400}>
-        {subtitle}
-      </AppText>
-      {isPresent(linkText) && isPresent(link) && (
-        <>
-          <SizedBox height={ThemeSpacing.Xl3} />
-          <Link to={link} replace>
-            <Button text={linkText} />
-          </Link>
-        </>
-      )}
+      <div className="content">
+        <Icon icon={icon} size={32} />
+        <SizedBox height={ThemeSpacing.Xl} />
+        <AppText as="h1" font={TextStyle.TTitleH3}>
+          {title}
+        </AppText>
+        <SizedBox height={ThemeSpacing.Xs} />
+        <AppText as="p" font={TextStyle.TBodyPrimary400}>
+          {subtitle}
+        </AppText>
+        {isPresent(linkText) && isPresent(link) && (
+          <>
+            <SizedBox height={ThemeSpacing.Xl3} />
+            <Link to={link} replace>
+              <Button text={linkText} />
+            </Link>
+          </>
+        )}
+      </div>
     </Page>
   );
 };
