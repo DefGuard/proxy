@@ -45,7 +45,6 @@ export const Route = createFileRoute('/openid/callback')({
     });
     throw redirect({
       to: '/download',
-      search: search,
       replace: true,
     });
   },
