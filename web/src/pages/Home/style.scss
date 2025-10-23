@@ -1,0 +1,37 @@
+#home-page {
+  .page-content {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    max-width: 100%;
+    overflow-x: hidden;
+
+    h1 {
+      font-size: 52px;
+      font-weight: 500;
+      line-height: 44px;
+      text-align: center;
+    }
+
+    & > .subtitle {
+      font: var(--t-body-primary-400);
+      text-align: center;
+      color: var(--fg-muted);
+    }
+
+    & > footer {
+      margin-top: auto;
+
+      p {
+        text-align: center;
+        font: var(--t-body-xs-400);
+        color: var(--fg-muted);
+
+        span,
+        a {
+          color: inherit;
+        }
+      }
+    }
+  }
+}

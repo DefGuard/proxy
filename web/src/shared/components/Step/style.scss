@@ -1,0 +1,28 @@
+.enrollment-step {
+  --bg-color: var(--bg-muted);
+  --color: var(--fg-neutral);
+
+  display: flex;
+  flex-flow: row;
+  flex: none;
+  box-sizing: border-box;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-color);
+  color: var(--color);
+  border-radius: var(--radius-full);
+
+  @include animate(background-color);
+
+  &.final {
+    --color: var(--fg-white);
+    --bg-color: var(--bg-success);
+  }
+
+  span {
+    text-align: center;
+    color: inherit;
+    font: var(--t-body-xs-500);
+
+    @include animate(color);
+  }
+}

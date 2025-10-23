@@ -55,18 +55,21 @@ where
 ///
 /// Waits for core response with a given timeout and returns the response payload.
 pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
-    debug!("Fetching core response...");
+    debug!("Fetching core response.");
     if let Ok(core_response) = timeout(CORE_RESPONSE_TIMEOUT, rx).await {
         debug!("Got gRPC response from Defguard Core");
         if let Ok(Payload::CoreError(core_error)) = core_response {
             if core_error.status_code == Code::FailedPrecondition as i32
                 && core_error.message == "no valid license"
             {
-                debug!("Tried to get core response related to an enterprise feature but the enterprise is not enabled, ignoring it...");
+                debug!(
+                    "Tried to get response from Core related to an enterprise feature but the \
+                    enterprise is not enabled, ignoring it."
+                );
                 return Err(ApiError::EnterpriseNotEnabled);
             }
             error!(
-                "Received an error response from the core service. | status code: {} message: {}",
+                "Received an error response from Core service. | status code: {} message: {}",
                 core_error.status_code, core_error.message
             );
             return Err(core_error.into());
@@ -74,7 +77,7 @@ pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, 
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
     } else {
-        error!("Did not receive core response within {CORE_RESPONSE_TIMEOUT:?}");
+        error!("Did not receive response from Core within {CORE_RESPONSE_TIMEOUT:?}");
         Err(ApiError::CoreTimeout)
     }
 }
