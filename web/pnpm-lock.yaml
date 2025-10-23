@@ -86,7 +86,7 @@ importers:
         version: 2.2.4
       '@tanstack/router-plugin':
         specifier: ^1.132.2
-        version: 1.132.2(@tanstack/react-router@1.132.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
+        version: 1.132.2(@tanstack/react-router@1.132.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -104,7 +104,7 @@ importers:
         version: 19.1.9(@types/react@19.1.13)
       '@vitejs/plugin-react-swc':
         specifier: ^4.1.0
-        version: 4.1.0(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
+        version: 4.1.0(vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
       globals:
         specifier: ^16.4.0
         version: 16.4.0
@@ -133,11 +133,11 @@ importers:
         specifier: ^8.44.1
         version: 8.44.1(eslint@9.35.0)(typescript@5.9.2)
       vite:
-        specifier: ^7.1.7
-        version: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+        specifier: ^7.1.12
+        version: 7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
       vite-plugin-image-optimizer:
         specifier: ^2.0.2
-        version: 2.0.2(sharp@0.34.4)(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
+        version: 2.0.2(sharp@0.34.4)(vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
 
 packages:
 
@@ -533,8 +533,12 @@ packages:
     resolution: {integrity: sha512-CCZCDJuduB9OUkFkY2IgppNZMi2lBQgD2qzwXkEia16cge2pijY/aXi96CJMquDMn3nJdlPV1A5KrJEXwfLNzQ==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
 
-  '@eslint/config-array@0.21.0':
-    resolution: {integrity: sha512-ENIdc4iLu0d93HeYirvKmrzshzofPw6VkZRKQGe9Nv46ZnWUzcF1xV01dcvEg/1wXUR61OmmlSfyeyO7EvjLxQ==}
+  '@eslint-community/regexpp@4.12.2':
+    resolution: {integrity: sha512-EriSTlt5OC9/7SXkRSCAhfSxxoSUgBm33OH+IkwbdpgoqsSsUg7y3uh+IICI/Qg4BBWr3U2i39RpmycbxMq4ew==}
+    engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
+
+  '@eslint/config-array@0.21.1':
+    resolution: {integrity: sha512-aw1gNayWpdI/jSYVgzN5pL0cfzU02GT3NBpeT/DXbx1/1x7ZKxFPd9bwrzygx/qiwIQiJ1sw/zD8qY/kRvlGHA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/config-helpers@0.3.1':
@@ -553,8 +557,8 @@ packages:
     resolution: {integrity: sha512-30iXE9whjlILfWobBkNerJo+TXYsgVM5ERQwMcMKCHckHflCmf7wXDAHlARoWnh0s1U72WqlbeyE7iAcCzuCPw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@eslint/object-schema@2.1.6':
-    resolution: {integrity: sha512-RBMg5FRL0I0gs51M/guSAj5/e14VQ4tpZnQNWwuDT66P14I43ItmPfIZRhO9fUVIPOAQXU47atlywZ/czoqFPA==}
+  '@eslint/object-schema@2.1.7':
+    resolution: {integrity: sha512-VtAOaymWVfZcmZbp6E2mympDIHvyjXs/12LqWYjVw6qjrfF+VK+fyG33kChz3nnK+SU5/NeHOqrTEHS8sXO3OA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/plugin-kit@0.3.5':
@@ -2695,8 +2699,8 @@ packages:
       svgo:
         optional: true
 
-  vite@7.1.7:
-    resolution: {integrity: sha512-VbA8ScMvAISJNJVbRDTJdCwqQoAareR/wutevKanhR2/1EkoXVZVkkORaYm/tNVCjP/UDTKtcw3bAkwOUdedmA==}
+  vite@7.1.12:
+    resolution: {integrity: sha512-ZWyE8YXEXqJrrSLvYgrRP7p62OziLW7xI5HYGWFzOvupfAlrLvURSzv/FyGyy0eidogEM3ujU+kUG1zuHgb6Ug==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -3150,9 +3154,11 @@ snapshots:
 
   '@eslint-community/regexpp@4.12.1': {}
 
-  '@eslint/config-array@0.21.0':
+  '@eslint-community/regexpp@4.12.2': {}
+
+  '@eslint/config-array@0.21.1':
     dependencies:
-      '@eslint/object-schema': 2.1.6
+      '@eslint/object-schema': 2.1.7
       debug: 4.4.3
       minimatch: 3.1.2
     transitivePeerDependencies:
@@ -3180,7 +3186,7 @@ snapshots:
 
   '@eslint/js@9.35.0': {}
 
-  '@eslint/object-schema@2.1.6': {}
+  '@eslint/object-schema@2.1.7': {}
 
   '@eslint/plugin-kit@0.3.5':
     dependencies:
@@ -3676,7 +3682,7 @@ snapshots:
       '@tanstack/router-devtools-core': 1.132.2(@tanstack/router-core@1.132.2)(@types/node@24.5.2)(csstype@3.1.3)(sass@1.93.2)(solid-js@1.9.9)(tiny-invariant@1.3.3)(tsx@4.20.5)
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      vite: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+      vite: 7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
     transitivePeerDependencies:
       - '@tanstack/router-core'
       - '@types/node'
@@ -3729,7 +3735,7 @@ snapshots:
       goober: 2.1.16(csstype@3.1.3)
       solid-js: 1.9.9
       tiny-invariant: 1.3.3
-      vite: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+      vite: 7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
     optionalDependencies:
       csstype: 3.1.3
     transitivePeerDependencies:
@@ -3758,7 +3764,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@tanstack/router-plugin@1.132.2(@tanstack/react-router@1.132.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))':
+  '@tanstack/router-plugin@1.132.2(@tanstack/react-router@1.132.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))':
     dependencies:
       '@babel/core': 7.28.4
       '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.28.4)
@@ -3776,7 +3782,7 @@ snapshots:
       zod: 3.25.76
     optionalDependencies:
       '@tanstack/react-router': 1.132.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      vite: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+      vite: 7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
     transitivePeerDependencies:
       - supports-color
 
@@ -3943,11 +3949,11 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
-  '@vitejs/plugin-react-swc@4.1.0(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))':
+  '@vitejs/plugin-react-swc@4.1.0(vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-beta.35
       '@swc/core': 1.13.5
-      vite: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+      vite: 7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
     transitivePeerDependencies:
       - '@swc/helpers'
 
@@ -4278,8 +4284,8 @@ snapshots:
   eslint@9.35.0:
     dependencies:
       '@eslint-community/eslint-utils': 4.9.0(eslint@9.35.0)
-      '@eslint-community/regexpp': 4.12.1
-      '@eslint/config-array': 0.21.0
+      '@eslint-community/regexpp': 4.12.2
+      '@eslint/config-array': 0.21.1
       '@eslint/config-helpers': 0.3.1
       '@eslint/core': 0.15.2
       '@eslint/eslintrc': 3.3.1
@@ -5487,15 +5493,15 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-image-optimizer@2.0.2(sharp@0.34.4)(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)):
+  vite-plugin-image-optimizer@2.0.2(sharp@0.34.4)(vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)):
     dependencies:
       ansi-colors: 4.1.3
       pathe: 2.0.3
-      vite: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+      vite: 7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
     optionalDependencies:
       sharp: 0.34.4
 
-  vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5):
+  vite@7.1.12(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5):
     dependencies:
       esbuild: 0.25.10
       fdir: 6.5.0(picomatch@4.0.3)
