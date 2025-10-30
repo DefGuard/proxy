@@ -84,6 +84,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.2.4
         version: 2.2.4
+      '@tanstack/devtools-vite':
+        specifier: ^0.3.10
+        version: 0.3.10(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
       '@tanstack/router-plugin':
         specifier: ^1.132.2
         version: 1.132.2(@tanstack/react-router@1.132.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))
@@ -1074,12 +1077,24 @@ packages:
   '@swc/types@0.1.25':
     resolution: {integrity: sha512-iAoY/qRhNH8a/hBvm3zKj9qQ4oc2+3w1unPJa2XvTK3XjeLXtzcCingVPw/9e5mn1+0yPqxcBGp9Jf0pkfMb1g==}
 
+  '@tanstack/devtools-client@0.0.3':
+    resolution: {integrity: sha512-kl0r6N5iIL3t9gGDRAv55VRM3UIyMKVH83esRGq7xBjYsRLe/BeCIN2HqrlJkObUXQMKhy7i8ejuGOn+bDqDBw==}
+    engines: {node: '>=18'}
+
   '@tanstack/devtools-event-bus@0.3.2':
     resolution: {integrity: sha512-yJT2As/drc+Epu0nsqCsJaKaLcaNGufiNxSlp/+/oeTD0jsBxF9/PJBfh66XVpYXkKr97b8689mSu7QMef0Rrw==}
     engines: {node: '>=18'}
 
+  '@tanstack/devtools-event-bus@0.3.3':
+    resolution: {integrity: sha512-lWl88uLAz7ZhwNdLH6A3tBOSEuBCrvnY9Fzr5JPdzJRFdM5ZFdyNWz1Bf5l/F3GU57VodrN0KCFi9OA26H5Kpg==}
+    engines: {node: '>=18'}
+
   '@tanstack/devtools-event-client@0.3.1':
     resolution: {integrity: sha512-djlxAeMCdLZBEHWjCexPmc5xYKtCYJn2p5gvqeFrpBTSwmNlsrW0K14OixO0nTyoVIYUI4dNV9HWChHAx/w+oA==}
+    engines: {node: '>=18'}
+
+  '@tanstack/devtools-event-client@0.3.4':
+    resolution: {integrity: sha512-eq+PpuutUyubXu+ycC1GIiVwBs86NF/8yYJJAKSpPcJLWl6R/761F1H4F/9ziX6zKezltFUH1ah3Cz8Ah+KJrw==}
     engines: {node: '>=18'}
 
   '@tanstack/devtools-ui@0.3.5':
@@ -1087,6 +1102,12 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       solid-js: '>=1.9.7'
+
+  '@tanstack/devtools-vite@0.3.10':
+    resolution: {integrity: sha512-vFPYqzFU5FaK0jzMgCA26V5s244P8Ah5cG7eY2oLJrZ6DJ3Wh3UI4W4xqFKzRfQHmgjlndW3/S37eSh5MSFkgQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      vite: ^6.0.0 || ^7.0.0
 
   '@tanstack/devtools@0.6.14':
     resolution: {integrity: sha512-dOtHoeLjjcHeNscu+ZEf89EFboQsy0ggb6pf8Sha59qBUeQbjUsaAvwP8Ogwg89oJxFQbTP7DKYNBNw5CxlNEA==}
@@ -1450,6 +1471,10 @@ packages:
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
+
+  chalk@5.6.2:
+    resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
+    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
   change-case@5.4.4:
     resolution: {integrity: sha512-HRQyTk2/YPEkt9TnUPbOpr64Uw3KOicFWPVBb+xiHvd6eBx/qPr9xqfBFDT8P2vWsvvz4jbEkfDe71W3VyNu2w==}
@@ -2027,6 +2052,9 @@ packages:
     resolution: {integrity: sha512-FIyV/64EkKhJmjgC0g2hygpBv5RNWVPyNCqSAD7eTCv6eFWNIi4PN1UvdSJGicN/o35bnevgis4Y0UDC0qi8jQ==}
     engines: {node: '>=14.0.0'}
 
+  launch-editor@2.12.0:
+    resolution: {integrity: sha512-giOHXoOtifjdHqUamwKq6c49GzBdLjvxrd2D+Q4V6uOHopJv7p9VJxikDsQ/CBXZbEITgUqSVHXLTG3VhPP1Dg==}
+
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -2439,6 +2467,10 @@ packages:
   shebang-regex@3.0.0:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
+
+  shell-quote@1.8.3:
+    resolution: {integrity: sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw==}
+    engines: {node: '>= 0.4'}
 
   side-channel-list@1.0.0:
     resolution: {integrity: sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==}
@@ -3594,7 +3626,18 @@ snapshots:
     dependencies:
       '@swc/counter': 0.1.3
 
+  '@tanstack/devtools-client@0.0.3':
+    dependencies:
+      '@tanstack/devtools-event-client': 0.3.4
+
   '@tanstack/devtools-event-bus@0.3.2':
+    dependencies:
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@tanstack/devtools-event-bus@0.3.3':
     dependencies:
       ws: 8.18.3
     transitivePeerDependencies:
@@ -3603,6 +3646,8 @@ snapshots:
 
   '@tanstack/devtools-event-client@0.3.1': {}
 
+  '@tanstack/devtools-event-client@0.3.4': {}
+
   '@tanstack/devtools-ui@0.3.5(csstype@3.1.3)(solid-js@1.9.9)':
     dependencies:
       clsx: 2.1.1
@@ -3610,6 +3655,24 @@ snapshots:
       solid-js: 1.9.9
     transitivePeerDependencies:
       - csstype
+
+  '@tanstack/devtools-vite@0.3.10(vite@7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5))':
+    dependencies:
+      '@babel/core': 7.28.4
+      '@babel/generator': 7.28.3
+      '@babel/parser': 7.28.4
+      '@babel/traverse': 7.28.4
+      '@babel/types': 7.28.4
+      '@tanstack/devtools-client': 0.0.3
+      '@tanstack/devtools-event-bus': 0.3.3
+      chalk: 5.6.2
+      launch-editor: 2.12.0
+      picomatch: 4.0.3
+      vite: 7.1.7(@types/node@24.5.2)(sass@1.93.2)(tsx@4.20.5)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
 
   '@tanstack/devtools@0.6.14(csstype@3.1.3)(solid-js@1.9.9)':
     dependencies:
@@ -4076,6 +4139,8 @@ snapshots:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
+
+  chalk@5.6.2: {}
 
   change-case@5.4.4: {}
 
@@ -4619,6 +4684,11 @@ snapshots:
   known-css-properties@0.37.0: {}
 
   kysely@0.27.6: {}
+
+  launch-editor@2.12.0:
+    dependencies:
+      picocolors: 1.1.1
+      shell-quote: 1.8.3
 
   levn@0.4.1:
     dependencies:
@@ -5180,6 +5250,8 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
+
+  shell-quote@1.8.3: {}
 
   side-channel-list@1.0.0:
     dependencies:
