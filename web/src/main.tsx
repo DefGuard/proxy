@@ -1,8 +1,8 @@
 import './shared/defguard-ui/scss/index.scss';
 
-import { TanStackDevtools } from '@tanstack/react-devtools';
-import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
+// import { TanStackDevtools } from '@tanstack/react-devtools';
+// import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+// import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
@@ -11,7 +11,7 @@ import { App } from './app/App';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    <TanStackDevtools
+    {/* <TanStackDevtools
       plugins={[
         {
           name: 'TanStack Router',
@@ -22,6 +22,6 @@ createRoot(document.getElementById('root')!).render(
           render: <ReactQueryDevtoolsPanel />,
         },
       ]}
-    />
+    /> */}
   </StrictMode>,
 );
