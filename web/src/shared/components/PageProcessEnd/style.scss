@@ -12,6 +12,10 @@
   }
 
   .page-content {
+    & > svg {
+      padding-bottom: 0 !important;
+    }
+
     h1,
     p {
       text-align: center;
@@ -19,6 +23,18 @@
 
     p {
       color: var(--fg-muted);
+    }
+
+    .content {
+      margin-top: auto;
+      margin-bottom: auto;
+      display: flex;
+      flex-flow: column;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      box-sizing: border-box;
+      padding: var(--spacing-4xl) 0;
     }
   }
 }

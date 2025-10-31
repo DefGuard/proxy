@@ -12,27 +12,39 @@ const schema = z.object({
 export const Route = createFileRoute('/openid/callback')({
   component: RouteComponent,
   validateSearch: schema,
+  onError: () => {
+    throw redirect({ to: '/enrollment-start', replace: true });
+  },
   loaderDeps: ({ search }) => ({ search }),
   beforeLoad: async ({ search }) => {
-    const openIdResponse = await api.openId.enrollmentCallback.callbackFn({
-      data: {
-        code: search.code,
-        state: search.state,
-        type: 'enrollment',
-      },
-    });
-    const enrollmentStartResponse = await api.enrollment.start.callbackFn({
-      data: {
-        token: openIdResponse.data.token,
-      },
-    });
+    const openIdResponse = await api.openId.enrollmentCallback
+      .callbackFn({
+        data: {
+          code: search.code,
+          state: search.state,
+          type: 'enrollment',
+        },
+      })
+      .catch((e) => {
+        console.error(e);
+        throw redirect({ to: '/enrollment-start', replace: true });
+      });
+    const enrollmentStartResponse = await api.enrollment.start
+      .callbackFn({
+        data: {
+          token: openIdResponse.data.token,
+        },
+      })
+      .catch((e) => {
+        console.error(e);
+        throw redirect({ to: '/enrollment-start', replace: true });
+      });
     useEnrollmentStore.setState({
       enrollmentData: enrollmentStartResponse.data,
       token: openIdResponse.data.token,
     });
     throw redirect({
       to: '/download',
-      search: search,
       replace: true,
     });
   },
