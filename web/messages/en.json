@@ -22,6 +22,8 @@
   "cmp_openid_button": "Sign in with {provider}",
   "cmp_copy_field_tooltip": "Copied",
   "footer_contact": "If you need assistance, please contact your defguard administrator at",
+  "link_invalid_title": "Link expired or invalid.",
+  "link_invalid_subtitle": "Please try again or acquire new link.",
   "session_end_title": "Session expired.",
   "session_end_subtitle": "Please start the process again.",
   "session_end_link": "Back to main page",
