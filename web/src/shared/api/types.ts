@@ -1,4 +1,11 @@
+import type { AxiosError } from 'axios';
+
 export type EmptyApiResponse = Record<never, never>;
+
+export type ErrorResponse = AxiosError<{
+  message?: string;
+  msg?: string;
+}>;
 
 export type TokenRequest = {
   token: string;
