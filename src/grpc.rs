@@ -77,11 +77,7 @@ impl ProxyServer {
         }
     }
 
-    pub(crate) async fn set_tls_config(
-        &self,
-        cert_pem: String,
-        key_pem: String,
-    ) -> Result<(), ApiError> {
+    pub(crate) fn set_tls_config(&self, cert_pem: String, key_pem: String) -> Result<(), ApiError> {
         let mut lock = self.config.lock().unwrap();
         let config = lock.get_or_insert_with(Configuration::default);
         config.grpc_cert_pem = Some(cert_pem);
@@ -99,7 +95,7 @@ impl ProxyServer {
             .serve_with_shutdown(addr, async {
                 let config = SETUP_CHANNEL.1.lock().await.recv().await;
                 if let Some(cfg) = config {
-                    info!("Received setup configuration: {:?}", cfg);
+                    info!("Received Proxy setup configuration from Core");
                     server_config = cfg;
                 } else {
                     error!("Setup communication channel closed unexpectedly");
@@ -145,9 +141,6 @@ impl ProxyServer {
         } else {
             (None, None)
         };
-
-        info!("Configured gRPC certificate: {grpc_cert:?}");
-        info!("Configured gRPC key: {grpc_key:?}");
 
         let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
             let identity = Identity::from_pem(cert, key);
@@ -222,11 +215,9 @@ impl ProxyServer {
 
     fn tls_configured(&self) -> bool {
         let lock = self.config.lock().unwrap();
-        if let Some(cfg) = &*lock {
-            cfg.grpc_cert_pem.is_some() && cfg.grpc_key_pem.is_some()
-        } else {
-            false
-        }
+        (*lock)
+            .as_ref()
+            .is_some_and(|config| config.grpc_cert_pem.is_some() && config.grpc_key_pem.is_some())
     }
 }
 
@@ -350,7 +341,7 @@ impl proxy_server::Proxy for ProxyServer {
                                     grpc_cert_pem: Some(
                                         defguard_certs::der_to_pem(
                                             &cert_der,
-                                            &defguard_certs::PemLabel::Certificate,
+                                            defguard_certs::PemLabel::Certificate,
                                         )
                                         .unwrap_or_default(),
                                     ),
