@@ -18,6 +18,8 @@ pub(crate) mod register_mfa;
 
 // Timeout for awaiting response from Defguard Core.
 const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
+const CLIENT_VERSION_HEADER: &str = "defguard-client-version";
+const CLIENT_PLATFORM_HEADER: &str = "defguard-client-platform";
 
 impl<S> FromRequestParts<S> for DeviceInfo
 where
@@ -39,14 +41,27 @@ where
             // sanitize user-agent
             .filter(|agent| !ammonia::is_html(agent));
 
+        let version = parts
+            .headers
+            .get(CLIENT_VERSION_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+        let platform = parts
+            .headers
+            .get(CLIENT_PLATFORM_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+
         let ip_address = forwarded_for_ip
             .or(insecure_ip)
             .map(|v| v.to_string())
             .map_err(|_| ApiError::Unexpected("Missing client IP".to_string()))?;
 
-        Ok(DeviceInfo {
+        Ok(Self {
             ip_address,
             user_agent,
+            version,
+            platform,
         })
     }
 }
@@ -84,8 +99,9 @@ pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use axum::{body::Body, http::Request};
+
+    use super::*;
 
     static VALID_USER_AGENTS: &[&str] = &[
         // desktop

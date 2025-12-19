@@ -192,26 +192,6 @@ jobs:
 
           deb-s3 upload -l --bucket=apt.defguard.net --access-key-id=${{ secrets.AWS_ACCESS_KEY_APT }} --secret-access-key=${{ secrets.AWS_SECRET_KEY_APT }} --s3-region=eu-north-1 --no-fail-if-exists --codename=trixie --component="$COMPONENT" defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb
 
-      - name: Run `packer init`
-        if: matrix.build == 'linux' && matrix.arch == 'amd64'
-        id: init
-        run: "packer init ./images/ami/proxy.pkr.hcl"
-
-      - name: Build AMI images for multiple regions
-        if: matrix.build == 'linux' && matrix.arch == 'amd64'
-        run: |
-          regions=(us-east-1 eu-west-1 ap-northeast-1 eu-central-1)
-          for region in "${regions[@]}"; do
-            echo "Building AMI for region: $region"
-            echo "Running packer validate for $region..."
-            packer validate --var "package_version=${{ env.VERSION }}" --var "region=$region" ./images/ami/proxy.pkr.hcl
-            echo "Building AMI image for $region..."
-            packer build -color=false -on-error=abort --var "package_version=${{ env.VERSION }}" --var "region=$region" ./images/ami/proxy.pkr.hcl
-          done
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
       - name: Build RPM package
         if: matrix.build == 'linux'
         uses: bpicode/github-action-fpm@master
@@ -231,7 +211,7 @@ jobs:
           asset_content_type: application/octet-stream
 
   apt-sign:
-    needs: 
+    needs:
       - build-binaries
     runs-on:
       - self-hosted
@@ -240,7 +220,7 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - name: Sign APT repository on trixie 
+      - name: Sign APT repository on trixie
         run: |
           export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_APT }}
           export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_KEY_APT }}

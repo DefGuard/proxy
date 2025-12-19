@@ -20,7 +20,7 @@ pub(crate) mod proto {
 extern crate tracing;
 
 pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+", env!("VERGEN_GIT_SHA"));
-pub const MIN_CORE_VERSION: Version = Version::new(1, 5, 0);
+pub const MIN_CORE_VERSION: Version = Version::new(1, 6, 0);
 
 type CommsChannel<T> = (
     Arc<tokio::sync::Mutex<mpsc::Sender<T>>>,

@@ -9,9 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestRouteImport } from './routes/test'
 import { Route as SessionEndRouteImport } from './routes/session-end'
 import { Route as PasswordResetRouteImport } from './routes/password-reset'
+import { Route as LinkInvalidRouteImport } from './routes/link-invalid'
 import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as ClientSetupRouteImport } from './routes/client-setup'
@@ -24,11 +24,6 @@ import { Route as OpenidCallbackRouteImport } from './routes/openid/callback'
 import { Route as OpenidMfaIndexRouteImport } from './routes/openid/mfa/index'
 import { Route as OpenidMfaCallbackRouteImport } from './routes/openid/mfa/callback'
 
-const TestRoute = TestRouteImport.update({
-  id: '/test',
-  path: '/test',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SessionEndRoute = SessionEndRouteImport.update({
   id: '/session-end',
   path: '/session-end',
@@ -37,6 +32,11 @@ const SessionEndRoute = SessionEndRouteImport.update({
 const PasswordResetRoute = PasswordResetRouteImport.update({
   id: '/password-reset',
   path: '/password-reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinkInvalidRoute = LinkInvalidRouteImport.update({
+  id: '/link-invalid',
+  path: '/link-invalid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EnrollmentStartRoute = EnrollmentStartRouteImport.update({
@@ -100,9 +100,9 @@ export interface FileRoutesByFullPath {
   '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
+  '/link-invalid': typeof LinkInvalidRoute
   '/password-reset': typeof PasswordResetRoute
   '/session-end': typeof SessionEndRoute
-  '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
@@ -116,9 +116,9 @@ export interface FileRoutesByTo {
   '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
+  '/link-invalid': typeof LinkInvalidRoute
   '/password-reset': typeof PasswordResetRoute
   '/session-end': typeof SessionEndRoute
-  '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
@@ -133,9 +133,9 @@ export interface FileRoutesById {
   '/client-setup': typeof ClientSetupRoute
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
+  '/link-invalid': typeof LinkInvalidRoute
   '/password-reset': typeof PasswordResetRoute
   '/session-end': typeof SessionEndRoute
-  '/test': typeof TestRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
@@ -151,9 +151,9 @@ export interface FileRouteTypes {
     | '/client-setup'
     | '/download'
     | '/enrollment-start'
+    | '/link-invalid'
     | '/password-reset'
     | '/session-end'
-    | '/test'
     | '/openid/callback'
     | '/openid/error'
     | '/password/finish'
@@ -167,9 +167,9 @@ export interface FileRouteTypes {
     | '/client-setup'
     | '/download'
     | '/enrollment-start'
+    | '/link-invalid'
     | '/password-reset'
     | '/session-end'
-    | '/test'
     | '/openid/callback'
     | '/openid/error'
     | '/password/finish'
@@ -183,9 +183,9 @@ export interface FileRouteTypes {
     | '/client-setup'
     | '/download'
     | '/enrollment-start'
+    | '/link-invalid'
     | '/password-reset'
     | '/session-end'
-    | '/test'
     | '/openid/callback'
     | '/openid/error'
     | '/password/finish'
@@ -200,9 +200,9 @@ export interface RootRouteChildren {
   ClientSetupRoute: typeof ClientSetupRoute
   DownloadRoute: typeof DownloadRoute
   EnrollmentStartRoute: typeof EnrollmentStartRoute
+  LinkInvalidRoute: typeof LinkInvalidRoute
   PasswordResetRoute: typeof PasswordResetRoute
   SessionEndRoute: typeof SessionEndRoute
-  TestRoute: typeof TestRoute
   OpenidCallbackRoute: typeof OpenidCallbackRoute
   OpenidErrorRoute: typeof OpenidErrorRoute
   PasswordFinishRoute: typeof PasswordFinishRoute
@@ -214,13 +214,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/test': {
-      id: '/test'
-      path: '/test'
-      fullPath: '/test'
-      preLoaderRoute: typeof TestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/session-end': {
       id: '/session-end'
       path: '/session-end'
@@ -233,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/password-reset'
       fullPath: '/password-reset'
       preLoaderRoute: typeof PasswordResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/link-invalid': {
+      id: '/link-invalid'
+      path: '/link-invalid'
+      fullPath: '/link-invalid'
+      preLoaderRoute: typeof LinkInvalidRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/enrollment-start': {
@@ -320,9 +320,9 @@ const rootRouteChildren: RootRouteChildren = {
   ClientSetupRoute: ClientSetupRoute,
   DownloadRoute: DownloadRoute,
   EnrollmentStartRoute: EnrollmentStartRoute,
+  LinkInvalidRoute: LinkInvalidRoute,
   PasswordResetRoute: PasswordResetRoute,
   SessionEndRoute: SessionEndRoute,
-  TestRoute: TestRoute,
   OpenidCallbackRoute: OpenidCallbackRoute,
   OpenidErrorRoute: OpenidErrorRoute,
   PasswordFinishRoute: PasswordFinishRoute,
