@@ -85,12 +85,27 @@ impl ProxyServer {
         Ok(())
     }
 
-    pub(crate) async fn await_setup(&self, addr: SocketAddr) -> Result<Configuration, ApiError> {
+    pub(crate) async fn await_setup(
+        &self,
+        addr: SocketAddr,
+    ) -> Result<Configuration, anyhow::Error> {
         info!("gRPC waiting for setup connection from Core on {addr}");
         let mut server_builder = Server::builder();
         let mut server_config = None;
 
+        // let own_version = Version::parse(VERSION)?;
+        let own_version = Version::parse(VERSION)?;
+
         server_builder
+            .layer(tonic::service::InterceptorLayer::new(
+                DefguardVersionInterceptor::new(
+                    own_version.clone(),
+                    DefguardComponent::Core,
+                    MIN_CORE_VERSION,
+                    false,
+                ),
+            ))
+            .layer(DefguardVersionLayer::new(own_version))
             .add_service(proxy_server::ProxyServer::new(self.clone()))
             .serve_with_shutdown(addr, async {
                 let config = SETUP_CHANNEL.1.lock().await.recv().await;
@@ -109,7 +124,7 @@ impl ProxyServer {
 
         info!("gRPC setup server on {addr} has shut down");
 
-        server_config.map_or_else(
+        Ok(server_config.map_or_else(
             || {
                 error!("No server configuration received after setup completion");
                 Err(ApiError::Unexpected(
@@ -120,7 +135,7 @@ impl ProxyServer {
                 info!("gRPC setup handshake completed.");
                 Ok(cfg)
             },
-        )
+        )?)
     }
 
     pub(crate) fn configure(&self, config: Configuration) {

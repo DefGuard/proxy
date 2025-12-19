@@ -200,7 +200,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
         loop {
-            let mut server_to_run = server_clone.clone();
+            let server_to_run = server_clone.clone();
 
             let cert_dir = Path::new(GRPC_CERTS_PATH);
             if !cert_dir.exists() {
@@ -213,8 +213,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             ) {
                 info!("Using existing gRPC TLS certificates from {cert_dir:?}");
                 server_clone
-                .set_tls_config(cert, key)
-                .await?;
+                .set_tls_config(cert, key)?;
             } else {
                 info!("No gRPC TLS certificates found at {cert_dir:?}, new certificates will be generated");
             }
