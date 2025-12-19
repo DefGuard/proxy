@@ -2,7 +2,8 @@ use std::{
     collections::HashMap,
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::{atomic::Ordering, Arc},
+    path::Path,
+    sync::{atomic::Ordering, Arc, LazyLock},
     time::Duration,
 };
 
@@ -22,7 +23,11 @@ use defguard_version::{
     DefguardComponent, Version,
 };
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
+use tokio::{
+    net::TcpListener,
+    sync::{oneshot, Mutex},
+    task::JoinSet,
+};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower::ServiceBuilder;
 use tower_governor::{
@@ -37,10 +42,10 @@ use crate::{
     config::Config,
     enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
-    grpc::ProxyServer,
+    grpc::{ProxyServer, GRPC_CERTS_PATH},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     proto::proxy_server,
-    MIN_CORE_VERSION, VERSION,
+    CommsChannel, MIN_CORE_VERSION, VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -50,6 +55,11 @@ const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
 const X_POWERED_BY: &str = "x-powered-by";
+
+pub static GRPC_SERVER_RESTART_CHANNEL: LazyLock<CommsChannel<()>> = LazyLock::new(|| {
+    let (tx, rx) = tokio::sync::mpsc::channel(100);
+    (Arc::new(Mutex::new(tx)), Arc::new(Mutex::new(rx)))
+});
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -124,7 +134,7 @@ fn get_client_addr(request: &Request<Body>) -> String {
                 request
                     .extensions()
                     .get::<ConnectInfo<SocketAddr>>()
-                    .map_or("unknown".to_string(), |addr| addr.0.to_string())
+                    .map_or_else(|| "unknown".to_string(), |addr| addr.0.to_string())
             },
             |ip| ip.trim().to_string(),
         )
@@ -171,9 +181,8 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
-
     // connect to upstream gRPC server
-    let grpc_server = ProxyServer::new();
+    let mut grpc_server = ProxyServer::new();
 
     // build application
     debug!("Setting up API server");
@@ -185,51 +194,61 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         url: config.url.clone(),
     };
 
-    // Read gRPC TLS certificate and key.
-    debug!("Configuring certificates for gRPC");
-    let grpc_cert = config
-        .grpc_cert
-        .as_ref()
-        .and_then(|path| read_to_string(path).ok());
-    let grpc_key = config
-        .grpc_key
-        .as_ref()
-        .and_then(|path| read_to_string(path).ok());
-    debug!("Configured gRPC certificate: {grpc_cert:?}");
+    let server_clone = grpc_server.clone();
 
     // Start gRPC server.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(
-            config
-                .grpc_bind_address
-                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-            config.grpc_port,
-        );
-        info!("gRPC server is listening on {addr}");
-        let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
-            let identity = Identity::from_pem(cert, key);
-            Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?
-        } else {
-            Server::builder()
-        };
-        let own_version = Version::parse(VERSION)?;
-        let versioned_service = ServiceBuilder::new()
-            .layer(tonic::service::InterceptorLayer::new(
-                DefguardVersionInterceptor::new(
-                    own_version.clone(),
-                    DefguardComponent::Core,
-                    MIN_CORE_VERSION,
-                    false,
-                ),
-            ))
-            .layer(DefguardVersionLayer::new(own_version))
-            .service(proxy_server::ProxyServer::new(grpc_server));
-        builder
-            .add_service(versioned_service)
-            .serve(addr)
-            .await
-            .context("Error running gRPC server")
+        loop {
+            let mut server_to_run = server_clone.clone();
+
+            let cert_dir = Path::new(GRPC_CERTS_PATH);
+            if !cert_dir.exists() {
+                tokio::fs::create_dir_all(cert_dir).await?;
+            }
+
+            if let (Some(cert), Some(key)) = (
+                read_to_string(cert_dir.join("grpc_cert.pem")).ok(),
+                read_to_string(cert_dir.join("grpc_key.pem")).ok(),
+            ) {
+                info!("Using existing gRPC TLS certificates from {cert_dir:?}");
+                server_clone
+                .set_tls_config(cert, key)
+                .await?;
+            } else {
+                info!("No gRPC TLS certificates found at {cert_dir:?}, new certificates will be generated");
+            }
+
+            let configuration = server_clone
+                .await_setup(SocketAddr::new(
+                    config
+                        .grpc_bind_address
+                        .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                    config.grpc_port,
+                ))
+                .await?;
+
+            if let (Some(cert), Some(key)) =
+                (&configuration.grpc_cert_pem, &configuration.grpc_key_pem)
+            {
+                let cert_path = cert_dir.join("grpc_cert.pem");
+                let key_path = cert_dir.join("grpc_key.pem");
+                tokio::fs::write(&cert_path, cert).await?;
+                tokio::fs::write(&key_path, key).await?;
+            }
+
+            let addr = SocketAddr::new(
+                config
+                    .grpc_bind_address
+                    .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                config.grpc_port,
+            );
+
+            server_to_run.configure(configuration);
+            if let Err(e) = server_to_run.run(addr).await {
+                error!("gRPC server error: {e:?}, restarting...");
+            }
+        }
     });
 
     // Setup tower_governor rate-limiter

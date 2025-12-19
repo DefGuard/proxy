@@ -3,7 +3,6 @@ use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
 use time::OffsetDateTime;
 
 use super::register_mfa::router as register_mfa_router;
-
 use crate::{
     error::ApiError,
     handlers::{get_core_response, mobile_client::register_mobile_auth},

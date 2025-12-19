@@ -1,7 +1,6 @@
-use serde::Deserialize;
-
 use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
 use axum_extra::extract::PrivateCookieJar;
+use serde::Deserialize;
 
 use crate::{
     error::ApiError,
