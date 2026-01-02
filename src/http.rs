@@ -212,28 +212,32 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 read_to_string(cert_dir.join("grpc_key.pem")).ok(),
             ) {
                 info!("Using existing gRPC TLS certificates from {cert_dir:?}");
-                server_clone
-                .set_tls_config(cert, key)?;
-            } else {
+                server_clone.set_tls_config(cert, key)?;
+            } else if !server_clone.setup_completed() {
+                // Only attempt setup if not already configured
                 info!("No gRPC TLS certificates found at {cert_dir:?}, new certificates will be generated");
-            }
+                let configuration = server_clone
+                    .await_setup(SocketAddr::new(
+                        config
+                            .grpc_bind_address
+                            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                        config.grpc_port,
+                    ))
+                    .await?;
+                info!("Generated new gRPC TLS certificates");
 
-            let configuration = server_clone
-                .await_setup(SocketAddr::new(
-                    config
-                        .grpc_bind_address
-                        .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-                    config.grpc_port,
-                ))
-                .await?;
+                if let (Some(cert), Some(key)) =
+                    (&configuration.grpc_cert_pem, &configuration.grpc_key_pem)
+                {
+                    let cert_path = cert_dir.join("grpc_cert.pem");
+                    let key_path = cert_dir.join("grpc_key.pem");
+                    tokio::fs::write(&cert_path, cert).await?;
+                    tokio::fs::write(&key_path, key).await?;
+                }
 
-            if let (Some(cert), Some(key)) =
-                (&configuration.grpc_cert_pem, &configuration.grpc_key_pem)
-            {
-                let cert_path = cert_dir.join("grpc_cert.pem");
-                let key_path = cert_dir.join("grpc_key.pem");
-                tokio::fs::write(&cert_path, cert).await?;
-                tokio::fs::write(&key_path, key).await?;
+                server_to_run.configure(configuration);
+            } else {
+                info!("Proxy already configured, skipping setup phase");
             }
 
             let addr = SocketAddr::new(
@@ -243,7 +247,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 config.grpc_port,
             );
 
-            server_to_run.configure(configuration);
             if let Err(e) = server_to_run.run(addr).await {
                 error!("gRPC server error: {e:?}, restarting...");
             }

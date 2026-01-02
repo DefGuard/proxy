@@ -36,7 +36,8 @@ use crate::{
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
-pub(crate) const GRPC_CERTS_PATH: &str = "/Volumes/dysk/praca/proxy/proxy_certs/";
+// TODO: Change this
+pub(crate) const GRPC_CERTS_PATH: &str = "./proxy_certs";
 
 static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
     let (tx, rx) = mpsc::channel(10);
@@ -59,7 +60,7 @@ pub(crate) struct ProxyServer {
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
-    setup_complete: Arc<AtomicBool>,
+    setup_in_progress: Arc<AtomicBool>,
 }
 
 impl ProxyServer {
@@ -73,7 +74,7 @@ impl ProxyServer {
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
-            setup_complete: Arc::new(AtomicBool::new(false)),
+            setup_in_progress: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -223,7 +224,7 @@ impl ProxyServer {
         }
     }
 
-    fn setup_completed(&self) -> bool {
+    pub(crate) fn setup_completed(&self) -> bool {
         let lock = self.config.lock().unwrap();
         lock.is_some()
     }
@@ -245,7 +246,7 @@ impl Clone for ProxyServer {
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
             config: Arc::clone(&self.config),
-            setup_complete: Arc::clone(&self.setup_complete),
+            setup_in_progress: Arc::clone(&self.setup_in_progress),
         }
     }
 }
@@ -259,31 +260,52 @@ impl proxy_server::Proxy for ProxyServer {
         &self,
         request: Request<tonic::Streaming<ProxySetupResponse>>,
     ) -> Result<Response<Self::ProxySetupStream>, Status> {
+        if self.setup_in_progress.swap(true, Ordering::SeqCst) {
+            warn!("Proxy setup already in progress, rejecting concurrent setup attempt");
+            return Err(Status::already_exists("Proxy setup is already in progress"));
+        }
+
         info!("Starting proxy setup handshake");
 
         let (tx, rx) = mpsc::unbounded_channel();
         let tls_configured = self.tls_configured();
         let current_configuration = self.get_configuration();
+        let setup_in_progress = Arc::clone(&self.setup_in_progress);
 
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
-                let initial_info =
-                    if let Some(initial_message) = stream.message().await.unwrap_or(None) {
+                let mut setup_successful = false;
+                let initial_info = match stream.message().await {
+                    Ok(Some(ProxySetupResponse {
+                        payload: Some(proxy_setup_response::Payload::InitialSetupInfo(info)),
+                    })) => {
                         info!("Received initial connection from Defguard Core");
-                        if let Some(proxy_setup_response::Payload::InitialSetupInfo(info)) =
-                            initial_message.payload
-                        {
-                            info!("Initial message confirmed from Defguard Core: {:?}", info);
-                            info
-                        } else {
-                            error!("Unexpected payload type in initial message");
-                            return;
-                        }
-                    } else {
-                        error!("No initial message received from Defguard Core");
+                        info
+                    }
+                    Ok(Some(ProxySetupResponse {
+                        payload: Some(proxy_setup_response::Payload::Done(Done {})),
+                    })) => {
+                        info!("Received Done message from Defguard Core, skipping setup phase");
+                        setup_in_progress.store(false, Ordering::SeqCst);
                         return;
-                    };
+                    }
+                    Ok(Some(msg)) => {
+                        error!("Unexpected payload type in initial message: {:?}", msg);
+                        setup_in_progress.store(false, Ordering::SeqCst);
+                        return;
+                    }
+                    Ok(None) => {
+                        error!("No initial message received from Defguard Core");
+                        setup_in_progress.store(false, Ordering::SeqCst);
+                        return;
+                    }
+                    Err(err) => {
+                        error!("Error receiving initial message from Defguard Core: {err}");
+                        setup_in_progress.store(false, Ordering::SeqCst);
+                        return;
+                    }
+                };
 
                 info!(
                     "Received initial connection from Defguard Core: {:?}",
@@ -298,12 +320,15 @@ impl proxy_server::Proxy for ProxyServer {
                         payload: Some(proxy_setup_request::Payload::Done(Done {})),
                     })) {
                         error!("Failed to send Done message: {err}");
+                    } else {
+                        setup_successful = true;
                     }
                 } else {
                     let new_key_pair = match defguard_certs::generate_key_pair() {
                         Ok(kp) => kp,
                         Err(err) => {
                             error!("Failed to generate key pair: {err}");
+                            setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
                     };
@@ -321,6 +346,7 @@ impl proxy_server::Proxy for ProxyServer {
                         Ok(csr) => csr,
                         Err(err) => {
                             error!("Failed to generate CSR: {err}");
+                            setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
                     };
@@ -335,6 +361,7 @@ impl proxy_server::Proxy for ProxyServer {
                         payload: Some(proxy_setup_request::Payload::CsrRequest(csr_request)),
                     })) {
                         error!("Failed to send CsrRequest: {err}");
+                        setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
 
@@ -366,6 +393,7 @@ impl proxy_server::Proxy for ProxyServer {
                                     payload: Some(proxy_setup_request::Payload::Done(Done {})),
                                 })) {
                                     error!("Failed to send Done message: {err}");
+                                    setup_in_progress.store(false, Ordering::SeqCst);
                                     return;
                                 }
 
@@ -377,6 +405,8 @@ impl proxy_server::Proxy for ProxyServer {
                                 if let Some(configuration) = configuration.take() {
                                     if let Err(err) = lock.send(Some(configuration)).await {
                                         error!("Failed to send setup configuration: {err:?}");
+                                    } else {
+                                        setup_successful = true;
                                     }
                                 } else {
                                     error!(
@@ -385,24 +415,35 @@ impl proxy_server::Proxy for ProxyServer {
                                 }
 
                                 info!("Setup handshake completed successfully");
+                                break;
                             }
                             _ => {
                                 error!(
                                     "Unexpected payload type while waiting for CsrAck: {:?}",
                                     response.payload
                                 );
+                                setup_in_progress.store(false, Ordering::SeqCst);
                                 return;
                             }
                         },
                         Ok(None) => {
                             error!("gRPC stream has been closed unexpectedly");
+                            setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
                         Err(err) => {
                             error!("gRPC client error while waiting for CertResponse: {err}");
+                            setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
                     }
+                }
+
+                setup_in_progress.store(false, Ordering::SeqCst);
+                if setup_successful {
+                    info!("Setup completed successfully");
+                } else {
+                    warn!("Setup did not complete successfully");
                 }
             }
             .instrument(tracing::Span::current()),
@@ -477,9 +518,6 @@ impl proxy_server::Proxy for ProxyServer {
                 info!("Defguard core client disconnected: {address}");
                 connected.store(false, Ordering::Relaxed);
                 clients.lock().unwrap().remove(&address);
-                if let Err(err) = GRPC_SERVER_RESTART_CHANNEL.0.lock().await.send(()).await {
-                    error!("Failed to notify gRPC server restart: {err}");
-                }
             }
             .instrument(tracing::Span::current()),
         );
