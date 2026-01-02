@@ -292,16 +292,25 @@ impl proxy_server::Proxy for ProxyServer {
                     }
                     Ok(Some(msg)) => {
                         error!("Unexpected payload type in initial message: {:?}", msg);
+                        let _ = tx.send(Err(Status::invalid_argument(
+                            "Unexpected payload type in initial message",
+                        )));
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
                     Ok(None) => {
                         error!("No initial message received from Defguard Core");
+                        let _ = tx.send(Err(Status::aborted(
+                            "No initial message received from Defguard Core",
+                        )));
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
                     Err(err) => {
                         error!("Error receiving initial message from Defguard Core: {err}");
+                        let _ = tx.send(Err(Status::internal(format!(
+                            "Error receiving initial message: {err}"
+                        ))));
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
@@ -328,6 +337,9 @@ impl proxy_server::Proxy for ProxyServer {
                         Ok(kp) => kp,
                         Err(err) => {
                             error!("Failed to generate key pair: {err}");
+                            let _ = tx.send(Err(Status::internal(format!(
+                                "Failed to generate key pair: {err}"
+                            ))));
                             setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
@@ -346,6 +358,9 @@ impl proxy_server::Proxy for ProxyServer {
                         Ok(csr) => csr,
                         Err(err) => {
                             error!("Failed to generate CSR: {err}");
+                            let _ = tx.send(Err(Status::internal(format!(
+                                "Failed to generate CSR: {err}"
+                            ))));
                             setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
@@ -393,6 +408,7 @@ impl proxy_server::Proxy for ProxyServer {
                                     payload: Some(proxy_setup_request::Payload::Done(Done {})),
                                 })) {
                                     error!("Failed to send Done message: {err}");
+                                    // Can't send error since tx already failed
                                     setup_in_progress.store(false, Ordering::SeqCst);
                                     return;
                                 }
@@ -422,17 +438,25 @@ impl proxy_server::Proxy for ProxyServer {
                                     "Unexpected payload type while waiting for CsrAck: {:?}",
                                     response.payload
                                 );
+                                let _ = tx.send(Err(Status::invalid_argument(
+                                    "Unexpected payload type while waiting for response",
+                                )));
                                 setup_in_progress.store(false, Ordering::SeqCst);
                                 return;
                             }
                         },
                         Ok(None) => {
                             error!("gRPC stream has been closed unexpectedly");
+                            let _ = tx.send(Err(Status::aborted(
+                                "gRPC stream has been closed unexpectedly",
+                            )));
                             setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
                         Err(err) => {
                             error!("gRPC client error while waiting for CertResponse: {err}");
+                            let _ =
+                                tx.send(Err(Status::internal(format!("gRPC client error: {err}"))));
                             setup_in_progress.store(false, Ordering::SeqCst);
                             return;
                         }
