@@ -36,9 +36,6 @@ use crate::{
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
-// TODO: Change this
-pub(crate) const GRPC_CERTS_PATH: &str = "./proxy_certs";
-
 static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
     let (tx, rx) = mpsc::channel(10);
     (
@@ -49,8 +46,8 @@ static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Configuration {
-    pub(crate) grpc_key_pem: Option<String>,
-    pub(crate) grpc_cert_pem: Option<String>,
+    pub(crate) grpc_key_pem: String,
+    pub(crate) grpc_cert_pem: String,
 }
 
 pub(crate) struct ProxyServer {
@@ -81,8 +78,8 @@ impl ProxyServer {
     pub(crate) fn set_tls_config(&self, cert_pem: String, key_pem: String) -> Result<(), ApiError> {
         let mut lock = self.config.lock().unwrap();
         let config = lock.get_or_insert_with(Configuration::default);
-        config.grpc_cert_pem = Some(cert_pem);
-        config.grpc_key_pem = Some(key_pem);
+        config.grpc_cert_pem = cert_pem;
+        config.grpc_key_pem = key_pem;
         Ok(())
     }
 
@@ -91,10 +88,9 @@ impl ProxyServer {
         addr: SocketAddr,
     ) -> Result<Configuration, anyhow::Error> {
         info!("gRPC waiting for setup connection from Core on {addr}");
-        let mut server_builder = Server::builder();
+        let server_builder = Server::builder();
         let mut server_config = None;
 
-        // let own_version = Version::parse(VERSION)?;
         let own_version = Version::parse(VERSION)?;
 
         server_builder
@@ -111,7 +107,7 @@ impl ProxyServer {
             .serve_with_shutdown(addr, async {
                 let config = SETUP_CHANNEL.1.lock().await.recv().await;
                 if let Some(cfg) = config {
-                    info!("Received Proxy setup configuration from Core");
+                    debug!("Received the passed Proxy configuration");
                     server_config = cfg;
                 } else {
                     error!("Setup communication channel closed unexpectedly");
@@ -123,7 +119,7 @@ impl ProxyServer {
                 ApiError::Unexpected("gRPC server error during setup".into())
             })?;
 
-        info!("gRPC setup server on {addr} has shut down");
+        debug!("gRPC setup server on {addr} has shutdown after completing setup");
 
         Ok(server_config.map_or_else(
             || {
@@ -133,7 +129,7 @@ impl ProxyServer {
                 ))
             },
             |cfg| {
-                info!("gRPC setup handshake completed.");
+                debug!("Returning received server configuration");
                 Ok(cfg)
             },
         )?)
@@ -155,15 +151,13 @@ impl ProxyServer {
         let (grpc_cert, grpc_key) = if let Some(cfg) = config {
             (cfg.grpc_cert_pem, cfg.grpc_key_pem)
         } else {
-            (None, None)
+            return Err(anyhow::anyhow!("gRPC server configuration is missing"));
         };
 
-        let mut builder = if let (Some(cert), Some(key)) = (grpc_cert, grpc_key) {
-            let identity = Identity::from_pem(cert, key);
-            Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?
-        } else {
-            Server::builder()
-        };
+        let identity = Identity::from_pem(grpc_cert, grpc_key);
+        let mut builder =
+            Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?;
+
         let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
             .layer(tonic::service::InterceptorLayer::new(
@@ -228,13 +222,6 @@ impl ProxyServer {
         let lock = self.config.lock().unwrap();
         lock.is_some()
     }
-
-    fn tls_configured(&self) -> bool {
-        let lock = self.config.lock().unwrap();
-        (*lock)
-            .as_ref()
-            .is_some_and(|config| config.grpc_cert_pem.is_some() && config.grpc_key_pem.is_some())
-    }
 }
 
 impl Clone for ProxyServer {
@@ -254,21 +241,21 @@ impl Clone for ProxyServer {
 #[tonic::async_trait]
 impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
-    type ProxySetupStream = UnboundedReceiverStream<Result<ProxySetupRequest, Status>>;
+    type SetupStream = UnboundedReceiverStream<Result<ProxySetupRequest, Status>>;
 
-    async fn proxy_setup(
+    async fn setup(
         &self,
         request: Request<tonic::Streaming<ProxySetupResponse>>,
-    ) -> Result<Response<Self::ProxySetupStream>, Status> {
+    ) -> Result<Response<Self::SetupStream>, Status> {
         if self.setup_in_progress.swap(true, Ordering::SeqCst) {
-            warn!("Proxy setup already in progress, rejecting concurrent setup attempt");
+            info!("Proxy setup already in progress, rejecting concurrent setup attempt");
             return Err(Status::already_exists("Proxy setup is already in progress"));
         }
 
         info!("Starting proxy setup handshake");
 
         let (tx, rx) = mpsc::unbounded_channel();
-        let tls_configured = self.tls_configured();
+        let tls_configured = self.setup_completed();
         let current_configuration = self.get_configuration();
         let setup_in_progress = Arc::clone(&self.setup_in_progress);
 
@@ -280,34 +267,35 @@ impl proxy_server::Proxy for ProxyServer {
                     Ok(Some(ProxySetupResponse {
                         payload: Some(proxy_setup_response::Payload::InitialSetupInfo(info)),
                     })) => {
-                        info!("Received initial connection from Defguard Core");
+                        info!("Received initial setup information from Defguard Core");
+                        debug!("Initial setup info: {:?}", info);
                         info
                     }
                     Ok(Some(ProxySetupResponse {
                         payload: Some(proxy_setup_response::Payload::Done(Done {})),
                     })) => {
-                        info!("Received Done message from Defguard Core, skipping setup phase");
+                        info!("Received setup termination message from Defguard Core, skipping setup phase");
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
                     Ok(Some(msg)) => {
-                        error!("Unexpected payload type in initial message: {:?}", msg);
+                        error!("Unexpected payload type in initial Proxy setup message: {:?}", msg);
                         let _ = tx.send(Err(Status::invalid_argument(
-                            "Unexpected payload type in initial message",
+                            "Unexpected payload type in initial Proxy setup message",
                         )));
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
                     Ok(None) => {
-                        error!("No initial message received from Defguard Core");
+                        error!("No initial Proxy setup message received from Defguard Core");
                         let _ = tx.send(Err(Status::aborted(
-                            "No initial message received from Defguard Core",
+                            "No initial Proxy setup message received from Defguard Core",
                         )));
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
                     Err(err) => {
-                        error!("Error receiving initial message from Defguard Core: {err}");
+                        error!("Error receiving initial Proxy setup message from Defguard Core: {err}");
                         let _ = tx.send(Err(Status::internal(format!(
                             "Error receiving initial message: {err}"
                         ))));
@@ -316,74 +304,65 @@ impl proxy_server::Proxy for ProxyServer {
                     }
                 };
 
-                info!(
-                    "Received initial connection from Defguard Core: {:?}",
-                    initial_info
-                );
-
-                let mut key_pair = None;
-
                 if tls_configured {
-                    info!("TLS is already configured, skipping CSR generation");
+                    info!("Certificates already generated, skipping CSR generation");
                     if let Err(err) = tx.send(Ok(ProxySetupRequest {
                         payload: Some(proxy_setup_request::Payload::Done(Done {})),
                     })) {
                         error!("Failed to send Done message: {err}");
-                    } else {
-                        setup_successful = true;
                     }
-                } else {
-                    let new_key_pair = match defguard_certs::generate_key_pair() {
-                        Ok(kp) => kp,
-                        Err(err) => {
-                            error!("Failed to generate key pair: {err}");
-                            let _ = tx.send(Err(Status::internal(format!(
-                                "Failed to generate key pair: {err}"
-                            ))));
-                            setup_in_progress.store(false, Ordering::SeqCst);
-                            return;
-                        }
-                    };
+                    return;
+                }
 
-                    let subject_alt_names = vec![initial_info.cert_hostname];
-
-                    let csr = match defguard_certs::Csr::new(
-                        &new_key_pair,
-                        &subject_alt_names,
-                        vec![
-                            (defguard_certs::DnType::CommonName, "Defguard Proxy"),
-                            (defguard_certs::DnType::OrganizationName, "Defguard"),
-                        ],
-                    ) {
-                        Ok(csr) => csr,
-                        Err(err) => {
-                            error!("Failed to generate CSR: {err}");
-                            let _ = tx.send(Err(Status::internal(format!(
-                                "Failed to generate CSR: {err}"
-                            ))));
-                            setup_in_progress.store(false, Ordering::SeqCst);
-                            return;
-                        }
-                    };
-
-                    let csr_der = csr.to_der();
-
-                    let csr_request = CsrRequest {
-                        csr_der: csr_der.to_vec(),
-                    };
-
-                    if let Err(err) = tx.send(Ok(ProxySetupRequest {
-                        payload: Some(proxy_setup_request::Payload::CsrRequest(csr_request)),
-                    })) {
-                        error!("Failed to send CsrRequest: {err}");
+                info!("Generating new key pair and CSR for certificate issuance");
+                let key_pair = match defguard_certs::generate_key_pair() {
+                    Ok(kp) => kp,
+                    Err(err) => {
+                        error!("Failed to generate key pair: {err}");
+                        let _ = tx.send(Err(Status::internal(format!(
+                            "Failed to generate key pair: {err}"
+                        ))));
                         setup_in_progress.store(false, Ordering::SeqCst);
                         return;
                     }
+                };
 
-                    info!("Sent CSR request to Defguard Core");
+                let subject_alt_names = vec![initial_info.cert_hostname];
 
-                    key_pair = Some(new_key_pair);
+                let csr = match defguard_certs::Csr::new(
+                    &key_pair,
+                    &subject_alt_names,
+                    vec![
+                        // TODO: Change it?
+                        (defguard_certs::DnType::CommonName, "Defguard Proxy"),
+                        (defguard_certs::DnType::OrganizationName, "Defguard"),
+                    ],
+                ) {
+                    Ok(csr) => csr,
+                    Err(err) => {
+                        error!("Failed to generate CSR: {err}");
+                        let _ = tx.send(Err(Status::internal(format!(
+                            "Failed to generate CSR: {err}"
+                        ))));
+                        setup_in_progress.store(false, Ordering::SeqCst);
+                        return;
+                    }
+                };
+
+                let csr_der = csr.to_der();
+                let csr_request = CsrRequest {
+                    csr_der: csr_der.to_vec(),
+                };
+
+                if let Err(err) = tx.send(Ok(ProxySetupRequest {
+                    payload: Some(proxy_setup_request::Payload::CsrRequest(csr_request)),
+                })) {
+                    error!("Failed to send CsrRequest: {err}");
+                    setup_in_progress.store(false, Ordering::SeqCst);
+                    return;
                 }
+
+                debug!("Sent CSR request to Core");
 
                 let mut configuration = current_configuration;
 
@@ -393,15 +372,25 @@ impl proxy_server::Proxy for ProxyServer {
                             Some(proxy_setup_response::Payload::CertResponse(CertResponse {
                                 cert_der,
                             })) => {
+                                debug!("Received CertResponse from Defguard Core");
+                                let grpc_cert_pem = match defguard_certs::der_to_pem(
+                                    &cert_der,
+                                    defguard_certs::PemLabel::Certificate,
+                                ) {
+                                    Ok(pem) => pem,
+                                    Err(err) => {
+                                        error!("Failed to convert certificate DER to PEM: {err}");
+                                        let _ = tx.send(Err(Status::internal(format!(
+                                            "Failed to convert certificate DER to PEM: {err}"
+                                        ))));
+                                        setup_in_progress.store(false, Ordering::SeqCst);
+                                        return;
+                                    }
+                                };
+
                                 configuration = Some(Configuration {
-                                    grpc_key_pem: key_pair.as_ref().map(|kp| kp.serialize_pem()),
-                                    grpc_cert_pem: Some(
-                                        defguard_certs::der_to_pem(
-                                            &cert_der,
-                                            defguard_certs::PemLabel::Certificate,
-                                        )
-                                        .unwrap_or_default(),
-                                    ),
+                                    grpc_key_pem: key_pair.serialize_pem(),
+                                    grpc_cert_pem,
                                 });
 
                                 if let Err(err) = tx.send(Ok(ProxySetupRequest {
@@ -413,20 +402,22 @@ impl proxy_server::Proxy for ProxyServer {
                                     return;
                                 }
 
-                                info!("Sent Done message to Defguard Core");
+                                debug!("Sent Done message to Defguard Core");
                             }
                             Some(proxy_setup_response::Payload::Done(Done {})) => {
-                                info!("Received Done message from Defguard Core");
+                                debug!("Received setup termination message from Defguard Core");
                                 let lock = SETUP_CHANNEL.0.lock().await;
+                                debug!("Passing Proxy configuration to the gRPC server");
                                 if let Some(configuration) = configuration.take() {
                                     if let Err(err) = lock.send(Some(configuration)).await {
-                                        error!("Failed to send setup configuration: {err:?}");
+                                        error!("Failed to pass the received Proxy configuration to the gRPC server: {err:?}");
                                     } else {
+                                        debug!("Passed Proxy configuration to the gRPC server");
                                         setup_successful = true;
                                     }
                                 } else {
                                     error!(
-                                        "No configuration available to send on setup completion"
+                                        "No configuration available to pass to the gRPC server on setup completion"
                                     );
                                 }
 
@@ -435,18 +426,18 @@ impl proxy_server::Proxy for ProxyServer {
                             }
                             _ => {
                                 error!(
-                                    "Unexpected payload type while waiting for CsrAck: {:?}",
+                                    "Unexpected payload type while waiting for setup message: {:?}",
                                     response.payload
                                 );
                                 let _ = tx.send(Err(Status::invalid_argument(
-                                    "Unexpected payload type while waiting for response",
+                                    "Unexpected payload type while waiting for setup message",
                                 )));
                                 setup_in_progress.store(false, Ordering::SeqCst);
                                 return;
                             }
                         },
                         Ok(None) => {
-                            error!("gRPC stream has been closed unexpectedly");
+                            error!("gRPC setup stream has been closed unexpectedly");
                             let _ = tx.send(Err(Status::aborted(
                                 "gRPC stream has been closed unexpectedly",
                             )));
@@ -454,7 +445,7 @@ impl proxy_server::Proxy for ProxyServer {
                             return;
                         }
                         Err(err) => {
-                            error!("gRPC client error while waiting for CertResponse: {err}");
+                            error!("gRPC setup client error while waiting for CertResponse: {err}");
                             let _ =
                                 tx.send(Err(Status::internal(format!("gRPC client error: {err}"))));
                             setup_in_progress.store(false, Ordering::SeqCst);
@@ -465,9 +456,9 @@ impl proxy_server::Proxy for ProxyServer {
 
                 setup_in_progress.store(false, Ordering::SeqCst);
                 if setup_successful {
-                    info!("Setup completed successfully");
+                    info!("Proxy setup completed successfully");
                 } else {
-                    warn!("Setup did not complete successfully");
+                    warn!("Proxy setup did not complete successfully");
                 }
             }
             .instrument(tracing::Span::current()),

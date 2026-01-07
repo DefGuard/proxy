@@ -59,6 +59,14 @@ pub struct Config {
 
     #[arg(long, env = "DEFGUARD_GRPC_BIND_ADDRESS")]
     pub grpc_bind_address: Option<IpAddr>,
+
+    // TODO: On different platforms this may be different
+    #[arg(
+        long,
+        env = "DEFGUARD_PROXY_CERT_DIR",
+        default_value = "/etc/defguard/certs"
+    )]
+    pub cert_dir: PathBuf,
 }
 
 #[derive(thiserror::Error, Debug)]

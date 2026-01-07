@@ -18,18 +18,13 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::{
-    server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
-    DefguardComponent, Version,
-};
+use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
 use tokio::{
     net::TcpListener,
     sync::{oneshot, Mutex},
     task::JoinSet,
 };
-use tonic::transport::{Identity, Server, ServerTlsConfig};
-use tower::ServiceBuilder;
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -42,10 +37,9 @@ use crate::{
     config::Config,
     enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
-    grpc::{ProxyServer, GRPC_CERTS_PATH},
+    grpc::{Configuration, ProxyServer},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
-    proto::proxy_server,
-    CommsChannel, MIN_CORE_VERSION, VERSION,
+    CommsChannel, VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -55,6 +49,8 @@ const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
 const X_POWERED_BY: &str = "x-powered-by";
+const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
+const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
 
 pub static GRPC_SERVER_RESTART_CHANNEL: LazyLock<CommsChannel<()>> = LazyLock::new(|| {
     let (tx, rx) = tokio::sync::mpsc::channel(100);
@@ -182,7 +178,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     let mut tasks = JoinSet::new();
     // connect to upstream gRPC server
-    let mut grpc_server = ProxyServer::new();
+    let grpc_server = ProxyServer::new();
 
     // build application
     debug!("Setting up API server");
@@ -199,17 +195,17 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     // Start gRPC server.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
+        let cert_dir = Path::new(&config.cert_dir);
+        if !cert_dir.exists() {
+            tokio::fs::create_dir_all(cert_dir).await?;
+        }
+
         loop {
             let server_to_run = server_clone.clone();
 
-            let cert_dir = Path::new(GRPC_CERTS_PATH);
-            if !cert_dir.exists() {
-                tokio::fs::create_dir_all(cert_dir).await?;
-            }
-
             if let (Some(cert), Some(key)) = (
-                read_to_string(cert_dir.join("grpc_cert.pem")).ok(),
-                read_to_string(cert_dir.join("grpc_key.pem")).ok(),
+                read_to_string(cert_dir.join(GRPC_CERT_NAME)).ok(),
+                read_to_string(cert_dir.join(GRPC_KEY_NAME)).ok(),
             ) {
                 info!("Using existing gRPC TLS certificates from {cert_dir:?}");
                 server_clone.set_tls_config(cert, key)?;
@@ -224,16 +220,18 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                         config.grpc_port,
                     ))
                     .await?;
-                info!("Generated new gRPC TLS certificates");
+                info!("Generated new gRPC TLS certificates and signed by Defguard Core");
 
-                if let (Some(cert), Some(key)) =
-                    (&configuration.grpc_cert_pem, &configuration.grpc_key_pem)
-                {
-                    let cert_path = cert_dir.join("grpc_cert.pem");
-                    let key_path = cert_dir.join("grpc_key.pem");
-                    tokio::fs::write(&cert_path, cert).await?;
-                    tokio::fs::write(&key_path, key).await?;
-                }
+                let Configuration {
+                    grpc_cert_pem,
+                    grpc_key_pem,
+                    ..
+                } = &configuration;
+
+                let cert_path = cert_dir.join(GRPC_CERT_NAME);
+                let key_path = cert_dir.join(GRPC_KEY_NAME);
+                tokio::fs::write(&cert_path, grpc_cert_pem).await?;
+                tokio::fs::write(&key_path, grpc_key_pem).await?;
 
                 server_to_run.configure(configuration);
             } else {
@@ -353,7 +351,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .context("Error running HTTP server")
     });
 
-    info!("Defguard Proxy server initialization complete");
+    info!("Defguard Proxy HTTP server initialization complete");
     while let Some(Ok(result)) = tasks.join_next().await {
         result?;
     }
