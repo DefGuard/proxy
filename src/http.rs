@@ -211,11 +211,17 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 read_to_string(cert_dir.join(GRPC_CERT_NAME)).ok(),
                 read_to_string(cert_dir.join(GRPC_KEY_NAME)).ok(),
             ) {
-                info!("Using existing gRPC TLS certificates from {cert_dir:?}");
+                info!(
+                    "Using existing gRPC TLS certificates from {}",
+                    cert_dir.display()
+                );
                 server_clone.set_tls_config(cert, key)?;
             } else if !server_clone.setup_completed() {
                 // Only attempt setup if not already configured
-                info!("No gRPC TLS certificates found at {cert_dir:?}, new certificates will be generated");
+                info!(
+                    "No gRPC TLS certificates found at {}, new certificates will be generated",
+                    cert_dir.display()
+                );
                 let configuration = setup_server
                     .await_setup(SocketAddr::new(
                         config

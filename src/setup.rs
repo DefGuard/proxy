@@ -149,7 +149,10 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             }
         };
 
-        self.key_pair.lock().unwrap().replace(key_pair);
+        self.key_pair
+            .lock()
+            .expect("Failed to acquire lock on key pair during proxy setup when trying to store generated key pair")
+            .replace(key_pair);
 
         let csr_der = csr.to_der();
         let csr_request = DerPayload {
@@ -176,7 +179,11 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             };
 
         let key_pair = {
-            let key_pair = self.key_pair.lock().unwrap().take();
+            let key_pair = self
+                .key_pair
+                .lock()
+                .expect("Failed to acquire lock on key pair during proxy setup when trying to receive certificate")
+                .take();
             if let Some(kp) = key_pair {
                 kp
             } else {
