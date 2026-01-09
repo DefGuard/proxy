@@ -22,7 +22,7 @@ use defguard_version::{
     DefguardComponent, Version,
 };
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
+use tokio::{net::TcpListener, sync::{mpsc, oneshot}, task::JoinSet};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower::ServiceBuilder;
 use tower_governor::{
@@ -166,24 +166,20 @@ async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
     response
 }
 
-pub async fn run_server(config: Config) -> anyhow::Result<()> {
+pub async fn run_server(
+    config: Config,
+) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
 
-    // connect to upstream gRPC server
-    let grpc_server = ProxyServer::new();
+	// Prepare the channel for gRPC -> http server communication.
+	// The channel sends private cookies key once core connects to gRPC.
+	let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
 
-    // build application
-    debug!("Setting up API server");
-    let shared_state = AppState {
-        grpc_server: grpc_server.clone(),
-        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
-        // Generate secret key for encrypting cookies.
-        key: Key::generate(),
-        url: config.url.clone(),
-    };
+    // connect to upstream gRPC server
+    let grpc_server = ProxyServer::new(tx);
 
     // Read gRPC TLS certificate and key.
     debug!("Configuring certificates for gRPC");
@@ -199,6 +195,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     // Start gRPC server.
     debug!("Spawning gRPC server");
+	let grpc_server_clone = grpc_server.clone();
     tasks.spawn(async move {
         let addr = SocketAddr::new(
             config
@@ -224,13 +221,26 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
                 ),
             ))
             .layer(DefguardVersionLayer::new(own_version))
-            .service(proxy_server::ProxyServer::new(grpc_server));
+            .service(proxy_server::ProxyServer::new(grpc_server_clone));
         builder
             .add_service(versioned_service)
             .serve(addr)
             .await
             .context("Error running gRPC server")
     });
+
+	// Wait for core to connect to gRPC and send the key.
+	let private_cookies_key = rx.recv().await.unwrap();
+
+    // build application
+    debug!("Setting up API server");
+    let shared_state = AppState {
+        grpc_server: grpc_server,
+        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+        // Private cookies encryption key.
+        key: Key::from(&private_cookies_key),
+        url: config.url.clone(),
+    };
 
     // Setup tower_governor rate-limiter
     debug!(

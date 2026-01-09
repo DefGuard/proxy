@@ -21,11 +21,13 @@ use crate::{
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
+static COOKIE_KEY_HEADER: &str = "dg-cookie-key-bin";
 
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
     results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
+    http_channel: mpsc::UnboundedSender<Vec<u8>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
 }
@@ -33,8 +35,9 @@ pub(crate) struct ProxyServer {
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(http_channel: mpsc::UnboundedSender<Vec<u8>>) -> Self {
         Self {
+            http_channel,
             current_id: Arc::new(AtomicU64::new(1)),
             clients: Arc::new(Mutex::new(HashMap::new())),
             results: Arc::new(Mutex::new(HashMap::new())),
@@ -85,6 +88,7 @@ impl Clone for ProxyServer {
             results: Arc::clone(&self.results),
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
+            http_channel: self.http_channel.clone(),
         }
     }
 }
@@ -99,6 +103,11 @@ impl proxy_server::Proxy for ProxyServer {
         &self,
         request: Request<Streaming<CoreResponse>>,
     ) -> Result<Response<Self::BidiStream>, Status> {
+        let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER).unwrap();
+        let key = (cookie_key.to_bytes().unwrap())
+            .into_iter()
+			.collect::<Vec<_>>();
+        let _ = self.http_channel.send(key);
         let Some(address) = request.remote_addr() else {
             error!("Failed to determine client address for request: {request:?}");
             return Err(Status::internal("Failed to determine client address"));
