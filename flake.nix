@@ -38,8 +38,10 @@
           vtsls
           # protobuf formatter
           buf
-          # image signarute verification
+          # image signature verification
           cosign
+          # vulnerability scanner
+          trivy
         ];
 
         # Specify the rust-src path (many editors rely on this)
