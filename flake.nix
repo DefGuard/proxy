@@ -42,6 +42,8 @@
           cosign
           # vulnerability scanner
           trivy
+          # update checks for npm
+          npm-check-updates
         ];
 
         # Specify the rust-src path (many editors rely on this)
