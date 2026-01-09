@@ -39,6 +39,7 @@ use crate::{
     error::ApiError,
     grpc::{Configuration, ProxyServer},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
+    setup::ProxySetupServer,
     CommsChannel, VERSION,
 };
 
@@ -192,7 +193,10 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     let server_clone = grpc_server.clone();
 
+    let setup_server = ProxySetupServer::new();
+
     // Start gRPC server.
+    // TODO: Wait with spawning the HTTP server until gRPC server is ready.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
         let cert_dir = Path::new(&config.cert_dir);
@@ -212,7 +216,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             } else if !server_clone.setup_completed() {
                 // Only attempt setup if not already configured
                 info!("No gRPC TLS certificates found at {cert_dir:?}, new certificates will be generated");
-                let configuration = server_clone
+                let configuration = setup_server
                     .await_setup(SocketAddr::new(
                         config
                             .grpc_bind_address
@@ -351,6 +355,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
         .context("Error running HTTP server")
     });
 
+    // TODO: Possibly switch to using select! macro
     info!("Defguard Proxy HTTP server initialization complete");
     while let Some(Ok(result)) = tasks.join_next().await {
         result?;

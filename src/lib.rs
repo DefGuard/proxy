@@ -11,6 +11,7 @@ mod grpc;
 mod handlers;
 pub mod http;
 pub mod logging;
+mod setup;
 
 pub(crate) mod proto {
     tonic::include_proto!("defguard.proxy");
