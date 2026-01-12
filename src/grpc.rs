@@ -106,7 +106,7 @@ impl proxy_server::Proxy for ProxyServer {
         let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER).unwrap();
         let key = (cookie_key.to_bytes().unwrap())
             .into_iter()
-			.collect::<Vec<_>>();
+            .collect::<Vec<_>>();
         let _ = self.http_channel.send(key);
         let Some(address) = request.remote_addr() else {
             error!("Failed to determine client address for request: {request:?}");

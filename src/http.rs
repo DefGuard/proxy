@@ -22,7 +22,11 @@ use defguard_version::{
     DefguardComponent, Version,
 };
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::{mpsc, oneshot}, task::JoinSet};
+use tokio::{
+    net::TcpListener,
+    sync::{mpsc, oneshot},
+    task::JoinSet,
+};
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tower::ServiceBuilder;
 use tower_governor::{
@@ -166,17 +170,15 @@ async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
     response
 }
 
-pub async fn run_server(
-    config: Config,
-) -> anyhow::Result<()> {
+pub async fn run_server(config: Config) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
 
-	// Prepare the channel for gRPC -> http server communication.
-	// The channel sends private cookies key once core connects to gRPC.
-	let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
+    // Prepare the channel for gRPC -> http server communication.
+    // The channel sends private cookies key once core connects to gRPC.
+    let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
 
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new(tx);
@@ -195,7 +197,7 @@ pub async fn run_server(
 
     // Start gRPC server.
     debug!("Spawning gRPC server");
-	let grpc_server_clone = grpc_server.clone();
+    let grpc_server_clone = grpc_server.clone();
     tasks.spawn(async move {
         let addr = SocketAddr::new(
             config
@@ -229,8 +231,8 @@ pub async fn run_server(
             .context("Error running gRPC server")
     });
 
-	// Wait for core to connect to gRPC and send the key.
-	let private_cookies_key = rx.recv().await.unwrap();
+    // Wait for core to connect to gRPC and send the key.
+    let private_cookies_key = rx.recv().await.unwrap();
 
     // build application
     debug!("Setting up API server");
