@@ -111,6 +111,10 @@ exceptions = [
         "AGPL-3.0-only",
         "AGPL-3.0-or-later",
     ], crate = "defguard_version" },
+    { allow = [
+        "AGPL-3.0-only",
+        "AGPL-3.0-or-later",
+    ], crate = "defguard_certs" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,
