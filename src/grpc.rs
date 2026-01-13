@@ -246,16 +246,16 @@ impl proxy_server::Proxy for ProxyServer {
             // not be shared across proxy instances and HA won't work.
             None => {
                 warn!(
-					"Private cookie key not provided by Core; falling back to a locally generated key. \
-					 This typically indicates an older Core version and disables cookie sharing across proxies."
-				);
+                    "Private cookie key not provided by Core; falling back to a locally generated key. \
+                     This typically indicates an older Core version and disables cookie sharing across proxies."
+                );
                 Key::generate()
             }
         };
         self.http_channel.send(key).map_err(|err| {
-			error!("Failed to send private cookies key to HTTP server: {err:?}");
-			Status::internal("Failed to send private cookies key to HTTP server")
-		})?;
+            error!("Failed to send private cookies key to HTTP server: {err:?}");
+            Status::internal("Failed to send private cookies key to HTTP server")
+        })?;
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients
