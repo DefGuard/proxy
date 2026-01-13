@@ -257,7 +257,9 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     });
 
     // Wait for core to connect to gRPC and send private cookies encryption key.
-    let key = rx.recv().await.unwrap();
+    let Some(key) = rx.recv().await else {
+        return Err(anyhow::Error::msg("http channel closed"));
+    };
 
     // build application
     debug!("Setting up API server");
