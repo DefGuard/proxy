@@ -8,6 +8,7 @@ use std::{
     },
 };
 
+use axum_extra::extract::cookie::Key;
 use defguard_version::{get_tracing_variables, ComponentInfo, DefguardComponent, Version};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -27,7 +28,7 @@ pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
     results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
-    http_channel: mpsc::UnboundedSender<Vec<u8>>,
+    http_channel: mpsc::UnboundedSender<Key>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
 }
@@ -35,7 +36,7 @@ pub(crate) struct ProxyServer {
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new(http_channel: mpsc::UnboundedSender<Vec<u8>>) -> Self {
+    pub(crate) fn new(http_channel: mpsc::UnboundedSender<Key>) -> Self {
         Self {
             http_channel,
             current_id: Arc::new(AtomicU64::new(1)),
@@ -103,11 +104,6 @@ impl proxy_server::Proxy for ProxyServer {
         &self,
         request: Request<Streaming<CoreResponse>>,
     ) -> Result<Response<Self::BidiStream>, Status> {
-        let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER).unwrap();
-        let key = (cookie_key.to_bytes().unwrap())
-            .into_iter()
-            .collect::<Vec<_>>();
-        let _ = self.http_channel.send(key);
         let Some(address) = request.remote_addr() else {
             error!("Failed to determine client address for request: {request:?}");
             return Err(Status::internal("Failed to determine client address"));
@@ -122,6 +118,30 @@ impl proxy_server::Proxy for ProxyServer {
         let _guard = span.enter();
 
         info!("Defguard Core gRPC client connected from: {address}");
+
+        // Retrieve private cookies key from the header.
+        let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER);
+        let key = match cookie_key {
+            Some(key) => Key::from(&key.to_bytes().map_err(|err| {
+                error!("Failed to decode private cookie key: {err:?}");
+                Status::internal("Failed to decode private cookie key")
+            })?),
+            // If the header is missing, fall back to generating a local key.
+            // This preserves compatibility with older Core versions that did not
+            // provide a shared cookie key. In this mode, cookie-based sessions will
+            // not be shared across proxy instances and HA won't work.
+            None => {
+                warn!(
+					"Private cookie key not provided by Core; falling back to a locally generated key. \
+					 This typically indicates an older Core version and disables cookie sharing across proxies."
+				);
+                Key::generate()
+            }
+        };
+        self.http_channel.send(key).map_err(|err| {
+			error!("Failed to send private cookies key to HTTP server: {err:?}");
+			Status::internal("Failed to send private cookies key to HTTP server")
+		})?;
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients.lock().unwrap().insert(address, tx);

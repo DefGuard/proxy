@@ -178,7 +178,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
 
     // Prepare the channel for gRPC -> http server communication.
     // The channel sends private cookies key once core connects to gRPC.
-    let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
+    let (tx, mut rx) = mpsc::unbounded_channel::<Key>();
 
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new(tx);
@@ -231,16 +231,15 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             .context("Error running gRPC server")
     });
 
-    // Wait for core to connect to gRPC and send the key.
-    let private_cookies_key = rx.recv().await.unwrap();
+    // Wait for core to connect to gRPC and send private cookies encryption key.
+    let key = rx.recv().await.unwrap();
 
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
+        key,
         grpc_server: grpc_server,
         remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
-        // Private cookies encryption key.
-        key: Key::from(&private_cookies_key),
         url: config.url.clone(),
     };
 
