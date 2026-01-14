@@ -265,7 +265,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     debug!("Setting up API server");
     let shared_state = AppState {
         key,
-        grpc_server: grpc_server,
+        grpc_server,
         remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         url: config.url.clone(),
     };
