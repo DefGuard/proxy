@@ -699,6 +699,7 @@ packages:
 
   '@inlang/paraglide-js@2.7.2':
     resolution: {integrity: sha512-tUkzcK7yCuJsQCeSHLlCaISFFX65efYeYdFBXtTXyorl1PClH2/BxFg4MqCsemXiX7KZWgbvIfjnsDiVTrj7bQ==}
+    deprecated: Missing source map files cause Vite dev server errors. Please upgrade to v2.8.0 or later. See https://github.com/opral/paraglide-js/issues/581
     hasBin: true
 
   '@inlang/recommend-sherlock@0.2.1':
