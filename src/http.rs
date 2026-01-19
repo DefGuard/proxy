@@ -20,7 +20,11 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
+use tokio::{
+    net::TcpListener,
+    sync::{mpsc, oneshot, Mutex},
+    task::JoinSet,
+};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -169,18 +173,13 @@ pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result
     debug!("Using config: {config:?}");
 
     let mut tasks = JoinSet::new();
-    // connect to upstream gRPC server
-    let grpc_server = ProxyServer::new();
 
-    // build application
-    debug!("Setting up API server");
-    let shared_state = AppState {
-        grpc_server: grpc_server.clone(),
-        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
-        // Generate secret key for encrypting cookies.
-        key: Key::generate(),
-        url: config.url.clone(),
-    };
+    // Prepare the channel for gRPC -> http server communication.
+    // The channel sends private cookies key once core connects to gRPC.
+    let (tx, mut rx) = mpsc::unbounded_channel::<Key>();
+
+    // connect to upstream gRPC server
+    let grpc_server = ProxyServer::new(tx);
 
     let server_clone = grpc_server.clone();
 
@@ -252,6 +251,20 @@ pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result
             }
         }
     });
+
+    // Wait for core to connect to gRPC and send private cookies encryption key.
+    let Some(key) = rx.recv().await else {
+        return Err(anyhow::Error::msg("http channel closed"));
+    };
+
+    // build application
+    debug!("Setting up API server");
+    let shared_state = AppState {
+        key,
+        grpc_server,
+        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+        url: config.url.clone(),
+    };
 
     // Setup tower_governor rate-limiter
     debug!(
