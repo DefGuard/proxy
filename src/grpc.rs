@@ -4,7 +4,7 @@ use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
 };
 
@@ -44,19 +44,19 @@ pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
     results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
-    http_channel: mpsc::UnboundedSender<Key>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
+    cookie_key: Arc<RwLock<Option<Key>>>,
     setup_in_progress: Arc<AtomicBool>,
 }
 
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new(http_channel: mpsc::UnboundedSender<Key>) -> Self {
+    pub(crate) fn new(cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
         Self {
-            http_channel,
+            cookie_key,
             current_id: Arc::new(AtomicU64::new(1)),
             clients: Arc::new(Mutex::new(HashMap::new())),
             results: Arc::new(Mutex::new(HashMap::new())),
@@ -193,7 +193,7 @@ impl Clone for ProxyServer {
             results: Arc::clone(&self.results),
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
-            http_channel: self.http_channel.clone(),
+            cookie_key: Arc::clone(&self.cookie_key),
             config: Arc::clone(&self.config),
             setup_in_progress: Arc::clone(&self.setup_in_progress),
         }
@@ -252,10 +252,7 @@ impl proxy_server::Proxy for ProxyServer {
                 Key::generate()
             }
         };
-        self.http_channel.send(key).map_err(|err| {
-            error!("Failed to send private cookies key to HTTP server: {err:?}");
-            Status::internal("Failed to send private cookies key to HTTP server")
-        })?;
+        *self.cookie_key.write().unwrap() = Some(key);
 
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients
