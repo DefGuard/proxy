@@ -24,7 +24,6 @@ use tracing::Instrument;
 
 use crate::{
     error::ApiError,
-    http::GRPC_SERVER_RESTART_CHANNEL,
     proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
     MIN_CORE_VERSION, VERSION,
 };
@@ -45,7 +44,6 @@ pub(crate) struct ProxyServer {
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
-    setup_in_progress: Arc<AtomicBool>,
 }
 
 impl ProxyServer {
@@ -59,7 +57,6 @@ impl ProxyServer {
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
-            setup_in_progress: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -118,11 +115,7 @@ impl ProxyServer {
 
         builder
             .add_service(versioned_service)
-            .serve_with_shutdown(addr, async move {
-                let mut rx_lock = GRPC_SERVER_RESTART_CHANNEL.1.lock().await;
-                rx_lock.recv().await;
-                info!("Shutting down gRPC server for restart...");
-            })
+            .serve(addr)
             .await
             .map_err(|err| {
                 error!("gRPC server error: {err}");
@@ -190,7 +183,6 @@ impl Clone for ProxyServer {
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
             config: Arc::clone(&self.config),
-            setup_in_progress: Arc::clone(&self.setup_in_progress),
         }
     }
 }

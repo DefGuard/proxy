@@ -11,13 +11,14 @@ use defguard_version::{
     DefguardComponent, Version,
 };
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::{
     error::ApiError,
     grpc::Configuration,
-    proto::{proxy_setup_server, DerPayload, InitialSetupInfo},
-    CommsChannel, MIN_CORE_VERSION, VERSION,
+    proto::{proxy_setup_server, DerPayload, InitialSetupInfo, LogEntry},
+    CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
 };
 
 static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
@@ -31,6 +32,7 @@ static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::
 pub(crate) struct ProxySetupServer {
     setup_in_progress: Arc<AtomicBool>,
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
+    logs_rx: LogsReceiver,
 }
 
 impl Clone for ProxySetupServer {
@@ -38,15 +40,17 @@ impl Clone for ProxySetupServer {
         Self {
             setup_in_progress: Arc::clone(&self.setup_in_progress),
             key_pair: Arc::clone(&self.key_pair),
+            logs_rx: Arc::clone(&self.logs_rx),
         }
     }
 }
 
 impl ProxySetupServer {
-    pub fn new() -> Self {
+    pub fn new(logs_rx: LogsReceiver) -> Self {
         Self {
             setup_in_progress: Arc::new(AtomicBool::new(false)),
             key_pair: Arc::new(Mutex::new(None)),
+            logs_rx,
         }
     }
 
@@ -54,7 +58,7 @@ impl ProxySetupServer {
     /// Spins up a dedicated temporary gRPC server over HTTP to handle the setup process.
     /// The setup process involves generating a CSR, sending it to Core and receiving signed TLS certificates.
     /// Returns the received gRPC configuration (locally generated key pair and remotely signed certificate) upon successful setup.
-    pub(crate) async fn await_setup(
+    pub(crate) async fn await_initial_setup(
         &self,
         addr: SocketAddr,
     ) -> Result<Configuration, anyhow::Error> {
@@ -109,6 +113,8 @@ impl ProxySetupServer {
 
 #[tonic::async_trait]
 impl proxy_setup_server::ProxySetup for ProxySetupServer {
+    type ReadLogsStream = UnboundedReceiverStream<Result<LogEntry, Status>>;
+
     async fn start(
         &self,
         request: Request<InitialSetupInfo>,
@@ -212,5 +218,25 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         self.setup_in_progress.store(false, Ordering::SeqCst);
 
         Ok(Response::new(()))
+    }
+
+    async fn read_logs(
+        &self,
+        _request: Request<()>,
+    ) -> Result<Response<Self::ReadLogsStream>, Status> {
+        let logs_rx = self.logs_rx.clone();
+
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        tokio::spawn(async move {
+            while let Some(log_entry) = logs_rx.lock().await.recv().await {
+                if let Err(e) = tx.send(Ok(log_entry)) {
+                    debug!("Failed to send log entry to gRPC stream: receiver disconnected ({e})",);
+                    break;
+                }
+            }
+        });
+
+        Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
 }

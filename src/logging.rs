@@ -8,6 +8,7 @@ use defguard_version::{
     ComponentInfo, DefguardVersionError, Version,
 };
 use log::LevelFilter;
+use tokio::sync::mpsc::Sender;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
     fmt::{
@@ -19,18 +20,25 @@ use tracing_subscriber::{
     layer::SubscriberExt,
     registry::LookupSpan,
     util::SubscriberInitExt,
-    EnvFilter,
+    EnvFilter, Layer,
 };
+
+use crate::proto::LogEntry;
 
 // Initializes tracing with the specified log level and version information.
 // Allows fine-grained filtering with `EnvFilter` directives.
 // The directives are read from `DEFGUARD_PROXY_LOG_FILTER` env variable.
 // For more info read: <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html>
-pub fn init_tracing(own_version: Version, level: &LevelFilter) -> Result<(), DefguardVersionError> {
+pub fn init_tracing(
+    own_version: Version,
+    level: &LevelFilter,
+    logs_tx: Sender<LogEntry>,
+) -> Result<(), DefguardVersionError> {
     tracing_subscriber::registry()
         .with(
-            EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER")
-                .unwrap_or_else(|_| level.to_string().into()),
+            EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER").unwrap_or_else(|_| {
+                format!("{level},h2=warn,h2::codec=off,tower=warn,hyper=warn").into()
+            }),
         )
         .with(VersionFieldLayer)
         .with(
@@ -38,6 +46,7 @@ pub fn init_tracing(own_version: Version, level: &LevelFilter) -> Result<(), Def
                 .event_format(HttpVersionFormatter::new(own_version))
                 .fmt_fields(VersionFilteredFields),
         )
+        .with(GrpcLogLayer::new(logs_tx))
         .init();
 
     info!("Tracing initialized");
@@ -155,5 +164,59 @@ where
             write!(versioned_writer, " || Tracing data: {context_logs}")?;
         }
         writeln!(versioned_writer)
+    }
+}
+
+/// A tracing layer that sends log entries to a gRPC logs channel.
+pub struct GrpcLogLayer {
+    logs_tx: Sender<LogEntry>,
+}
+
+impl GrpcLogLayer {
+    #[must_use]
+    pub const fn new(logs_tx: Sender<LogEntry>) -> Self {
+        Self { logs_tx }
+    }
+}
+
+impl<S> Layer<S> for GrpcLogLayer
+where
+    S: Subscriber,
+{
+    fn on_event(&self, event: &Event<'_>, _ctx: tracing_subscriber::layer::Context<'_, S>) {
+        if self.logs_tx.is_closed() {
+            return;
+        }
+
+        let mut visitor = LogVisitor::default();
+        event.record(&mut visitor);
+
+        let entry = LogEntry {
+            level: format!("{:?}", event.metadata().level()),
+            target: event.metadata().target().to_string(),
+            message: visitor.message,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            fields: visitor.fields,
+        };
+
+        // Drop the buffer overflow error for now
+        let _ = self.logs_tx.try_send(entry);
+    }
+}
+
+#[derive(Default)]
+struct LogVisitor {
+    message: String,
+    fields: std::collections::HashMap<String, String>,
+}
+
+impl tracing::field::Visit for LogVisitor {
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        if field.name() == "message" {
+            self.message = format!("{value:?}");
+        } else {
+            self.fields
+                .insert(field.name().to_string(), format!("{value:?}"));
+        }
     }
 }
