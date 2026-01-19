@@ -26,7 +26,10 @@ use tracing::Instrument;
 use crate::{
     error::ApiError,
     http::GRPC_SERVER_RESTART_CHANNEL,
-    proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
+    proto::{
+        core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo,
+        InitialInfo,
+    },
     MIN_CORE_VERSION, VERSION,
 };
 
@@ -234,24 +237,47 @@ impl proxy_server::Proxy for ProxyServer {
         info!("Defguard Core gRPC client connected from: {address}");
 
         // Retrieve private cookies key from the header.
-        let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER);
-        let key = match cookie_key {
-            Some(key) => Key::from(&key.to_bytes().map_err(|err| {
-                error!("Failed to decode private cookie key: {err:?}");
-                Status::internal("Failed to decode private cookie key")
-            })?),
-            // If the header is missing, fall back to generating a local key.
-            // This preserves compatibility with older Core versions that did not
-            // provide a shared cookie key. In this mode, cookie-based sessions will
-            // not be shared across proxy instances and HA won't work.
-            None => {
-                warn!(
-                    "Private cookie key not provided by Core; falling back to a locally generated key. \
-                     This typically indicates an older Core version and disables cookie sharing across proxies."
-                );
-                Key::generate()
+        // let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER);
+        // let key = match cookie_key {
+        //     Some(key) => Key::from(&key.to_bytes().map_err(|err| {
+        //         error!("Failed to decode private cookie key: {err:?}");
+        //         Status::internal("Failed to decode private cookie key")
+        //     })?),
+        //     // If the header is missing, fall back to generating a local key.
+        //     // This preserves compatibility with older Core versions that did not
+        //     // provide a shared cookie key. In this mode, cookie-based sessions will
+        //     // not be shared across proxy instances and HA won't work.
+        //     None => {
+        //         warn!(
+        //             "Private cookie key not provided by Core; falling back to a locally generated key. \
+        //              This typically indicates an older Core version and disables cookie sharing across proxies."
+        //         );
+        //         Key::generate()
+        //     }
+        // };
+
+		error!("### WAITING for key");
+        let mut stream = request.into_inner();
+        let key = match stream.message().await {
+            Ok(Some(response)) => match response.payload {
+                Some(core_response::Payload::InitialInfo(payload)) => {
+					error!("### got the key");
+					Key::from(&payload.private_cookies_key)
+				}
+				Some(_) => todo!(),
+				None => todo!(),
+            },
+            Ok(None) => {
+                info!("gRPC stream has been closed");
+                todo!()
+            }
+            Err(err) => {
+                error!("gRPC client error: {err}");
+                todo!()
             }
         };
+
+		error!("### KEY: {:?}", key.master());
         self.http_channel.send(key).map_err(|err| {
             error!("Failed to send private cookies key to HTTP server: {err:?}");
             Status::internal("Failed to send private cookies key to HTTP server")
@@ -269,7 +295,6 @@ impl proxy_server::Proxy for ProxyServer {
         let clients = Arc::clone(&self.clients);
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
-        let mut stream = request.into_inner();
         tokio::spawn(
             async move {
                 loop {
