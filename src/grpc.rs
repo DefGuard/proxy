@@ -256,27 +256,7 @@ impl proxy_server::Proxy for ProxyServer {
         //     }
         // };
 
-        error!("### WAITING for key");
-        let mut stream = request.into_inner();
-        let key = match stream.message().await {
-            Ok(Some(response)) => match response.payload {
-                Some(core_response::Payload::InitialInfo(payload)) => {
-                    error!("### got the key");
-                    Key::from(&payload.private_cookies_key)
-                }
-                Some(_) => todo!(),
-                None => todo!(),
-            },
-            Ok(None) => {
-                info!("gRPC stream has been closed");
-                todo!()
-            }
-            Err(err) => {
-                error!("gRPC client error: {err}");
-                todo!()
-            }
-        };
-
+        let key = Key::from(&[0; 64]);
         error!("### KEY: {:?}", key.master());
         self.http_channel.send(key).map_err(|err| {
             error!("Failed to send private cookies key to HTTP server: {err:?}");
@@ -297,6 +277,30 @@ impl proxy_server::Proxy for ProxyServer {
         let connected = Arc::clone(&self.connected);
         tokio::spawn(
             async move {
+                error!("### WAITING for key");
+                let mut stream = request.into_inner();
+                error!("### got the stream");
+                let message = stream.message().await;
+                error!("### got the message, unpacking the key");
+                let key = match message {
+                    Ok(Some(response)) => match response.payload {
+                        Some(core_response::Payload::InitialInfo(payload)) => {
+                            error!("### got the key");
+                            Key::from(&payload.private_cookies_key)
+                        }
+                        Some(_) => todo!(),
+                        None => todo!(),
+                    },
+                    Ok(None) => {
+                        info!("gRPC stream has been closed");
+                        todo!()
+                    }
+                    Err(err) => {
+                        error!("gRPC client error: {err}");
+                        todo!()
+                    }
+                };
+                error!("### KEY: {:?}", key.master());
                 loop {
                     match stream.message().await {
                         Ok(Some(response)) => {
