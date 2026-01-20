@@ -236,26 +236,6 @@ impl proxy_server::Proxy for ProxyServer {
 
         info!("Defguard Core gRPC client connected from: {address}");
 
-        // Retrieve private cookies key from the header.
-        // let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER);
-        // let key = match cookie_key {
-        //     Some(key) => Key::from(&key.to_bytes().map_err(|err| {
-        //         error!("Failed to decode private cookie key: {err:?}");
-        //         Status::internal("Failed to decode private cookie key")
-        //     })?),
-        //     // If the header is missing, fall back to generating a local key.
-        //     // This preserves compatibility with older Core versions that did not
-        //     // provide a shared cookie key. In this mode, cookie-based sessions will
-        //     // not be shared across proxy instances and HA won't work.
-        //     None => {
-        //         warn!(
-        //             "Private cookie key not provided by Core; falling back to a locally generated key. \
-        //              This typically indicates an older Core version and disables cookie sharing across proxies."
-        //         );
-        //         Key::generate()
-        //     }
-        // };
-
         let key = Key::from(&[0; 64]);
         error!("### KEY: {:?}", key.master());
         self.http_channel.send(key).map_err(|err| {
@@ -277,15 +257,10 @@ impl proxy_server::Proxy for ProxyServer {
         let connected = Arc::clone(&self.connected);
         tokio::spawn(
             async move {
-                error!("### WAITING for key");
                 let mut stream = request.into_inner();
-                error!("### got the stream");
-                let message = stream.message().await;
-                error!("### got the message, unpacking the key");
-                let key = match message {
+                let key = match stream.message().await {
                     Ok(Some(response)) => match response.payload {
                         Some(core_response::Payload::InitialInfo(payload)) => {
-                            error!("### got the key");
                             Key::from(&payload.private_cookies_key)
                         }
                         Some(_) => todo!(),
@@ -300,7 +275,6 @@ impl proxy_server::Proxy for ProxyServer {
                         todo!()
                     }
                 };
-                error!("### KEY: {:?}", key.master());
                 loop {
                     match stream.message().await {
                         Ok(Some(response)) => {
