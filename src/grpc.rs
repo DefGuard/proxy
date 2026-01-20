@@ -26,9 +26,7 @@ use tracing::Instrument;
 use crate::{
     error::ApiError,
     http::GRPC_SERVER_RESTART_CHANNEL,
-    proto::{
-        core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo,
-    },
+    proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
     MIN_CORE_VERSION, VERSION,
 };
 
@@ -249,37 +247,28 @@ impl proxy_server::Proxy for ProxyServer {
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
-                let key = match stream.message().await {
-                    Ok(Some(response)) => match response.payload {
-                        Some(core_response::Payload::InitialInfo(payload)) => {
-                            Key::from(&payload.private_cookies_key)
-                        }
-                        Some(_) => todo!(),
-                        None => todo!(),
-                    },
-                    Ok(None) => {
-                        info!("gRPC stream has been closed");
-                        todo!()
-                    }
-                    Err(err) => {
-                        error!("gRPC client error: {err}");
-                        todo!()
-                    }
-                };
-                *cookie_key.write().unwrap() = Some(key);
                 loop {
                     match stream.message().await {
                         Ok(Some(response)) => {
                             debug!("Received message from Defguard Core ID={}", response.id);
                             connected.store(true, Ordering::Relaxed);
                             if let Some(payload) = response.payload {
-                                let maybe_rx = results.lock().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                if let Some(rx) = maybe_rx {
-                                    if let Err(err) = rx.send(payload) {
-                                        error!("Failed to send message to rx {:?}", err.type_id());
+                                match payload {
+                                    core_response::Payload::InitialInfo(payload) => {
+                                        info!("Received private cookies key");
+                                        let key = Key::from(&payload.private_cookies_key);
+                                        *cookie_key.write().unwrap() = Some(key);
+                                    },
+                                    _ => {
+                                        let maybe_rx = results.lock().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
+                                        if let Some(rx) = maybe_rx {
+                                            if let Err(err) = rx.send(payload) {
+                                                error!("Failed to send message to rx {:?}", err.type_id());
+                                            }
+                                        } else {
+                                            error!("Missing receiver for response #{}", response.id);
+                                        }
                                     }
-                                } else {
-                                    error!("Missing receiver for response #{}", response.id);
                                 }
                             }
                         }
