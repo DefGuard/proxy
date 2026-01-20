@@ -229,7 +229,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
             debug!("Creating certs directory");
             tokio::fs::create_dir_all(cert_dir).await?;
         }
-        debug!("DONE");
 
         loop {
             let server_to_run = server_clone.clone();
