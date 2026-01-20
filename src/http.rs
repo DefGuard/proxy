@@ -226,6 +226,7 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     tasks.spawn(async move {
         let cert_dir = Path::new(&config.cert_dir);
         if !cert_dir.exists() {
+            debug!("Creating certs directory");
             tokio::fs::create_dir_all(cert_dir).await?;
         }
 
