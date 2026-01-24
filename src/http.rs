@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -21,11 +20,7 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
-use tokio::{
-    net::TcpListener,
-    sync::{oneshot, Mutex},
-    task::JoinSet,
-};
+use tokio::{net::TcpListener, sync::Mutex, task::JoinSet};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -62,8 +57,6 @@ pub static GRPC_SERVER_RESTART_CHANNEL: LazyLock<CommsChannel<()>> = LazyLock::n
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    pub(crate) remote_mfa_sessions:
-        Arc<tokio::sync::Mutex<HashMap<String, oneshot::Sender<String>>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     url: Url,
 }
@@ -292,7 +285,6 @@ pub async fn run_server(config: Config) -> anyhow::Result<()> {
     let shared_state = AppState {
         cookie_key,
         grpc_server,
-        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         url: config.url.clone(),
     };
 
