@@ -10,7 +10,7 @@ use axum::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::json;
-use tokio::{sync::oneshot, task::JoinSet};
+use tokio::{task::JoinSet};
 
 use crate::{
     error::ApiError,
@@ -61,24 +61,34 @@ async fn await_remote_auth(
             return Err(ApiError::Unauthorized(String::new()));
         }
 
-        let request = ClientRemoteMfaFinishRequest { token };
-        let rx = state.grpc_server.send(
-            core_request::Payload::ClientRemoteMfaFinish(request),
-            device_info,
-        )?;
-        Ok(ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, rx)))
+        Ok(ws.on_upgrade(move |socket| {
+            handle_remote_auth_socket(socket, state.clone(), token, device_info)
+        }))
     } else {
         Err(ApiError::InvalidResponseType)
     }
 }
 
 /// Handle axum web socket upgrade for `await_remote_auth`.
-async fn handle_remote_auth_socket(socket: WebSocket, rx: oneshot::Receiver<Payload>) {
+async fn handle_remote_auth_socket(
+    socket: WebSocket,
+    state: AppState,
+    token: String,
+    device_info: DeviceInfo,
+) {
     let (mut ws_tx, mut ws_rx) = socket.split();
     let mut set = JoinSet::new();
 
     set.spawn(async move {
-        // TODO(jck) unwrap
+        let request = ClientRemoteMfaFinishRequest { token };
+        let rx = state
+            .grpc_server
+            .send(
+                core_request::Payload::ClientRemoteMfaFinish(request),
+                device_info,
+            )
+            .unwrap(); // TODO(jck) unwrap
+	   // TODO(jck) unwrap
         match rx.await.unwrap() {
             Payload::ClientRemoteMfaFinish(response) => {
                 let ws_response = json!({
