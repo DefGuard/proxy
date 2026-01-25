@@ -95,7 +95,10 @@ pub(crate) async fn get_core_response(
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
     } else {
-        error!("Did not receive response from Core within {CORE_RESPONSE_TIMEOUT:?}");
+        error!(
+            "Did not receive response from Core within {:?}",
+            timeout.unwrap_or(CORE_RESPONSE_TIMEOUT)
+        );
         Err(ApiError::CoreTimeout)
     }
 }
