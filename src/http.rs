@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    fs::read_to_string,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
     sync::{atomic::Ordering, Arc},
@@ -22,7 +21,7 @@ use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
 use tokio::{
     net::TcpListener,
-    sync::{mpsc, oneshot, Mutex},
+    sync::{mpsc, oneshot},
     task::JoinSet,
 };
 use tower_governor::{
@@ -34,7 +33,7 @@ use url::Url;
 
 use crate::{
     assets::{index, web_asset},
-    config::Config,
+    config::EnvConfig,
     enterprise::handlers::openid_login::{self, FlowType},
     error::ApiError,
     grpc::{Configuration, ProxyServer},
@@ -50,8 +49,8 @@ const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
 const X_POWERED_BY: &str = "x-powered-by";
-pub(crate) const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
-pub(crate) const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
+pub const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
+pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -168,9 +167,48 @@ async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
     response
 }
 
-pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result<()> {
+pub async fn run_setup(
+    env_config: &EnvConfig,
+    logs_rx: LogsReceiver,
+) -> anyhow::Result<Configuration> {
+    let setup_server = ProxySetupServer::new(logs_rx);
+    let cert_dir = Path::new(&env_config.cert_dir);
+    if !cert_dir.exists() {
+        tokio::fs::create_dir_all(cert_dir).await?;
+    }
+
+    // Only attempt setup if not already configured
+    info!(
+        "No gRPC TLS certificates found at {}, new certificates will be obtained during setup",
+        cert_dir.display()
+    );
+    let configuration = setup_server
+        .await_initial_setup(SocketAddr::new(
+            env_config
+                .grpc_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            env_config.grpc_port,
+        ))
+        .await?;
+    info!("Generated new gRPC TLS certificates and signed by Defguard Core");
+
+    let Configuration {
+        grpc_cert_pem,
+        grpc_key_pem,
+        ..
+    } = &configuration;
+
+    let cert_path = cert_dir.join(GRPC_CERT_NAME);
+    let key_path = cert_dir.join(GRPC_KEY_NAME);
+    tokio::fs::write(&cert_path, grpc_cert_pem).await?;
+    tokio::fs::write(&key_path, grpc_key_pem).await?;
+
+    Ok(configuration)
+}
+
+pub async fn run_server(env_config: EnvConfig, config: Configuration) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
-    debug!("Using config: {config:?}");
+    debug!("Using config: {env_config:?}");
 
     let mut tasks = JoinSet::new();
 
@@ -180,70 +218,21 @@ pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result
 
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new(tx);
-
     let server_clone = grpc_server.clone();
-
-    let setup_server = ProxySetupServer::new(logs_rx.clone());
+    grpc_server.configure(config);
 
     // Start gRPC server.
     // TODO: Wait with spawning the HTTP server until gRPC server is ready.
     debug!("Spawning gRPC server");
     tasks.spawn(async move {
-        let cert_dir = Path::new(&config.cert_dir);
-        if !cert_dir.exists() {
-            tokio::fs::create_dir_all(cert_dir).await?;
-        }
-
         loop {
             info!("Starting gRPC server...");
             let server_to_run = server_clone.clone();
-
-            if let (Some(cert), Some(key)) = (
-                read_to_string(cert_dir.join(GRPC_CERT_NAME)).ok(),
-                read_to_string(cert_dir.join(GRPC_KEY_NAME)).ok(),
-            ) {
-                info!(
-                    "Using existing gRPC TLS certificates from {}",
-                    cert_dir.display()
-                );
-                server_clone.set_tls_config(cert, key)?;
-            } else if !server_clone.setup_completed() {
-                // Only attempt setup if not already configured
-                info!(
-                    "No gRPC TLS certificates found at {}, new certificates will be obtained during setup",
-                    cert_dir.display()
-                );
-                let configuration = setup_server
-                    .await_initial_setup(SocketAddr::new(
-                        config
-                            .grpc_bind_address
-                            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-                        config.grpc_port,
-                    ))
-                    .await?;
-                info!("Generated new gRPC TLS certificates and signed by Defguard Core");
-
-                let Configuration {
-                    grpc_cert_pem,
-                    grpc_key_pem,
-                    ..
-                } = &configuration;
-
-                let cert_path = cert_dir.join(GRPC_CERT_NAME);
-                let key_path = cert_dir.join(GRPC_KEY_NAME);
-                tokio::fs::write(&cert_path, grpc_cert_pem).await?;
-                tokio::fs::write(&key_path, grpc_key_pem).await?;
-
-                server_to_run.configure(configuration);
-            } else {
-                info!("Proxy already configured, skipping setup phase");
-            }
-
             let addr = SocketAddr::new(
-                config
+                env_config
                     .grpc_bind_address
                     .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-                config.grpc_port,
+                env_config.grpc_port,
             );
 
             if let Err(e) = server_to_run.run(addr).await {
@@ -263,18 +252,18 @@ pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result
         key,
         grpc_server,
         remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
-        url: config.url.clone(),
+        url: env_config.url.clone(),
     };
 
     // Setup tower_governor rate-limiter
     debug!(
         "Configuring rate limiter, per_second: {}, burst: {}",
-        config.rate_limit_per_second, config.rate_limit_burst
+        env_config.rate_limit_per_second, env_config.rate_limit_burst
     );
     let governor_conf = GovernorConfigBuilder::default()
         .key_extractor(SmartIpKeyExtractor)
-        .per_second(config.rate_limit_per_second)
-        .burst_size(config.rate_limit_burst)
+        .per_second(env_config.rate_limit_per_second)
+        .burst_size(env_config.rate_limit_burst)
         .finish();
 
     let governor_conf = if let Some(conf) = governor_conf {
@@ -293,7 +282,7 @@ pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result
         });
         info!(
             "Configured rate limiter, per_second: {}, burst: {}",
-            config.rate_limit_per_second, config.rate_limit_burst
+            env_config.rate_limit_per_second, env_config.rate_limit_burst
         );
         Some(conf)
     } else {
@@ -351,10 +340,10 @@ pub async fn run_server(config: Config, logs_rx: LogsReceiver) -> anyhow::Result
     debug!("Spawning API web server");
     tasks.spawn(async move {
         let addr = SocketAddr::new(
-            config
+            env_config
                 .http_bind_address
                 .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-            config.http_port,
+            env_config.http_port,
         );
         let listener = TcpListener::bind(&addr).await?;
         info!("API web server is listening on {addr}");

@@ -9,7 +9,7 @@ pub mod assets;
 pub mod config;
 mod enterprise;
 mod error;
-mod grpc;
+pub mod grpc;
 mod handlers;
 pub mod http;
 pub mod logging;

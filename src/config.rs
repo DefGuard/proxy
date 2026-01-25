@@ -11,7 +11,7 @@ fn default_url() -> Url {
 
 #[derive(Parser, Debug, Deserialize)]
 #[command(version)]
-pub struct Config {
+pub struct EnvConfig {
     // port the API server will listen on
     #[arg(
         long,
@@ -77,15 +77,15 @@ pub enum ConfigError {
     ParseError(#[from] toml::de::Error),
 }
 
-pub fn get_config() -> Result<Config, ConfigError> {
+pub fn get_env_config() -> Result<EnvConfig, ConfigError> {
     // parse CLI arguments to get config file path
-    let cli_config = Config::parse();
+    let cli_config = EnvConfig::parse();
 
     // load config from file if one was specified
     if let Some(config_path) = cli_config.config_path {
         info!("Reading configuration from file: {config_path:?}");
         let config_toml = read_to_string(config_path)?;
-        let file_config: Config = toml::from_str(&config_toml)?;
+        let file_config: EnvConfig = toml::from_str(&config_toml)?;
         Ok(file_config)
     } else {
         Ok(cli_config)

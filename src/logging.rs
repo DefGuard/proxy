@@ -32,9 +32,9 @@ use crate::proto::LogEntry;
 pub fn init_tracing(
     own_version: Version,
     level: &LevelFilter,
-    logs_tx: Sender<LogEntry>,
+    logs_tx: Option<Sender<LogEntry>>,
 ) -> Result<(), DefguardVersionError> {
-    tracing_subscriber::registry()
+    let subscriber = tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_env("DEFGUARD_PROXY_LOG_FILTER").unwrap_or_else(|_| {
                 format!("{level},h2=warn,h2::codec=off,tower=warn,hyper=warn").into()
@@ -45,9 +45,14 @@ pub fn init_tracing(
             fmt::layer()
                 .event_format(HttpVersionFormatter::new(own_version))
                 .fmt_fields(VersionFilteredFields),
-        )
-        .with(GrpcLogLayer::new(logs_tx))
-        .init();
+        );
+
+    if let Some(tx) = logs_tx {
+        let grpc_layer = GrpcLogLayer::new(tx);
+        subscriber.with(grpc_layer).init();
+    } else {
+        subscriber.init();
+    }
 
     info!("Tracing initialized");
     Ok(())

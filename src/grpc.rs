@@ -34,9 +34,9 @@ type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, S
 static COOKIE_KEY_HEADER: &str = "dg-cookie-key-bin";
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct Configuration {
-    pub(crate) grpc_key_pem: String,
-    pub(crate) grpc_cert_pem: String,
+pub struct Configuration {
+    pub grpc_key_pem: String,
+    pub grpc_cert_pem: String,
 }
 
 pub(crate) struct ProxyServer {
@@ -62,17 +62,6 @@ impl ProxyServer {
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
         }
-    }
-
-    pub(crate) fn set_tls_config(&self, cert_pem: String, key_pem: String) -> Result<(), ApiError> {
-        let mut lock = self
-            .config
-            .lock()
-            .expect("Failed to acquire lock on config mutex when updating TLS configuration");
-        let config = lock.get_or_insert_with(Configuration::default);
-        config.grpc_cert_pem = cert_pem;
-        config.grpc_key_pem = key_pem;
-        Ok(())
     }
 
     pub(crate) fn configure(&self, config: Configuration) {
