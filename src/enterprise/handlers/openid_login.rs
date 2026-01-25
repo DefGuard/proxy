@@ -76,7 +76,7 @@ async fn auth_info(
     let rx = state
         .grpc_server
         .send(core_request::Payload::AuthInfo(request), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::AuthInfo(response) = payload {
         debug!("Received auth info response");
 
@@ -164,7 +164,7 @@ async fn auth_callback(
     let rx = state
         .grpc_server
         .send(core_request::Payload::AuthCallback(request), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
 
     if let core_response::Payload::AuthCallback(AuthCallbackResponse { url, token }) = payload {
         debug!("Received auth callback response {url:?} {token:?}");

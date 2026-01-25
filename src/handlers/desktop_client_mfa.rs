@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -23,6 +25,8 @@ use crate::{
         ClientMfaStartResponse, ClientRemoteMfaFinishRequest, DeviceInfo,
     },
 };
+
+const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
@@ -55,7 +59,7 @@ async fn await_remote_auth(
         ),
         device_info.clone(),
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, Some(REMOTE_AUTH_TIMEOUT)).await?;
     if let core_response::Payload::ClientMfaTokenValidation(response) = payload {
         if !response.token_valid {
             return Err(ApiError::Unauthorized(String::new()));
@@ -140,7 +144,7 @@ async fn start_client_mfa(
         core_request::Payload::ClientMfaStart(req.clone()),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
 
     if let core_response::Payload::ClientMfaStart(response) = payload {
         info!("Started desktop client authorization {req:?}");
@@ -161,7 +165,7 @@ async fn finish_client_mfa(
     let rx = state
         .grpc_server
         .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::ClientMfaFinish(response) = payload {
         Ok(Json(response))
     } else {
@@ -181,7 +185,7 @@ async fn finish_remote_mfa(
         .grpc_server
         .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
     // TODO(jck) can we make the response proto::Empty here?
-    if let core_response::Payload::ClientMfaFinish(_response) = get_core_response(rx).await? {
+    if let core_response::Payload::ClientMfaFinish(_response) = get_core_response(rx, None).await? {
         Ok(Json(json!({})))
     } else {
         error!("Received invalid gRPC response type");

@@ -49,7 +49,7 @@ async fn register_code_mfa_start(
         }),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     match payload {
         core_response::Payload::CodeMfaSetupStartResponse(response) => Ok(Json(response)),
         _ => Err(ApiError::InvalidResponseType),
@@ -90,7 +90,7 @@ async fn register_code_mfa_finish(
         }),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     match payload {
         core_response::Payload::CodeMfaSetupFinishResponse(response) => Ok(Json(response)),
         _ => Err(ApiError::InvalidResponseType),

@@ -31,7 +31,7 @@ async fn request_password_reset(
         core_request::Payload::PasswordResetInit(req.clone()),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::Empty(()) = payload {
         info!("Started password reset request for {}", req.email);
         Ok(())
@@ -61,7 +61,7 @@ async fn start_password_reset(
     let rx = state
         .grpc_server
         .send(core_request::Payload::PasswordResetStart(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::PasswordResetStart(response) = payload {
         // set session cookie
         let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
@@ -92,7 +92,7 @@ async fn reset_password(
     let rx = state
         .grpc_server
         .send(core_request::Payload::PasswordReset(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::Empty(()) = payload {
         if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
             info!("Password reset finished. Removing session cookie");

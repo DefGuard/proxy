@@ -90,7 +90,7 @@ pub(super) async fn mfa_auth_callback(
         device_info,
     )?;
 
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
 
     if let core_response::Payload::Empty(()) = payload {
         info!("MFA authentication callback completed successfully");

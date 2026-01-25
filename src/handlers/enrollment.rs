@@ -45,7 +45,7 @@ async fn start_enrollment_process(
     let rx = state
         .grpc_server
         .send(core_request::Payload::EnrollmentStart(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process.");
     if let core_response::Payload::EnrollmentStart(response) = payload {
         info!(
@@ -83,7 +83,7 @@ async fn activate_user(
     let rx = state
         .grpc_server
         .send(core_request::Payload::ActivateUser(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     debug!("Receiving payload from the core service. Trying to remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
         info!("Activated user - phone number {phone:?}");
@@ -116,7 +116,7 @@ async fn create_device(
     let rx = state
         .grpc_server
         .send(core_request::Payload::NewDevice(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::DeviceConfig(response) = payload {
         info!("Added new device {name} {pubkey}");
         Ok(Json(response))
@@ -144,7 +144,7 @@ async fn get_network_info(
     let rx = state
         .grpc_server
         .send(core_request::Payload::ExistingDevice(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::DeviceConfig(response) = payload {
         info!("Got network info for device {pubkey}");
         Ok(Json(response))
