@@ -25,7 +25,6 @@ use tracing::Instrument;
 
 use crate::{
     error::ApiError,
-    http::GRPC_SERVER_RESTART_CHANNEL,
     proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
     MIN_CORE_VERSION, VERSION,
 };
@@ -34,9 +33,9 @@ use crate::{
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct Configuration {
-    pub(crate) grpc_key_pem: String,
-    pub(crate) grpc_cert_pem: String,
+pub struct Configuration {
+    pub grpc_key_pem: String,
+    pub grpc_cert_pem: String,
 }
 
 pub(crate) struct ProxyServer {
@@ -47,7 +46,6 @@ pub(crate) struct ProxyServer {
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
-    setup_in_progress: Arc<AtomicBool>,
 }
 
 impl ProxyServer {
@@ -62,19 +60,7 @@ impl ProxyServer {
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
-            setup_in_progress: Arc::new(AtomicBool::new(false)),
         }
-    }
-
-    pub(crate) fn set_tls_config(&self, cert_pem: String, key_pem: String) -> Result<(), ApiError> {
-        let mut lock = self
-            .config
-            .lock()
-            .expect("Failed to acquire lock on config mutex when updating TLS configuration");
-        let config = lock.get_or_insert_with(Configuration::default);
-        config.grpc_cert_pem = cert_pem;
-        config.grpc_key_pem = key_pem;
-        Ok(())
     }
 
     pub(crate) fn configure(&self, config: Configuration) {
@@ -121,11 +107,7 @@ impl ProxyServer {
 
         builder
             .add_service(versioned_service)
-            .serve_with_shutdown(addr, async move {
-                let mut rx_lock = GRPC_SERVER_RESTART_CHANNEL.1.lock().await;
-                rx_lock.recv().await;
-                info!("Shutting down gRPC server for restart...");
-            })
+            .serve(addr)
             .await
             .map_err(|err| {
                 error!("gRPC server error: {err}");
@@ -194,7 +176,6 @@ impl Clone for ProxyServer {
             core_version: Arc::clone(&self.core_version),
             cookie_key: Arc::clone(&self.cookie_key),
             config: Arc::clone(&self.config),
-            setup_in_progress: Arc::clone(&self.setup_in_progress),
         }
     }
 }
