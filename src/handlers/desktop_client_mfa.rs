@@ -19,10 +19,7 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        core_request,
-        core_response::{self, Payload},
-        ClientMfaFinishRequest, ClientMfaFinishResponse, ClientMfaStartRequest,
-        ClientMfaStartResponse, ClientRemoteMfaFinishRequest, DeviceInfo,
+        core_request, core_response::{self, Payload}, AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse, ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo
     },
 };
 
@@ -84,9 +81,9 @@ async fn handle_remote_auth_socket(
     let (mut ws_tx, mut ws_rx) = socket.split();
     let mut set = JoinSet::new();
 
-    let request = ClientRemoteMfaFinishRequest { token };
+    let request = AwaitRemoteMfaFinishRequest { token };
     let rx = match state.grpc_server.send(
-        core_request::Payload::ClientRemoteMfaFinish(request),
+        core_request::Payload::AwaitRemoteMfaFinish(request),
         device_info,
     ) {
         Ok(rx) => rx,
@@ -100,7 +97,7 @@ async fn handle_remote_auth_socket(
 	// This task then sends the preshared key to the WebSocket where desktop client awaits for it.
     set.spawn(async move {
         match rx.await {
-            Ok(Payload::ClientRemoteMfaFinish(response)) => {
+            Ok(Payload::AwaitRemoteMfaFinish(response)) => {
                 let ws_response = json!({
                     "type": "mfa_success",
                     "preshared_key": &response.preshared_key,
