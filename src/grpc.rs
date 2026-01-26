@@ -41,8 +41,8 @@ pub(crate) struct Configuration {
 
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
-    clients: Arc<Mutex<ClientMap>>,
-    results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
+    clients: Arc<RwLock<ClientMap>>,
+    results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
@@ -57,8 +57,8 @@ impl ProxyServer {
         Self {
             cookie_key,
             current_id: Arc::new(AtomicU64::new(1)),
-            clients: Arc::new(Mutex::new(HashMap::new())),
-            results: Arc::new(Mutex::new(HashMap::new())),
+            clients: Arc::new(RwLock::new(HashMap::new())),
+            results: Arc::new(RwLock::new(HashMap::new())),
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
@@ -144,7 +144,7 @@ impl ProxyServer {
     ) -> Result<oneshot::Receiver<core_response::Payload>, ApiError> {
         if let Some(client_tx) = self
             .clients
-            .lock()
+            .read()
             .expect("Failed to acquire lock on clients hashmap when sending message to core")
             .values()
             .next()
@@ -161,7 +161,7 @@ impl ProxyServer {
             }
             let (tx, rx) = oneshot::channel();
             self.results
-                .lock()
+                .write()
                 .expect("Failed to acquire lock on results hashmap when sending CoreRequest")
                 .insert(id, tx);
             self.connected.store(true, Ordering::Relaxed);
@@ -233,7 +233,7 @@ impl proxy_server::Proxy for ProxyServer {
         info!("Defguard Core gRPC client connected from: {address}");
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients
-            .lock()
+            .write()
             .expect(
                 "Failed to acquire lock on clients hashmap when registering new core connection",
             )
@@ -260,7 +260,7 @@ impl proxy_server::Proxy for ProxyServer {
                                         *cookie_key.write().unwrap() = Some(key);
                                     },
                                     _ => {
-                                        let maybe_rx = results.lock().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
+                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
                                         if let Some(rx) = maybe_rx {
                                             if let Err(err) = rx.send(payload) {
                                                 error!("Failed to send message to rx {:?}", err.type_id());
@@ -284,7 +284,7 @@ impl proxy_server::Proxy for ProxyServer {
                 }
                 info!("Defguard core client disconnected: {address}");
                 connected.store(false, Ordering::Relaxed);
-                clients.lock().expect("Failed to acquire lock on clients hashmap when removing disconnected client").remove(&address);
+                clients.write().expect("Failed to acquire lock on clients hashmap when removing disconnected client").remove(&address);
             }
             .instrument(tracing::Span::current()),
         );
