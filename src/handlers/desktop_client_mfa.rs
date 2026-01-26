@@ -19,7 +19,10 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        core_request, core_response::{self, Payload}, AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse, ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo
+        core_request,
+        core_response::{self, Payload},
+        AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse,
+        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
     },
 };
 
@@ -93,8 +96,8 @@ async fn handle_remote_auth_socket(
         }
     };
 
-	// Response to ClientRemoteMfaFinishRequest comes once the user concludes MFA with mobile device.
-	// This task then sends the preshared key to the WebSocket where desktop client awaits for it.
+    // Response to ClientRemoteMfaFinishRequest comes once the user concludes MFA with mobile device.
+    // This task then sends the preshared key to the WebSocket where desktop client awaits for it.
     set.spawn(async move {
         match rx.await {
             Ok(Payload::AwaitRemoteMfaFinish(response)) => {
@@ -117,12 +120,12 @@ async fn handle_remote_auth_socket(
             }
         };
 
-		// Close the websocket once we're done.
+        // Close the websocket once we're done.
         let _ = ws_tx.close().await;
     });
 
-	// Another task to monitor the websocket connection in case desktop client disconnects
-	// or the connection errors-out.
+    // Another task to monitor the websocket connection in case desktop client disconnects
+    // or the connection errors-out.
     set.spawn(async move {
         while let Some(msg_result) = ws_rx.next().await {
             match msg_result {
@@ -139,7 +142,7 @@ async fn handle_remote_auth_socket(
         }
     });
 
-	// Wait for whichever task finishes first and kill the other one.
+    // Wait for whichever task finishes first and kill the other one.
     let _ = set.join_next().await;
     set.shutdown().await;
 }
