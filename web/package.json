@@ -27,7 +27,7 @@
     "change-case": "^5.4.4",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
-    "lodash-es": "^4.17.21",
+    "lodash-es": "^4.17.23",
     "motion": "^12.23.25",
     "qrcode.react": "^4.2.0",
     "qs": "^6.14.1",
@@ -60,5 +60,10 @@
     "typescript-eslint": "^8.48.1",
     "vite": "^7.2.7",
     "vite-plugin-image-optimizer": "^2.0.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "seroval": "^1.4.1"
+    }
   }
 }

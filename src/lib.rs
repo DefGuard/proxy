@@ -3,11 +3,13 @@ use std::sync::Arc;
 use defguard_version::Version;
 use tokio::sync::mpsc;
 
+use crate::proto::LogEntry;
+
 pub mod assets;
 pub mod config;
 mod enterprise;
 mod error;
-mod grpc;
+pub mod grpc;
 mod handlers;
 pub mod http;
 pub mod logging;
@@ -27,3 +29,5 @@ type CommsChannel<T> = (
     Arc<tokio::sync::Mutex<mpsc::Sender<T>>>,
     Arc<tokio::sync::Mutex<mpsc::Receiver<T>>>,
 );
+
+type LogsReceiver = Arc<tokio::sync::Mutex<mpsc::Receiver<LogEntry>>>;
