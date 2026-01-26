@@ -4,7 +4,7 @@ use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
 };
 
@@ -31,7 +31,6 @@ use crate::{
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
-static COOKIE_KEY_HEADER: &str = "dg-cookie-key-bin";
 
 #[derive(Debug, Clone, Default)]
 pub struct Configuration {
@@ -43,18 +42,18 @@ pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<Mutex<ClientMap>>,
     results: Arc<Mutex<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
-    http_channel: mpsc::UnboundedSender<Key>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
+    cookie_key: Arc<RwLock<Option<Key>>>,
 }
 
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new(http_channel: mpsc::UnboundedSender<Key>) -> Self {
+    pub(crate) fn new(cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
         Self {
-            http_channel,
+            cookie_key,
             current_id: Arc::new(AtomicU64::new(1)),
             clients: Arc::new(Mutex::new(HashMap::new())),
             results: Arc::new(Mutex::new(HashMap::new())),
@@ -175,7 +174,7 @@ impl Clone for ProxyServer {
             results: Arc::clone(&self.results),
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
-            http_channel: self.http_channel.clone(),
+            cookie_key: Arc::clone(&self.cookie_key),
             config: Arc::clone(&self.config),
         }
     }
@@ -213,31 +212,6 @@ impl proxy_server::Proxy for ProxyServer {
         let _guard = span.enter();
 
         info!("Defguard Core gRPC client connected from: {address}");
-
-        // Retrieve private cookies key from the header.
-        let cookie_key = request.metadata().get_bin(COOKIE_KEY_HEADER);
-        let key = match cookie_key {
-            Some(key) => Key::from(&key.to_bytes().map_err(|err| {
-                error!("Failed to decode private cookie key: {err:?}");
-                Status::internal("Failed to decode private cookie key")
-            })?),
-            // If the header is missing, fall back to generating a local key.
-            // This preserves compatibility with older Core versions that did not
-            // provide a shared cookie key. In this mode, cookie-based sessions will
-            // not be shared across proxy instances and HA won't work.
-            None => {
-                warn!(
-                    "Private cookie key not provided by Core; falling back to a locally generated key. \
-                     This typically indicates an older Core version and disables cookie sharing across proxies."
-                );
-                Key::generate()
-            }
-        };
-        self.http_channel.send(key).map_err(|err| {
-            error!("Failed to send private cookies key to HTTP server: {err:?}");
-            Status::internal("Failed to send private cookies key to HTTP server")
-        })?;
-
         let (tx, rx) = mpsc::unbounded_channel();
         self.clients
             .lock()
@@ -250,22 +224,32 @@ impl proxy_server::Proxy for ProxyServer {
         let clients = Arc::clone(&self.clients);
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
-        let mut stream = request.into_inner();
+        let cookie_key = Arc::clone(&self.cookie_key);
         tokio::spawn(
             async move {
+                let mut stream = request.into_inner();
                 loop {
                     match stream.message().await {
                         Ok(Some(response)) => {
                             debug!("Received message from Defguard Core ID={}", response.id);
                             connected.store(true, Ordering::Relaxed);
                             if let Some(payload) = response.payload {
-                                let maybe_rx = results.lock().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                if let Some(rx) = maybe_rx {
-                                    if let Err(err) = rx.send(payload) {
-                                        error!("Failed to send message to rx {:?}", err.type_id());
+                                match payload {
+                                    core_response::Payload::InitialInfo(payload) => {
+                                        info!("Received private cookies key");
+                                        let key = Key::from(&payload.private_cookies_key);
+                                        *cookie_key.write().unwrap() = Some(key);
+                                    },
+                                    _ => {
+                                        let maybe_rx = results.lock().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
+                                        if let Some(rx) = maybe_rx {
+                                            if let Err(err) = rx.send(payload) {
+                                                error!("Failed to send message to rx {:?}", err.type_id());
+                                            }
+                                        } else {
+                                            error!("Missing receiver for response #{}", response.id);
+                                        }
                                     }
-                                } else {
-                                    error!("Missing receiver for response #{}", response.id);
                                 }
                             }
                         }
