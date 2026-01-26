@@ -26,6 +26,7 @@ use crate::{
     },
 };
 
+// How much time the user has to approve remote MFA with mobile device
 const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub(crate) fn router() -> Router<AppState> {
@@ -83,18 +84,23 @@ async fn handle_remote_auth_socket(
     let (mut ws_tx, mut ws_rx) = socket.split();
     let mut set = JoinSet::new();
 
+    let request = ClientRemoteMfaFinishRequest { token };
+    let rx = match state.grpc_server.send(
+        core_request::Payload::ClientRemoteMfaFinish(request),
+        device_info,
+    ) {
+        Ok(rx) => rx,
+        Err(err) => {
+            error!("Failed to send ClientRemoteMfaFinishRequest: {err:?}");
+            return;
+        }
+    };
+
+	// Response to ClientRemoteMfaFinishRequest comes once the user concludes MFA with mobile device.
+	// This task then sends the preshared key to the WebSocket where desktop client awaits for it.
     set.spawn(async move {
-        let request = ClientRemoteMfaFinishRequest { token };
-        let rx = state
-            .grpc_server
-            .send(
-                core_request::Payload::ClientRemoteMfaFinish(request),
-                device_info,
-            )
-            .unwrap(); // TODO(jck) unwrap
-                       // TODO(jck) unwrap
-        match rx.await.unwrap() {
-            Payload::ClientRemoteMfaFinish(response) => {
+        match rx.await {
+            Ok(Payload::ClientRemoteMfaFinish(response)) => {
                 let ws_response = json!({
                     "type": "mfa_success",
                     "preshared_key": &response.preshared_key,
@@ -106,13 +112,20 @@ async fn handle_remote_auth_socket(
                     }
                 }
             }
-            _ => {
-                error!("Received wrong response type");
+            Ok(_) => {
+                error!("Received wrong response type, expected ClientRemoteMfaFinish");
+            }
+            Err(err) => {
+                error!("Failed to receive preshared key from receiver: {err:?}");
             }
         };
+
+		// Close the websocket once we're done.
         let _ = ws_tx.close().await;
     });
 
+	// Another task to monitor the websocket connection in case desktop client disconnects
+	// or the connection errors-out.
     set.spawn(async move {
         while let Some(msg_result) = ws_rx.next().await {
             match msg_result {
@@ -129,6 +142,7 @@ async fn handle_remote_auth_socket(
         }
     });
 
+	// Wait for whichever task finishes first and kill the other one.
     let _ = set.join_next().await;
     set.shutdown().await;
 }
