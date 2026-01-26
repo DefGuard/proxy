@@ -198,11 +198,10 @@ async fn finish_remote_mfa(
     let rx = state
         .grpc_server
         .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
-    // TODO(jck) can we make the response proto::Empty here?
     if let core_response::Payload::ClientMfaFinish(_response) = get_core_response(rx, None).await? {
         Ok(Json(json!({})))
     } else {
-        error!("Received invalid gRPC response type");
+        error!("Received invalid gRPC response type, expected ClientMfaFinish");
         Err(ApiError::InvalidResponseType)
     }
 }
