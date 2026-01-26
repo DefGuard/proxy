@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
-    sync::{atomic::Ordering, Arc, LazyLock, RwLock},
+    sync::{atomic::Ordering, Arc, RwLock},
     time::Duration,
 };
 
@@ -20,11 +20,7 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
-use tokio::{
-    net::TcpListener,
-    sync::{mpsc, oneshot, Mutex},
-    task::JoinSet,
-};
+use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
