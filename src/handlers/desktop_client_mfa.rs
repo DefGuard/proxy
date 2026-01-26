@@ -12,7 +12,7 @@ use axum::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::json;
-use tokio::{task::JoinSet};
+use tokio::task::JoinSet;
 
 use crate::{
     error::ApiError,
@@ -92,7 +92,7 @@ async fn handle_remote_auth_socket(
                 device_info,
             )
             .unwrap(); // TODO(jck) unwrap
-	   // TODO(jck) unwrap
+                       // TODO(jck) unwrap
         match rx.await.unwrap() {
             Payload::ClientRemoteMfaFinish(response) => {
                 let ws_response = json!({
