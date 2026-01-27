@@ -3,7 +3,7 @@ use std::time::Duration;
 use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
 use axum_extra::{headers::UserAgent, TypedHeader};
-use tokio::{sync::oneshot::Receiver, time::timeout};
+use tokio::{sync::oneshot::Receiver, time};
 use tonic::Code;
 
 use super::proto::DeviceInfo;
@@ -69,9 +69,12 @@ where
 /// Helper which awaits core response
 ///
 /// Waits for core response with a given timeout and returns the response payload.
-pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, ApiError> {
+pub(crate) async fn get_core_response(
+    rx: Receiver<Payload>,
+    timeout: Option<Duration>,
+) -> Result<Payload, ApiError> {
     debug!("Fetching core response.");
-    if let Ok(core_response) = timeout(CORE_RESPONSE_TIMEOUT, rx).await {
+    if let Ok(core_response) = time::timeout(timeout.unwrap_or(CORE_RESPONSE_TIMEOUT), rx).await {
         debug!("Got gRPC response from Defguard Core");
         if let Ok(Payload::CoreError(core_error)) = core_response {
             if core_error.status_code == Code::FailedPrecondition as i32
@@ -92,7 +95,10 @@ pub(crate) async fn get_core_response(rx: Receiver<Payload>) -> Result<Payload, 
         core_response
             .map_err(|err| ApiError::Unexpected(format!("Failed to receive core response: {err}")))
     } else {
-        error!("Did not receive response from Core within {CORE_RESPONSE_TIMEOUT:?}");
+        error!(
+            "Did not receive response from Core within {:?}",
+            timeout.unwrap_or(CORE_RESPONSE_TIMEOUT)
+        );
         Err(ApiError::CoreTimeout)
     }
 }

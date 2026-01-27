@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
     sync::{atomic::Ordering, Arc, RwLock},
@@ -20,7 +19,7 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
-use tokio::{net::TcpListener, sync::oneshot, task::JoinSet};
+use tokio::{net::TcpListener, task::JoinSet};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -52,8 +51,6 @@ pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    pub(crate) remote_mfa_sessions:
-        Arc<tokio::sync::Mutex<HashMap<String, oneshot::Sender<String>>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     url: Url,
 }
@@ -273,7 +270,6 @@ pub async fn run_server(env_config: EnvConfig, config: Configuration) -> anyhow:
     let shared_state = AppState {
         cookie_key,
         grpc_server,
-        remote_mfa_sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         url: env_config.url.clone(),
     };
 

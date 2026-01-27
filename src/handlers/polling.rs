@@ -18,7 +18,7 @@ pub(crate) async fn info(
         core_request::Payload::InstanceInfo(req.clone()),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
 
     if let core_response::Payload::InstanceInfo(response) = payload {
         info!("Retrieved info for polling request");

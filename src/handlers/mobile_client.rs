@@ -53,7 +53,7 @@ pub(crate) async fn register_mobile_auth(
         core_request::Payload::RegisterMobileAuth(send_data),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::Empty(()) = payload {
         info!("Registered mobile device for auth");
         Ok(())

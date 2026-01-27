@@ -1,4 +1,4 @@
-use std::collections::hash_map::Entry;
+use std::time::Duration;
 
 use axum::{
     extract::{
@@ -12,17 +12,22 @@ use axum::{
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::json;
-use tokio::{sync::oneshot, task::JoinSet};
+use tokio::task::JoinSet;
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
     proto::{
-        core_request, core_response, ClientMfaFinishRequest, ClientMfaFinishResponse,
+        core_request,
+        core_response::{self, Payload},
+        AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse,
         ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
     },
 };
+
+// How much time the user has to approve remote MFA with mobile device
+const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
@@ -53,66 +58,74 @@ async fn await_remote_auth(
                 token: token.clone(),
             },
         ),
-        device_info,
+        device_info.clone(),
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, Some(REMOTE_AUTH_TIMEOUT)).await?;
     if let core_response::Payload::ClientMfaTokenValidation(response) = payload {
         if !response.token_valid {
             return Err(ApiError::Unauthorized(String::new()));
         }
-        // check if its already in the map
-        let contains_key = {
-            let sessions = state.remote_mfa_sessions.lock().await;
-            sessions.contains_key(&token)
-        };
-        if contains_key {
-            return Err(ApiError::Unauthorized(String::new()));
-        }
-        Ok(ws.on_upgrade(move |socket| handle_remote_auth_socket(socket, state.clone(), token)))
+
+        Ok(ws.on_upgrade(move |socket| {
+            handle_remote_auth_socket(socket, state.clone(), token, device_info)
+        }))
     } else {
         Err(ApiError::InvalidResponseType)
     }
 }
 
 /// Handle axum web socket upgrade for `await_remote_auth`.
-async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: String) {
-    let (tx, rx) = oneshot::channel();
-
-    {
-        let mut sessions = state.remote_mfa_sessions.lock().await;
-        match sessions.entry(token.clone()) {
-            Entry::Occupied(_) => {
-                return;
-            }
-            Entry::Vacant(v) => {
-                v.insert(tx);
-            }
-        }
-    }
-
+async fn handle_remote_auth_socket(
+    socket: WebSocket,
+    state: AppState,
+    token: String,
+    device_info: DeviceInfo,
+) {
     let (mut ws_tx, mut ws_rx) = socket.split();
     let mut set = JoinSet::new();
 
-    set.spawn(async move {
-        if let Ok(msg) = rx.await {
-            let payload = json!({
-                "type": "mfa_success",
-                "preshared_key": &msg,
-            });
-            if let Ok(serialized) = serde_json::to_string(&payload) {
-                let message = Message::Text(serialized.into());
-                if ws_tx.send(message).await.is_err() {
-                    error!("Failed to send preshared key via ws");
-                }
-            } else {
-                error!("Failed to serialize remote mfa ws client response message");
-            }
-        } else {
-            error!("Failed to receive preshared key from receiver");
+    let request = AwaitRemoteMfaFinishRequest { token };
+    let rx = match state.grpc_server.send(
+        core_request::Payload::AwaitRemoteMfaFinish(request),
+        device_info,
+    ) {
+        Ok(rx) => rx,
+        Err(err) => {
+            error!("Failed to send ClientRemoteMfaFinishRequest: {err:?}");
+            return;
         }
+    };
+
+    // Response to ClientRemoteMfaFinishRequest comes once the user concludes MFA with mobile device.
+    // This task then sends the preshared key to the WebSocket where desktop client awaits for it.
+    set.spawn(async move {
+        match rx.await {
+            Ok(Payload::AwaitRemoteMfaFinish(response)) => {
+                let ws_response = json!({
+                    "type": "mfa_success",
+                    "preshared_key": &response.preshared_key,
+                });
+                if let Ok(serialized) = serde_json::to_string(&ws_response) {
+                    let message = Message::Text(serialized.into());
+                    if let Err(err) = ws_tx.send(message).await {
+                        error!("Failed to send preshared key via ws: {err:?}");
+                    }
+                }
+            }
+            Ok(_) => {
+                error!("Received wrong response type, expected ClientRemoteMfaFinish");
+            }
+            Err(err) => {
+                error!("Failed to receive preshared key from receiver: {err:?}");
+            }
+        };
+
+        // Close the websocket once we're done.
         let _ = ws_tx.close().await;
     });
 
+    // Another task to monitor the websocket connection in case desktop client disconnects
+    // or the connection errors-out.
     set.spawn(async move {
         while let Some(msg_result) = ws_rx.next().await {
             match msg_result {
@@ -129,10 +142,9 @@ async fn handle_remote_auth_socket(socket: WebSocket, state: AppState, token: St
         }
     });
 
+    // Wait for whichever task finishes first and kill the other one.
     let _ = set.join_next().await;
     set.shutdown().await;
-    // This will remove token, if it's still there.
-    state.remote_mfa_sessions.lock().await.remove(&token);
 }
 
 #[instrument(level = "debug", skip(state, req))]
@@ -146,7 +158,7 @@ async fn start_client_mfa(
         core_request::Payload::ClientMfaStart(req.clone()),
         device_info,
     )?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
 
     if let core_response::Payload::ClientMfaStart(response) = payload {
         info!("Started desktop client authorization {req:?}");
@@ -167,7 +179,7 @@ async fn finish_client_mfa(
     let rx = state
         .grpc_server
         .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
-    let payload = get_core_response(rx).await?;
+    let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::ClientMfaFinish(response) = payload {
         Ok(Json(response))
     } else {
@@ -186,32 +198,10 @@ async fn finish_remote_mfa(
     let rx = state
         .grpc_server
         .send(core_request::Payload::ClientMfaFinish(req), device_info)?;
-    let payload = get_core_response(rx).await?;
-    if let core_response::Payload::ClientMfaFinish(response) = payload {
-        // Check if this needs to be forwarded.
-        if let Some(token) = response.token {
-            let sender_option = {
-                let mut sessions = state.remote_mfa_sessions.lock().await;
-                sessions.remove(&token)
-            };
-            if let Some(sender) = sender_option {
-                let _ = sender.send(response.preshared_key);
-            }
-            // If desktop stopped listening for the result, there will be no place to send the
-            // result.
-            else {
-                error!("Remote MFA approve finished but session was not found.");
-                return Err(ApiError::Unexpected(String::new()));
-            }
-
-            info!("Finished desktop client authorization via mobile device");
-            Ok(Json(json!({})))
-        } else {
-            error!("Remote MFA Unexpected core response, token was not returned");
-            Err(ApiError::Unexpected(String::new()))
-        }
+    if let core_response::Payload::ClientMfaFinish(_response) = get_core_response(rx, None).await? {
+        Ok(Json(json!({})))
     } else {
-        error!("Received invalid gRPC response type");
+        error!("Received invalid gRPC response type, expected ClientMfaFinish");
         Err(ApiError::InvalidResponseType)
     }
 }
