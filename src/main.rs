@@ -3,7 +3,7 @@ use std::{fs::read_to_string, sync::Arc};
 use defguard_proxy::{
     config::get_env_config,
     grpc::Configuration,
-    http::{run_server, run_setup, GRPC_CERT_NAME, GRPC_KEY_NAME},
+    http::{run_server, GRPC_CERT_NAME, GRPC_KEY_NAME},
     logging::init_tracing,
     VERSION,
 };
@@ -24,7 +24,16 @@ async fn main() -> anyhow::Result<()> {
         read_to_string(cert_dir.join(GRPC_KEY_NAME)).ok(),
     );
 
-    let needs_setup = grpc_cert.is_none() || grpc_key.is_none();
+    let proxy_configuration = if let (Some(grpc_cert), Some(grpc_key)) = (grpc_cert, grpc_key) {
+        Some(Configuration {
+            grpc_cert_pem: grpc_cert,
+            grpc_key_pem: grpc_key,
+        })
+    } else {
+        None
+    };
+
+    let needs_setup = proxy_configuration.is_none();
 
     // TODO: The channel size may need to be adjusted or some other approach should be used
     // to avoid dropping log messages.
@@ -39,28 +48,13 @@ async fn main() -> anyhow::Result<()> {
     // read config from env
     tracing::info!("Starting ... version v{}", VERSION);
 
-    let proxy_configuration = if needs_setup {
-        if let Some(logs_rx) = logs_rx {
-            tracing::info!("gRPC certificates not found, running setup process");
-            let proxy_configuration = run_setup(&env_config, Arc::new(Mutex::new(logs_rx))).await?;
-            tracing::info!("Setup process completed successfully");
-            proxy_configuration
-        } else {
-            anyhow::bail!(
-                "gRPC certificates not found and logs receiver not available for setup process"
-            );
-        }
-    } else if let (Some(grpc_cert), Some(grpc_key)) = (grpc_cert, grpc_key) {
-        Configuration {
-            grpc_cert_pem: grpc_cert,
-            grpc_key_pem: grpc_key,
-        }
-    } else {
-        anyhow::bail!("Failed to load gRPC certificates");
-    };
-
     // run API web server
-    run_server(env_config, proxy_configuration).await?;
+    run_server(
+        env_config,
+        proxy_configuration,
+        logs_rx.map(|r| Arc::new(Mutex::new(r))),
+    )
+    .await?;
 
     Ok(())
 }
