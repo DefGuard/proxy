@@ -232,7 +232,11 @@ async fn ensure_configured(
     next.run(request).await
 }
 
-pub async fn run_server(env_config: EnvConfig, config: Configuration) -> anyhow::Result<()> {
+pub async fn run_server(
+    env_config: EnvConfig,
+    config: Option<Configuration>,
+    logs_rx: Option<LogsReceiver>,
+) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {env_config:?}");
 
@@ -243,12 +247,26 @@ pub async fn run_server(env_config: EnvConfig, config: Configuration) -> anyhow:
     let grpc_server = ProxyServer::new(Arc::clone(&cookie_key));
 
     let server_clone = grpc_server.clone();
-    grpc_server.configure(config);
+    let env_config_clone = env_config.clone();
 
     // Start gRPC server.
-    // TODO: Wait with spawning the HTTP server until gRPC server is ready.
-    debug!("Spawning gRPC server");
+    debug!("Spawning gRPC server task");
     tasks.spawn(async move {
+        let proxy_configuration = if let Some(conf) = config {
+            debug!("Using existing gRPC certificates, skipping setup process");
+            conf
+        } else if let Some(logs_rx) = logs_rx {
+            info!("gRPC certificates not found, running setup process");
+            let conf = run_setup(&env_config_clone, logs_rx).await?;
+            info!("Setup process completed successfully");
+            conf
+        } else {
+            anyhow::bail!(
+                "gRPC certificates not found and logs receiver not available for setup process"
+            );
+        };
+
+        server_clone.configure(proxy_configuration);
         loop {
             info!("Starting gRPC server...");
             let server_to_run = server_clone.clone();

@@ -9,7 +9,7 @@ fn default_url() -> Url {
     Url::parse("http://localhost:8080").unwrap()
 }
 
-#[derive(Parser, Debug, Deserialize)]
+#[derive(Parser, Debug, Deserialize, Clone)]
 #[command(version)]
 pub struct EnvConfig {
     // port the API server will listen on
