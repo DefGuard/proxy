@@ -244,7 +244,7 @@ pub async fn run_server(
     let cookie_key = Default::default();
 
     // connect to upstream gRPC server
-    let grpc_server = ProxyServer::new(Arc::clone(&cookie_key));
+    let grpc_server = ProxyServer::new(Arc::clone(&cookie_key), env_config.cert_dir.clone());
 
     let server_clone = grpc_server.clone();
     let env_config_clone = env_config.clone();

@@ -2,6 +2,7 @@ use std::{
     any::Any,
     collections::HashMap,
     net::SocketAddr,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
@@ -25,6 +26,7 @@ use tracing::Instrument;
 
 use crate::{
     error::ApiError,
+    http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
     MIN_CORE_VERSION, VERSION,
 };
@@ -46,12 +48,13 @@ pub(crate) struct ProxyServer {
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
+    cert_dir: PathBuf,
 }
 
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new(cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
+    pub(crate) fn new(cookie_key: Arc<RwLock<Option<Key>>>, cert_dir: PathBuf) -> Self {
         Self {
             cookie_key,
             current_id: Arc::new(AtomicU64::new(1)),
@@ -60,6 +63,7 @@ impl ProxyServer {
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
+            cert_dir,
         }
     }
 
@@ -176,6 +180,7 @@ impl Clone for ProxyServer {
             core_version: Arc::clone(&self.core_version),
             cookie_key: Arc::clone(&self.cookie_key),
             config: Arc::clone(&self.config),
+            cert_dir: self.cert_dir.clone(),
         }
     }
 }
@@ -274,11 +279,29 @@ impl proxy_server::Proxy for ProxyServer {
     }
 
     #[instrument(skip(self, _request))]
-    async fn reset(
-        &self,
-        _request: Request<()>,
-    ) -> Result<Response<()>, Status> {
-		error!("GOT RESET REQUEST");
+    async fn reset(&self, _request: Request<()>) -> Result<Response<()>, Status> {
+        debug!("Got reset request, removing gRPC certificate files");
+        let cert_path = self.cert_dir.join(GRPC_CERT_NAME);
+        let key_path = self.cert_dir.join(GRPC_KEY_NAME);
+
+        if let Err(err) = tokio::fs::remove_file(&cert_path).await {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                error!(
+                    "Failed to remove gRPC certificate at {:?}: {err}",
+                    cert_path
+                );
+                return Err(Status::internal("Failed to remove gRPC certificate"));
+            }
+        }
+
+        if let Err(err) = tokio::fs::remove_file(&key_path).await {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                error!("Failed to remove gRPC key at {:?}: {err}", key_path);
+                return Err(Status::internal("Failed to remove gRPC key"));
+            }
+        }
+
+        info!("Removed gRPC certificate files");
         Ok(Response::new(()))
-	}
+    }
 }
