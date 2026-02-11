@@ -294,8 +294,8 @@ impl proxy_server::Proxy for ProxyServer {
     }
 
     #[instrument(skip(self, _request))]
-    async fn reset(&self, _request: Request<()>) -> Result<Response<()>, Status> {
-        debug!("Got reset request, removing gRPC certificate files");
+    async fn purge(&self, _request: Request<()>) -> Result<Response<()>, Status> {
+        debug!("Received purge request, removing gRPC certificate files");
         let cert_path = self.cert_dir.join(GRPC_CERT_NAME);
         let key_path = self.cert_dir.join(GRPC_KEY_NAME);
 
@@ -319,15 +319,15 @@ impl proxy_server::Proxy for ProxyServer {
         *self
             .config
             .lock()
-            .expect("Failed to acquire lock on config mutex during reset") = None;
+            .expect("Failed to lock config mutex during purge") = None;
         *self
             .core_version
             .lock()
-            .expect("Failed to acquire lock on core_version mutex during reset") = None;
+            .expect("Failed to lock core_version mutex during purge") = None;
         *self
             .cookie_key
             .write()
-            .expect("Failed to acquire lock on cookie key during reset") = None;
+            .expect("Failed to lock cookie key during purge") = None;
         self.connected.store(false, Ordering::Relaxed);
 
         if self.reset_tx.send(()).is_err() {
