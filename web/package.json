@@ -23,7 +23,7 @@
     "@tanstack/react-router": "^1.157.16",
     "@tanstack/react-router-devtools": "^1.157.16",
     "@uidotdev/usehooks": "^2.4.1",
-    "axios": "^1.13.4",
+    "axios": "^1.13.5",
     "change-case": "^5.4.4",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
