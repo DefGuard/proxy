@@ -1,6 +1,7 @@
 use std::{
     any::Any,
     collections::HashMap,
+    future::Future,
     net::SocketAddr,
     path::PathBuf,
     sync::{
@@ -15,7 +16,7 @@ use defguard_version::{
     server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
     ComponentInfo, DefguardComponent, Version,
 };
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{broadcast, mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{
     transport::{Identity, Server, ServerTlsConfig},
@@ -49,12 +50,17 @@ pub(crate) struct ProxyServer {
     config: Arc<Mutex<Option<Configuration>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
+    reset_tx: broadcast::Sender<()>,
 }
 
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new(cookie_key: Arc<RwLock<Option<Key>>>, cert_dir: PathBuf) -> Self {
+    pub(crate) fn new(
+        cookie_key: Arc<RwLock<Option<Key>>>,
+        cert_dir: PathBuf,
+        reset_tx: broadcast::Sender<()>,
+    ) -> Self {
         Self {
             cookie_key,
             current_id: Arc::new(AtomicU64::new(1)),
@@ -64,6 +70,7 @@ impl ProxyServer {
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
             cert_dir,
+            reset_tx,
         }
     }
 
@@ -83,7 +90,14 @@ impl ProxyServer {
         lock.clone()
     }
 
-    pub(crate) async fn run(self, addr: SocketAddr) -> Result<(), anyhow::Error> {
+    pub(crate) async fn run<F>(
+        self,
+        addr: SocketAddr,
+        shutdown: F,
+    ) -> Result<(), anyhow::Error>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
         info!("Starting gRPC server on {addr}");
         let config = self.get_configuration();
         let (grpc_cert, grpc_key) = if let Some(cfg) = config {
@@ -111,7 +125,7 @@ impl ProxyServer {
 
         builder
             .add_service(versioned_service)
-            .serve(addr)
+            .serve_with_shutdown(addr, shutdown)
             .await
             .map_err(|err| {
                 error!("gRPC server error: {err}");
@@ -181,6 +195,7 @@ impl Clone for ProxyServer {
             cookie_key: Arc::clone(&self.cookie_key),
             config: Arc::clone(&self.config),
             cert_dir: self.cert_dir.clone(),
+            reset_tx: self.reset_tx.clone(),
         }
     }
 }
@@ -301,7 +316,26 @@ impl proxy_server::Proxy for ProxyServer {
             }
         }
 
-        info!("Removed gRPC certificate files");
+        *self
+            .config
+            .lock()
+            .expect("Failed to acquire lock on config mutex during reset") = None;
+        *self
+            .core_version
+            .lock()
+            .expect("Failed to acquire lock on core_version mutex during reset") = None;
+        *self
+            .cookie_key
+            .write()
+            .expect("Failed to acquire lock on cookie key during reset") = None;
+        self.connected.store(false, Ordering::Relaxed);
+
+        if self.reset_tx.send(()).is_err() {
+            error!("Failed to notify reset handler");
+            return Err(Status::internal("Failed to restart setup process"));
+        }
+
+        info!("Removed gRPC certificate files; entering setup mode");
         Ok(Response::new(()))
     }
 }
