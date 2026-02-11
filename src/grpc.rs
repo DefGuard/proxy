@@ -272,4 +272,13 @@ impl proxy_server::Proxy for ProxyServer {
 
         Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
+
+    #[instrument(skip(self, _request))]
+    async fn reset(
+        &self,
+        _request: Request<()>,
+    ) -> Result<Response<()>, Status> {
+		error!("GOT RESET REQUEST");
+        Ok(Response::new(()))
+	}
 }
