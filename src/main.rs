@@ -33,15 +33,11 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    let needs_setup = proxy_configuration.is_none();
-
     // TODO: The channel size may need to be adjusted or some other approach should be used
     // to avoid dropping log messages.
-    let (logs_tx, logs_rx) = if needs_setup {
+    let (logs_tx, logs_rx) = {
         let (logs_tx, logs_rx) = mpsc::channel(200);
         (Some(logs_tx), Some(logs_rx))
-    } else {
-        (None, None)
     };
 
     init_tracing(Version::parse(VERSION)?, &env_config.log_level, logs_tx)?;

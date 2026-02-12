@@ -1,7 +1,9 @@
 use std::{
     any::Any,
     collections::HashMap,
+    future::Future,
     net::SocketAddr,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
@@ -14,7 +16,7 @@ use defguard_version::{
     server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
     ComponentInfo, DefguardComponent, Version,
 };
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{broadcast, mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{
     transport::{Identity, Server, ServerTlsConfig},
@@ -25,6 +27,7 @@ use tracing::Instrument;
 
 use crate::{
     error::ApiError,
+    http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
     MIN_CORE_VERSION, VERSION,
 };
@@ -46,12 +49,18 @@ pub(crate) struct ProxyServer {
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     config: Arc<Mutex<Option<Configuration>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
+    cert_dir: PathBuf,
+    reset_tx: broadcast::Sender<()>,
 }
 
 impl ProxyServer {
     #[must_use]
     /// Create new `ProxyServer`.
-    pub(crate) fn new(cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
+    pub(crate) fn new(
+        cookie_key: Arc<RwLock<Option<Key>>>,
+        cert_dir: PathBuf,
+        reset_tx: broadcast::Sender<()>,
+    ) -> Self {
         Self {
             cookie_key,
             current_id: Arc::new(AtomicU64::new(1)),
@@ -60,6 +69,8 @@ impl ProxyServer {
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             config: Arc::new(Mutex::new(None)),
+            cert_dir,
+            reset_tx,
         }
     }
 
@@ -79,7 +90,10 @@ impl ProxyServer {
         lock.clone()
     }
 
-    pub(crate) async fn run(self, addr: SocketAddr) -> Result<(), anyhow::Error> {
+    pub(crate) async fn run<F>(self, addr: SocketAddr, shutdown: F) -> Result<(), anyhow::Error>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
         info!("Starting gRPC server on {addr}");
         let config = self.get_configuration();
         let (grpc_cert, grpc_key) = if let Some(cfg) = config {
@@ -107,7 +121,7 @@ impl ProxyServer {
 
         builder
             .add_service(versioned_service)
-            .serve(addr)
+            .serve_with_shutdown(addr, shutdown)
             .await
             .map_err(|err| {
                 error!("gRPC server error: {err}");
@@ -176,6 +190,8 @@ impl Clone for ProxyServer {
             core_version: Arc::clone(&self.core_version),
             cookie_key: Arc::clone(&self.cookie_key),
             config: Arc::clone(&self.config),
+            cert_dir: self.cert_dir.clone(),
+            reset_tx: self.reset_tx.clone(),
         }
     }
 }
@@ -271,5 +287,51 @@ impl proxy_server::Proxy for ProxyServer {
         );
 
         Ok(Response::new(UnboundedReceiverStream::new(rx)))
+    }
+
+    #[instrument(skip(self, _request))]
+    async fn purge(&self, _request: Request<()>) -> Result<Response<()>, Status> {
+        debug!("Received purge request, removing gRPC certificate files");
+        let cert_path = self.cert_dir.join(GRPC_CERT_NAME);
+        let key_path = self.cert_dir.join(GRPC_KEY_NAME);
+
+        if let Err(err) = tokio::fs::remove_file(&cert_path).await {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                error!(
+                    "Failed to remove gRPC certificate at {:?}: {err}",
+                    cert_path
+                );
+                return Err(Status::internal("Failed to remove gRPC certificate"));
+            }
+        }
+
+        if let Err(err) = tokio::fs::remove_file(&key_path).await {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                error!("Failed to remove gRPC key at {:?}: {err}", key_path);
+                return Err(Status::internal("Failed to remove gRPC key"));
+            }
+        }
+
+        *self
+            .config
+            .lock()
+            .expect("Failed to lock config mutex during purge") = None;
+        *self
+            .core_version
+            .lock()
+            .expect("Failed to lock core_version mutex during purge") = None;
+        *self
+            .cookie_key
+            .write()
+            .expect("Failed to lock cookie key during purge") = None;
+        self.connected.store(false, Ordering::Relaxed);
+
+        if self.reset_tx.send(()).is_err() {
+            error!("Failed to notify reset handler");
+            return Err(Status::internal("Failed to restart setup process"));
+        }
+
+        info!("Removed gRPC certificate files; entering setup mode");
+        Ok(Response::new(()))
     }
 }

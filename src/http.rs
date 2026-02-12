@@ -242,9 +242,14 @@ pub async fn run_server(
 
     let mut tasks = JoinSet::new();
     let cookie_key = Default::default();
+    let (reset_tx, mut reset_rx) = tokio::sync::broadcast::channel(1);
 
     // connect to upstream gRPC server
-    let grpc_server = ProxyServer::new(Arc::clone(&cookie_key));
+    let grpc_server = ProxyServer::new(
+        Arc::clone(&cookie_key),
+        env_config.cert_dir.clone(),
+        reset_tx,
+    );
 
     let server_clone = grpc_server.clone();
     let env_config_clone = env_config.clone();
@@ -252,22 +257,26 @@ pub async fn run_server(
     // Start gRPC server.
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
-        let proxy_configuration = if let Some(conf) = config {
-            debug!("Using existing gRPC certificates, skipping setup process");
-            conf
-        } else if let Some(logs_rx) = logs_rx {
-            info!("gRPC certificates not found, running setup process");
-            let conf = run_setup(&env_config_clone, logs_rx).await?;
-            info!("Setup process completed successfully");
-            conf
-        } else {
-            anyhow::bail!(
-                "gRPC certificates not found and logs receiver not available for setup process"
-            );
-        };
+        let logs_rx = logs_rx.ok_or_else(|| {
+            anyhow::anyhow!(
+                "gRPC logs receiver not available for setup process; reset cannot be handled"
+            )
+        })?;
+        let mut proxy_configuration = config;
 
-        server_clone.configure(proxy_configuration);
         loop {
+            let configuration = if let Some(conf) = proxy_configuration.clone() {
+                debug!("Using existing gRPC certificates, skipping setup process");
+                conf
+            } else {
+                info!("gRPC certificates not found, running setup process");
+                let conf = run_setup(&env_config_clone, Arc::clone(&logs_rx)).await?;
+                info!("Setup process completed successfully");
+                proxy_configuration = Some(conf.clone());
+                conf
+            };
+
+            server_clone.configure(configuration);
             info!("Starting gRPC server...");
             let server_to_run = server_clone.clone();
             let addr = SocketAddr::new(
@@ -276,9 +285,32 @@ pub async fn run_server(
                     .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
                 env_config.grpc_port,
             );
+            let mut shutdown_rx = reset_rx.resubscribe();
+            let mut server_task = tokio::spawn(async move {
+                server_to_run
+                    .run(addr, async move {
+                        let _ = shutdown_rx.recv().await;
+                    })
+                    .await
+            });
 
-            if let Err(e) = server_to_run.run(addr).await {
-                error!("gRPC server error: {e:?}, restarting...");
+            tokio::select! {
+                result = &mut server_task => {
+                    match result {
+                        Ok(Ok(())) => {}
+                        Ok(Err(err)) => error!("gRPC server error: {err:?}, restarting..."),
+                        Err(err) => error!("gRPC server task error: {err:?}, restarting..."),
+                    }
+                }
+                result = reset_rx.recv() => {
+                    if result.is_ok() {
+                        info!("Reset requested, restarting setup process");
+                        proxy_configuration = None;
+                    } else {
+                        error!("Reset channel closed; gRPC server will keep running");
+                    }
+                    let _ = server_task.await;
+                }
             }
         }
     });
