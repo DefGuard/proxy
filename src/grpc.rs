@@ -90,11 +90,7 @@ impl ProxyServer {
         lock.clone()
     }
 
-    pub(crate) async fn run<F>(
-        self,
-        addr: SocketAddr,
-        shutdown: F,
-    ) -> Result<(), anyhow::Error>
+    pub(crate) async fn run<F>(self, addr: SocketAddr, shutdown: F) -> Result<(), anyhow::Error>
     where
         F: Future<Output = ()> + Send + 'static,
     {
