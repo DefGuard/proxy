@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
 import { OpenDesktopPage } from '../pages/OpenDesktop/OpenDesktopPage';
 
@@ -7,6 +7,15 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute('/open-desktop')({
-  validateSearch: searchSchema,
+  validateSearch: (search) => {
+    const parsed = searchSchema.safeParse(search);
+    if (!parsed.success) {
+      throw redirect({
+        to: '/404' as never,
+        replace: true,
+      });
+    }
+    return parsed.data;
+  },
   component: OpenDesktopPage,
 });
