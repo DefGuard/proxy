@@ -14,6 +14,9 @@ export const OpenDesktopPage = () => {
   if (token) {
     deepLinkUrl.searchParams.set('token', token);
   }
+  if (typeof window !== 'undefined') {
+    deepLinkUrl.searchParams.set('url', window.location.origin);
+  }
 
   return (
     <Page id="open-desktop-page" variant="default">
