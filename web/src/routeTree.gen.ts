@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SessionEndRouteImport } from './routes/session-end'
 import { Route as PasswordResetRouteImport } from './routes/password-reset'
+import { Route as OpenDesktopRouteImport } from './routes/open-desktop'
 import { Route as LinkInvalidRouteImport } from './routes/link-invalid'
 import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
 import { Route as DownloadRouteImport } from './routes/download'
@@ -32,6 +33,11 @@ const SessionEndRoute = SessionEndRouteImport.update({
 const PasswordResetRoute = PasswordResetRouteImport.update({
   id: '/password-reset',
   path: '/password-reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenDesktopRoute = OpenDesktopRouteImport.update({
+  id: '/open-desktop',
+  path: '/open-desktop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LinkInvalidRoute = LinkInvalidRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
   '/link-invalid': typeof LinkInvalidRoute
+  '/open-desktop': typeof OpenDesktopRoute
   '/password-reset': typeof PasswordResetRoute
   '/session-end': typeof SessionEndRoute
   '/openid/callback': typeof OpenidCallbackRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
   '/link-invalid': typeof LinkInvalidRoute
+  '/open-desktop': typeof OpenDesktopRoute
   '/password-reset': typeof PasswordResetRoute
   '/session-end': typeof SessionEndRoute
   '/openid/callback': typeof OpenidCallbackRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/enrollment-start': typeof EnrollmentStartRoute
   '/link-invalid': typeof LinkInvalidRoute
+  '/open-desktop': typeof OpenDesktopRoute
   '/password-reset': typeof PasswordResetRoute
   '/session-end': typeof SessionEndRoute
   '/openid/callback': typeof OpenidCallbackRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/enrollment-start'
     | '/link-invalid'
+    | '/open-desktop'
     | '/password-reset'
     | '/session-end'
     | '/openid/callback'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/enrollment-start'
     | '/link-invalid'
+    | '/open-desktop'
     | '/password-reset'
     | '/session-end'
     | '/openid/callback'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/enrollment-start'
     | '/link-invalid'
+    | '/open-desktop'
     | '/password-reset'
     | '/session-end'
     | '/openid/callback'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   EnrollmentStartRoute: typeof EnrollmentStartRoute
   LinkInvalidRoute: typeof LinkInvalidRoute
+  OpenDesktopRoute: typeof OpenDesktopRoute
   PasswordResetRoute: typeof PasswordResetRoute
   SessionEndRoute: typeof SessionEndRoute
   OpenidCallbackRoute: typeof OpenidCallbackRoute
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/password-reset'
       fullPath: '/password-reset'
       preLoaderRoute: typeof PasswordResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/open-desktop': {
+      id: '/open-desktop'
+      path: '/open-desktop'
+      fullPath: '/open-desktop'
+      preLoaderRoute: typeof OpenDesktopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/link-invalid': {
@@ -321,6 +341,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   EnrollmentStartRoute: EnrollmentStartRoute,
   LinkInvalidRoute: LinkInvalidRoute,
+  OpenDesktopRoute: OpenDesktopRoute,
   PasswordResetRoute: PasswordResetRoute,
   SessionEndRoute: SessionEndRoute,
   OpenidCallbackRoute: OpenidCallbackRoute,

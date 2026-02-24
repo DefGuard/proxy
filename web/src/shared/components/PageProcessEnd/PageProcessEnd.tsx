@@ -14,8 +14,9 @@ type Props = {
   title: string;
   subtitle: string;
   linkText?: string;
-  link?: '/';
+  link?: string;
   icon?: IconKindValue;
+  imageSrc?: string;
 };
 
 export const PageProcessEnd = ({
@@ -24,11 +25,12 @@ export const PageProcessEnd = ({
   subtitle,
   title,
   icon = 'check-circle',
+  imageSrc,
 }: Props) => {
   return (
     <Page className="page-process-end">
       <div className="content">
-        <Icon icon={icon} size={32} />
+        {imageSrc ? <img src={imageSrc} /> : <Icon icon={icon} size={32} />}
         <SizedBox height={ThemeSpacing.Xl} />
         <AppText as="h1" font={TextStyle.TTitleH3}>
           {title}
@@ -40,9 +42,15 @@ export const PageProcessEnd = ({
         {isPresent(linkText) && isPresent(link) && (
           <>
             <SizedBox height={ThemeSpacing.Xl3} />
-            <Link to={link} replace>
-              <Button text={linkText} />
-            </Link>
+            {link.includes('://') ? (
+              <a href={link}>
+                <Button text={linkText} />
+              </a>
+            ) : (
+              <Link to={link} replace>
+                <Button text={linkText} />
+              </Link>
+            )}
           </>
         )}
       </div>

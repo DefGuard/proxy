@@ -118,7 +118,7 @@ async fn handle_remote_auth_socket(
             Err(err) => {
                 error!("Failed to receive preshared key from receiver: {err:?}");
             }
-        };
+        }
 
         // Close the websocket once we're done.
         let _ = ws_tx.close().await;
