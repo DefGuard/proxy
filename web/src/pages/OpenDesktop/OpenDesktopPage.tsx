@@ -1,8 +1,7 @@
 import './style.scss';
 import { useSearch } from '@tanstack/react-router';
 import { m } from '../../paraglide/messages';
-import { Page } from '../../shared/components/Page/Page';
-import { Button } from '../../shared/defguard-ui/components/Button/Button';
+import { PageProcessEnd } from '../../shared/components/PageProcessEnd/PageProcessEnd';
 import laptopImage from './assets/laptop.png';
 
 export const OpenDesktopPage = () => {
@@ -11,21 +10,18 @@ export const OpenDesktopPage = () => {
   });
 
   const deepLinkUrl = new URL('defguard://addinstance');
-  if (token) {
-    deepLinkUrl.searchParams.set('token', token);
-  }
+  deepLinkUrl.searchParams.set('token', token);
   if (typeof window !== 'undefined') {
     deepLinkUrl.searchParams.set('url', window.location.origin);
   }
 
   return (
-    <Page id="open-desktop-page" variant="default">
-      <img src={laptopImage} />
-      <h1>{m.open_desktop_title()}</h1>
-      <p>{m.open_desktop_description()}</p>
-      <a href={deepLinkUrl.toString()}>
-        <Button className="open-desktop-cta" text={m.open_desktop_button()} />
-      </a>
-    </Page>
+    <PageProcessEnd
+      imageSrc={laptopImage}
+      title={m.open_desktop_title()}
+      subtitle={m.open_desktop_description()}
+      link={deepLinkUrl.toString()}
+      linkText={m.open_desktop_button()}
+    />
   );
 };

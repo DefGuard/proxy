@@ -3,7 +3,7 @@ import z from 'zod';
 import { OpenDesktopPage } from '../pages/OpenDesktop/OpenDesktopPage';
 
 const searchSchema = z.object({
-  token: z.string().optional(),
+  token: z.string(),
 });
 
 export const Route = createFileRoute('/open-desktop')({
