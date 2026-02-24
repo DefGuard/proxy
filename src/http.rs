@@ -241,7 +241,7 @@ pub async fn run_server(
     debug!("Using config: {env_config:?}");
 
     let mut tasks = JoinSet::new();
-    let cookie_key = Default::default();
+    let cookie_key = Arc::default();
     let (reset_tx, mut reset_rx) = tokio::sync::broadcast::channel(1);
 
     // connect to upstream gRPC server

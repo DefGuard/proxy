@@ -250,21 +250,18 @@ impl proxy_server::Proxy for ProxyServer {
                             debug!("Received message from Defguard Core ID={}", response.id);
                             connected.store(true, Ordering::Relaxed);
                             if let Some(payload) = response.payload {
-                                match payload {
-                                    core_response::Payload::InitialInfo(payload) => {
-                                        info!("Received private cookies key");
-                                        let key = Key::from(&payload.private_cookies_key);
-                                        *cookie_key.write().unwrap() = Some(key);
-                                    },
-                                    _ => {
-                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                        if let Some(rx) = maybe_rx {
-                                            if let Err(err) = rx.send(payload) {
-                                                error!("Failed to send message to rx {:?}", err.type_id());
-                                            }
-                                        } else {
-                                            error!("Missing receiver for response #{}", response.id);
+                                if let core_response::Payload::InitialInfo(payload) = payload {
+                                    info!("Received private cookies key");
+                                    let key = Key::from(&payload.private_cookies_key);
+                                    *cookie_key.write().unwrap() = Some(key);
+                                } else {
+                                    let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
+                                    if let Some(rx) = maybe_rx {
+                                        if let Err(err) = rx.send(payload) {
+                                            error!("Failed to send message to rx {:?}", err.type_id());
                                         }
+                                    } else {
+                                        error!("Missing receiver for response #{}", response.id);
                                     }
                                 }
                             }
@@ -281,7 +278,8 @@ impl proxy_server::Proxy for ProxyServer {
                 }
                 info!("Defguard core client disconnected: {address}");
                 connected.store(false, Ordering::Relaxed);
-                clients.write().expect("Failed to acquire lock on clients hashmap when removing disconnected client").remove(&address);
+                clients.write().expect("Failed to acquire lock on clients hashmap when removing \
+                    disconnected client").remove(&address);
             }
             .instrument(tracing::Span::current()),
         );
