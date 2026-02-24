@@ -25,12 +25,11 @@ use tower_governor::{
 };
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info_span, Level};
-use url::Url;
 
 use crate::{
     assets::{index, web_asset},
     config::EnvConfig,
-    enterprise::handlers::openid_login::{self, FlowType},
+    enterprise::handlers::openid_login,
     error::ApiError,
     grpc::{Configuration, ProxyServer},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
@@ -52,23 +51,6 @@ pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
     cookie_key: Arc<RwLock<Option<Key>>>,
-    url: Url,
-}
-
-impl AppState {
-    /// Returns configured URL with "auth/callback" appended to the path.
-    #[must_use]
-    pub(crate) fn callback_url(&self, flow_type: &FlowType) -> Url {
-        let mut url = self.url.clone();
-        // Append "/openid/callback" to the URL.
-        if let Ok(mut path_segments) = url.path_segments_mut() {
-            match flow_type {
-                FlowType::Enrollment => path_segments.extend(&["openid", "callback"]),
-                FlowType::Mfa => path_segments.extend(&["openid", "mfa", "callback"]),
-            };
-        }
-        url
-    }
 }
 
 impl FromRef<AppState> for Key {
@@ -320,7 +302,6 @@ pub async fn run_server(
     let shared_state = AppState {
         cookie_key,
         grpc_server,
-        url: env_config.url.clone(),
     };
 
     // Setup tower_governor rate-limiter
