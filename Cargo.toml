@@ -29,7 +29,7 @@ log = { version = "0.4", features = ["serde"] }
 # data de/serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-toml = { version = "0.9", default-features = false, features = [
+toml = { version = "1.0", default-features = false, features = [
     "parse",
     "serde",
 ] }
@@ -58,7 +58,7 @@ bytes = { version = "1.11" }
 
 [build-dependencies]
 tonic-prost-build = "0.14"
-vergen-git2 = { version = "1.0", features = ["build"] }
+vergen-git2 = { version = "9.1", features = ["build"] }
 
 [profile.release]
 lto = "thin"

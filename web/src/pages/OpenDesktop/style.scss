@@ -1,0 +1,10 @@
+#open-desktop-page {
+  .page-content {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    max-width: 100%;
+    overflow-x: hidden;
+    gap: var(--spacing-xl);
+  }
+}
