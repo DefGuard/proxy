@@ -12,8 +12,8 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthInfoRequest,
-        DeviceInfo,
+        core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthFlowType,
+        AuthInfoRequest, DeviceInfo,
     },
 };
 
@@ -68,9 +68,15 @@ async fn auth_info(
 ) -> Result<(PrivateCookieJar, Json<AuthInfo>), ApiError> {
     debug!("Getting auth info for OAuth2/OpenID login");
 
+    let auth_flow_type = match request_data.flow_type {
+        FlowType::Enrollment => AuthFlowType::Enrollment as i32,
+        FlowType::Mfa => AuthFlowType::Mfa as i32,
+    };
     let request = AuthInfoRequest {
-        redirect_url: state.callback_url(&request_data.flow_type).to_string(),
+        #[allow(deprecated)]
+        redirect_url: String::new(),
         state: request_data.state,
+        auth_flow_type,
     };
 
     let rx = state
@@ -158,7 +164,8 @@ async fn auth_callback(
     let request = AuthCallbackRequest {
         code: payload.code,
         nonce,
-        callback_url: state.callback_url(&payload.flow_type).to_string(),
+        #[allow(deprecated)]
+        callback_url: String::new(),
     };
 
     let rx = state

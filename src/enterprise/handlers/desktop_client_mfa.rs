@@ -79,8 +79,9 @@ pub(super) async fn mfa_auth_callback(
     let request = ClientMfaOidcAuthenticateRequest {
         code: payload.code,
         nonce,
-        callback_url: state.callback_url(&payload.flow_type).to_string(),
         state: payload.state,
+        #[allow(deprecated)]
+        callback_url: String::new(),
     };
 
     debug!("Sending MFA OIDC authenticate request to core service");
