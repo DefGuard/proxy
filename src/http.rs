@@ -1,4 +1,5 @@
 use std::{
+    io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
     sync::{atomic::Ordering, Arc, RwLock},
@@ -171,7 +172,16 @@ pub async fn run_setup(
     let setup_server = ProxySetupServer::new(logs_rx);
     let cert_dir = Path::new(&env_config.cert_dir);
     if !cert_dir.exists() {
-        tokio::fs::create_dir_all(cert_dir).await?;
+        tokio::fs::create_dir_all(cert_dir).await.map_err(|err| {
+            if err.kind() == ErrorKind::PermissionDenied {
+                anyhow::anyhow!(
+                    "Cannot create certificate directory {}. Permission denied.",
+                    cert_dir.display()
+                )
+            } else {
+                err.into()
+            }
+        })?;
     }
 
     // Only attempt setup if not already configured
@@ -197,8 +207,32 @@ pub async fn run_setup(
 
     let cert_path = cert_dir.join(GRPC_CERT_NAME);
     let key_path = cert_dir.join(GRPC_KEY_NAME);
-    tokio::fs::write(&cert_path, grpc_cert_pem).await?;
-    tokio::fs::write(&key_path, grpc_key_pem).await?;
+    tokio::fs::write(&cert_path, grpc_cert_pem)
+        .await
+        .map_err(|err| {
+            if err.kind() == ErrorKind::PermissionDenied {
+                anyhow::anyhow!(
+                    "Cannot write certificate file {}. Permission denied for certificate directory {}.",
+                    cert_path.display(),
+                    cert_dir.display()
+                )
+            } else {
+                err.into()
+            }
+        })?;
+    tokio::fs::write(&key_path, grpc_key_pem)
+        .await
+        .map_err(|err| {
+            if err.kind() == ErrorKind::PermissionDenied {
+                anyhow::anyhow!(
+                    "Cannot write key file {}. Permission denied for certificate directory {}.",
+                    key_path.display(),
+                    cert_dir.display()
+                )
+            } else {
+                err.into()
+            }
+        })?;
 
     Ok(configuration)
 }
