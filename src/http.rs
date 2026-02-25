@@ -220,17 +220,19 @@ pub async fn run_setup(
                 err.into()
             }
         })?;
-    tokio::fs::write(&key_path, grpc_key_pem).await.map_err(|err| {
-        if err.kind() == ErrorKind::PermissionDenied {
-            anyhow::anyhow!(
-                "Cannot write key file {}. Permission denied for certificate directory {}.",
-                key_path.display(),
-                cert_dir.display()
-            )
-        } else {
-            err.into()
-        }
-    })?;
+    tokio::fs::write(&key_path, grpc_key_pem)
+        .await
+        .map_err(|err| {
+            if err.kind() == ErrorKind::PermissionDenied {
+                anyhow::anyhow!(
+                    "Cannot write key file {}. Permission denied for certificate directory {}.",
+                    key_path.display(),
+                    cert_dir.display()
+                )
+            } else {
+                err.into()
+            }
+        })?;
 
     Ok(configuration)
 }
