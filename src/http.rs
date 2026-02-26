@@ -1,3 +1,5 @@
+#[cfg(unix)]
+use std::{fs::Permissions, os::unix::fs::PermissionsExt};
 use std::{
     io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -20,7 +22,7 @@ use axum_extra::extract::cookie::Key;
 use clap::crate_version;
 use defguard_version::{server::DefguardVersionLayer, Version};
 use serde::Serialize;
-use tokio::{net::TcpListener, task::JoinSet};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt, net::TcpListener, task::JoinSet};
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
 };
@@ -127,11 +129,8 @@ async fn core_version_middleware(
     }
 
     let core_connected = app_state.grpc_server.connected.load(Ordering::Relaxed);
-    let core_connected_header = if core_connected {
-        HeaderValue::from_static("true")
-    } else {
-        HeaderValue::from_static("false")
-    };
+    let core_connected_header =
+        HeaderValue::from_static(if core_connected { "true" } else { "false" });
 
     response
         .headers_mut()
@@ -164,6 +163,8 @@ pub async fn run_setup(
                 err.into()
             }
         })?;
+        #[cfg(unix)]
+        tokio::fs::set_permissions(cert_dir, Permissions::from_mode(0o700)).await?;
     }
 
     // Only attempt setup if not already configured
@@ -189,9 +190,19 @@ pub async fn run_setup(
 
     let cert_path = cert_dir.join(GRPC_CERT_NAME);
     let key_path = cert_dir.join(GRPC_KEY_NAME);
-    tokio::fs::write(&cert_path, grpc_cert_pem)
-        .await
-        .map_err(|err| {
+    // Certificate and its key will be accessed only to this process's user.
+    let mut options = OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    options.mode(0o600); // rw-------
+
+    // Write certificate to a file.
+    options
+        .clone()
+        .open(&cert_path)
+        .await?
+        .write_all(grpc_cert_pem.as_bytes())
+        .await.map_err(|err| {
             if err.kind() == ErrorKind::PermissionDenied {
                 anyhow::anyhow!(
                     "Cannot write certificate file {}. Permission denied for certificate directory {}.",
@@ -202,7 +213,11 @@ pub async fn run_setup(
                 err.into()
             }
         })?;
-    tokio::fs::write(&key_path, grpc_key_pem)
+    // Write key to a file.
+    options
+        .open(&key_path)
+        .await?
+        .write_all(grpc_key_pem.as_bytes())
         .await
         .map_err(|err| {
             if err.kind() == ErrorKind::PermissionDenied {
@@ -334,8 +349,8 @@ pub async fn run_server(
     // build application
     debug!("Setting up API server");
     let shared_state = AppState {
-        cookie_key,
         grpc_server,
+        cookie_key,
     };
 
     // Setup tower_governor rate-limiter

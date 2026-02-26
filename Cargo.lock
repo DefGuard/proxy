@@ -397,6 +397,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -692,20 +693,22 @@ dependencies = [
 [[package]]
 name = "defguard_certs"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=3304a76f1262eb381a44a0d6906595215cb740b8#3304a76f1262eb381a44a0d6906595215cb740b8"
+source = "git+https://github.com/DefGuard/defguard.git?rev=9c6cbd5108470f9c8dc9b4ee740a9a08f071468c#9c6cbd5108470f9c8dc9b4ee740a9a08f071468c"
 dependencies = [
  "base64",
+ "chrono",
  "rcgen",
  "rustls-pki-types",
- "serde",
  "sqlx",
  "thiserror 2.0.18",
+ "time",
+ "x509-parser",
 ]
 
 [[package]]
 name = "defguard_version"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=8649a9ba225d7bd2066a09c9e1347705c34bd158#8649a9ba225d7bd2066a09c9e1347705c34bd158"
+source = "git+https://github.com/DefGuard/defguard.git?rev=9c6cbd5108470f9c8dc9b4ee740a9a08f071468c#9c6cbd5108470f9c8dc9b4ee740a9a08f071468c"
 dependencies = [
  "axum",
  "http",
@@ -798,9 +801,9 @@ dependencies = [
 
 [[package]]
 name = "dispatch2"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89a09f22a6c6069a18470eb92d2298acf25463f14256d24778e1230d789a2aec"
+checksum = "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38"
 dependencies = [
  "bitflags",
  "objc2",
@@ -1983,9 +1986,9 @@ dependencies = [
 
 [[package]]
 name = "objc2"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7c2599ce0ec54857b29ce62166b0ed9b4f6f1a70ccc9a71165b6154caca8c05"
+checksum = "3a12a8ed07aefc768292f076dc3ac8c48f3781c8f2d5851dd3d98950e8c5a89f"
 dependencies = [
  "objc2-encode",
 ]
