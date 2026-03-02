@@ -77,6 +77,18 @@ enum ServerState {
     Connected,
 }
 
+impl From<&AppState> for ServerState {
+    fn from(state: &AppState) -> Self {
+        if !state.grpc_server.setup_completed() {
+            Self::Setup
+        } else if state.grpc_server.connected.load(Ordering::Relaxed) {
+            Self::Connected
+        } else {
+            Self::Disconnected
+        }
+    }
+}
+
 #[derive(Serialize)]
 struct AppInfo {
     version: &'static str,
@@ -85,13 +97,7 @@ struct AppInfo {
 
 async fn app_info(State(state): State<AppState>) -> Result<Json<AppInfo>, ApiError> {
     let version = crate_version!();
-    let server_state = if !state.grpc_server.setup_completed() {
-        ServerState::Setup
-    } else if state.grpc_server.connected.load(Ordering::Relaxed) {
-        ServerState::Connected
-    } else {
-        ServerState::Disconnected
-    };
+    let server_state = ServerState::from(&state);
 
     Ok(Json(AppInfo {
         version,
