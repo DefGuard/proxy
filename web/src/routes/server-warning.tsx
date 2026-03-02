@@ -13,7 +13,8 @@ export const Route = createFileRoute('/server-warning')({
 function ServerWarningPage() {
   const serverState = Route.useLoaderData();
 
-  const title = serverState === 'setup' ? 'Server is in setup mode' : 'Core is disconnected';
+  const title =
+    serverState === 'setup' ? 'Server is in setup mode' : 'Core is disconnected';
   const subtitle =
     serverState === 'setup'
       ? 'Proxy setup is not complete yet. Most actions are unavailable until setup finishes.'
