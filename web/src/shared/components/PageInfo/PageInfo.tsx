@@ -28,7 +28,7 @@ export const PageInfo = ({
   imageSrc,
 }: Props) => {
   return (
-    <Page className="page-process-end">
+    <Page className="page-info">
       <div className="content">
         {imageSrc ? <img src={imageSrc} /> : <Icon icon={icon} size={32} />}
         <SizedBox height={ThemeSpacing.Xl} />

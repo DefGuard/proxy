@@ -1,4 +1,4 @@
-.page-process-end {
+.page-info {
   .icon[data-kind='check-circle'] {
     path {
       fill: var(--fg-success);
@@ -8,6 +8,12 @@
   .icon[data-kind='disabled'] {
     path {
       fill: var(--fg-critical);
+    }
+  }
+
+  .icon[data-kind='warning'] {
+    path {
+      fill: var(--fg-attention);
     }
   }
 
