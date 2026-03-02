@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { m } from '../../paraglide/messages';
-import { PageProcessEnd } from '../../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../../shared/components/PageInfo/PageInfo';
 
 const RouteComponent = () => {
   return (
-    <PageProcessEnd
+    <PageInfo
       title={m.password_end_title()}
       subtitle={m.password_end_subtitle()}
       link="/"

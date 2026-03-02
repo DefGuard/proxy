@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SessionEndRouteImport } from './routes/session-end'
+import { Route as ServerWarningRouteImport } from './routes/server-warning'
 import { Route as PasswordResetRouteImport } from './routes/password-reset'
 import { Route as OpenDesktopRouteImport } from './routes/open-desktop'
 import { Route as LinkInvalidRouteImport } from './routes/link-invalid'
@@ -28,6 +29,11 @@ import { Route as OpenidMfaCallbackRouteImport } from './routes/openid/mfa/callb
 const SessionEndRoute = SessionEndRouteImport.update({
   id: '/session-end',
   path: '/session-end',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerWarningRoute = ServerWarningRouteImport.update({
+  id: '/server-warning',
+  path: '/server-warning',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PasswordResetRoute = PasswordResetRouteImport.update({
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/link-invalid': typeof LinkInvalidRoute
   '/open-desktop': typeof OpenDesktopRoute
   '/password-reset': typeof PasswordResetRoute
+  '/server-warning': typeof ServerWarningRoute
   '/session-end': typeof SessionEndRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/openid/error': typeof OpenidErrorRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/link-invalid': typeof LinkInvalidRoute
   '/open-desktop': typeof OpenDesktopRoute
   '/password-reset': typeof PasswordResetRoute
+  '/server-warning': typeof ServerWarningRoute
   '/session-end': typeof SessionEndRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/openid/error': typeof OpenidErrorRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/link-invalid': typeof LinkInvalidRoute
   '/open-desktop': typeof OpenDesktopRoute
   '/password-reset': typeof PasswordResetRoute
+  '/server-warning': typeof ServerWarningRoute
   '/session-end': typeof SessionEndRoute
   '/openid/callback': typeof OpenidCallbackRoute
   '/openid/error': typeof OpenidErrorRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/link-invalid'
     | '/open-desktop'
     | '/password-reset'
+    | '/server-warning'
     | '/session-end'
     | '/openid/callback'
     | '/openid/error'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/link-invalid'
     | '/open-desktop'
     | '/password-reset'
+    | '/server-warning'
     | '/session-end'
     | '/openid/callback'
     | '/openid/error'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/link-invalid'
     | '/open-desktop'
     | '/password-reset'
+    | '/server-warning'
     | '/session-end'
     | '/openid/callback'
     | '/openid/error'
@@ -215,6 +227,7 @@ export interface RootRouteChildren {
   LinkInvalidRoute: typeof LinkInvalidRoute
   OpenDesktopRoute: typeof OpenDesktopRoute
   PasswordResetRoute: typeof PasswordResetRoute
+  ServerWarningRoute: typeof ServerWarningRoute
   SessionEndRoute: typeof SessionEndRoute
   OpenidCallbackRoute: typeof OpenidCallbackRoute
   OpenidErrorRoute: typeof OpenidErrorRoute
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/session-end'
       fullPath: '/session-end'
       preLoaderRoute: typeof SessionEndRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-warning': {
+      id: '/server-warning'
+      path: '/server-warning'
+      fullPath: '/server-warning'
+      preLoaderRoute: typeof ServerWarningRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/password-reset': {
@@ -343,6 +363,7 @@ const rootRouteChildren: RootRouteChildren = {
   LinkInvalidRoute: LinkInvalidRoute,
   OpenDesktopRoute: OpenDesktopRoute,
   PasswordResetRoute: PasswordResetRoute,
+  ServerWarningRoute: ServerWarningRoute,
   SessionEndRoute: SessionEndRoute,
   OpenidCallbackRoute: OpenidCallbackRoute,
   OpenidErrorRoute: OpenidErrorRoute,

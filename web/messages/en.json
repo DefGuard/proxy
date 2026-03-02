@@ -108,5 +108,10 @@
   "openid_mfa_complete_subtitle": "You have been successfully authenticated. Please close this window and get back to the Defguard VPN Client",
   "open_desktop_title": "Open the desktop app to continue",
   "open_desktop_description": "We tried to open the desktop app automatically, but it didn't respond. This can happen if the browser blocks the request or the app didn't start in time.",
-  "open_desktop_button": "Open desktop app"
+  "open_desktop_button": "Open desktop app",
+  "server_warning_setup_title": "Server is in setup mode",
+  "server_warning_setup_subtitle": "Edge setup is not complete yet. Please contact your administrator.",
+  "server_warning_disconnected_title": "Core is disconnected",
+  "server_warning_disconnected_subtitle": "Edge is configured, but it is not connected to Defguard Core. Please contact your administrator.",
+  "server_warning_retry": "Try again"
 }

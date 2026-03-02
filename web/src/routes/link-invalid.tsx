@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { m } from '../paraglide/messages';
-import { PageProcessEnd } from '../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../shared/components/PageInfo/PageInfo';
 
 export const Route = createFileRoute('/link-invalid')({
   component: RouteComponent,
@@ -8,7 +8,7 @@ export const Route = createFileRoute('/link-invalid')({
 
 function RouteComponent() {
   return (
-    <PageProcessEnd
+    <PageInfo
       link="/"
       icon="disabled"
       title={m.link_invalid_title()}

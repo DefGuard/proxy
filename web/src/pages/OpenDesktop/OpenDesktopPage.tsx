@@ -1,7 +1,7 @@
 import './style.scss';
 import { useSearch } from '@tanstack/react-router';
 import { m } from '../../paraglide/messages';
-import { PageProcessEnd } from '../../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../../shared/components/PageInfo/PageInfo';
 import laptopImage from './assets/laptop.png';
 
 export const OpenDesktopPage = () => {
@@ -16,7 +16,7 @@ export const OpenDesktopPage = () => {
   }
 
   return (
-    <PageProcessEnd
+    <PageInfo
       imageSrc={laptopImage}
       title={m.open_desktop_title()}
       subtitle={m.open_desktop_description()}

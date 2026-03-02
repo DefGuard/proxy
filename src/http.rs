@@ -70,13 +70,39 @@ async fn handle_404() -> (StatusCode, &'static str) {
 }
 
 #[derive(Serialize)]
-struct AppInfo<'a> {
-    version: &'a str,
+#[serde(rename_all = "snake_case")]
+enum ServerState {
+    Setup,
+    Disconnected,
+    Connected,
 }
 
-async fn app_info<'a>() -> Result<Json<AppInfo<'a>>, ApiError> {
+impl From<&AppState> for ServerState {
+    fn from(state: &AppState) -> Self {
+        if !state.grpc_server.setup_completed() {
+            Self::Setup
+        } else if state.grpc_server.connected.load(Ordering::Relaxed) {
+            Self::Connected
+        } else {
+            Self::Disconnected
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct AppInfo {
+    version: &'static str,
+    server_state: ServerState,
+}
+
+async fn app_info(State(state): State<AppState>) -> Result<Json<AppInfo>, ApiError> {
     let version = crate_version!();
-    Ok(Json(AppInfo { version }))
+    let server_state = ServerState::from(&state);
+
+    Ok(Json(AppInfo {
+        version,
+        server_state,
+    }))
 }
 
 async fn healthcheck() -> &'static str {
@@ -249,9 +275,12 @@ async fn ensure_configured(
     request: Request<Body>,
     next: Next,
 ) -> Response<Body> {
-    // Allow healthchecks even before core connects and gives us the cookie key.
+    // Allow healthchecks and info even before core connects and gives us the cookie key.
     let path = request.uri().path();
-    if matches!(path, "/api/v1/health" | "/api/v1/health-grpc") {
+    if matches!(
+        path,
+        "/api/v1/health" | "/api/v1/health-grpc" | "/api/v1/info"
+    ) {
         return next.run(request).await;
     }
 
@@ -281,6 +310,12 @@ pub async fn run_server(
         env_config.cert_dir.clone(),
         reset_tx,
     );
+
+    // Preload existing TLS configuration so /api/v1/info can report "disconnected"
+    // immediately on startup
+    if let Some(existing_configuration) = config.clone() {
+        grpc_server.configure(existing_configuration);
+    }
 
     let server_clone = grpc_server.clone();
     let env_config_clone = env_config.clone();

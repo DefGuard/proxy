@@ -1,9 +1,9 @@
 import { m } from '../../paraglide/messages';
-import { PageProcessEnd } from '../../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../../shared/components/PageInfo/PageInfo';
 
 export const SessionEndPage = () => {
   return (
-    <PageProcessEnd
+    <PageInfo
       link="/"
       icon="disabled"
       title={m.session_end_title()}
