@@ -30,6 +30,7 @@ export type UserInfo = {
 
 export type AppInfo = {
   version: string;
+  server_state: 'setup' | 'disconnected' | 'connected';
 };
 
 export type EnrollmentSettings = {
