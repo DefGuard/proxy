@@ -15,7 +15,7 @@ import type {
 } from './types';
 
 const api = {
-  appInfo: get<void, AppInfo>('/info'),
+  appInfo: get<AppInfo>('/info'),
   enrollment: {
     start: post<TokenRequest, EnrollmentStartResponse>('/enrollment/start'),
   },
