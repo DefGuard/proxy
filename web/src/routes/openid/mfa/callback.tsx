@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
 import { m } from '../../../paraglide/messages';
 import { api } from '../../../shared/api/api';
-import { PageProcessEnd } from '../../../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../../../shared/components/PageInfo/PageInfo';
 import { useOpenidStore } from '../../../shared/hooks/useOpenIdStore';
 
 const searchSchema = z.object({
@@ -35,7 +35,7 @@ export const Route = createFileRoute('/openid/mfa/callback')({
 
 function RouteComponent() {
   return (
-    <PageProcessEnd
+    <PageInfo
       title={m.openid_mfa_complete_title()}
       subtitle={m.openid_mfa_complete_subtitle()}
       icon="check-circle"

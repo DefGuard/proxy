@@ -19,7 +19,7 @@ type Props = {
   imageSrc?: string;
 };
 
-export const PageProcessEnd = ({
+export const PageInfo = ({
   link,
   linkText,
   subtitle,

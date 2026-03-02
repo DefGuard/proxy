@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { m } from '../../paraglide/messages';
-import { PageProcessEnd } from '../../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../../shared/components/PageInfo/PageInfo';
 
 export const Route = createFileRoute('/password/sent')({
   component: RouteComponent,
@@ -8,7 +8,7 @@ export const Route = createFileRoute('/password/sent')({
 
 function RouteComponent() {
   return (
-    <PageProcessEnd
+    <PageInfo
       link="/"
       linkText={m.password_sent_link()}
       subtitle={m.password_sent_subTitle()}

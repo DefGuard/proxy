@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { api } from '../shared/api/api';
-import { PageProcessEnd } from '../shared/components/PageProcessEnd/PageProcessEnd';
+import { PageInfo } from '../shared/components/PageInfo/PageInfo';
 
 export const Route = createFileRoute('/server-warning')({
   loader: async () => {
@@ -20,7 +20,7 @@ function ServerWarningPage() {
       : 'Proxy is configured, but it is not connected to Defguard Core. Try again in a moment.';
 
   return (
-    <PageProcessEnd
+    <PageInfo
       icon="warning"
       title={title}
       subtitle={subtitle}
