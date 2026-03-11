@@ -1,10 +1,10 @@
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
-    proto::{core_request, core_response, DeviceInfo, InstanceInfoRequest, InstanceInfoResponse},
+    proto::{DeviceInfo, InstanceInfoRequest, InstanceInfoResponse, core_request, core_response},
 };
 
 #[instrument(level = "debug", skip(state))]

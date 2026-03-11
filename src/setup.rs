@@ -4,18 +4,18 @@ use std::{
 };
 
 use defguard_version::{
-    server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
     DefguardComponent, Version,
+    server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status, transport::Server};
 
 use crate::{
+    CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
     error::ApiError,
     grpc::Configuration,
-    proto::{proxy_setup_server, CertificateInfo, DerPayload, LogEntry},
-    CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
+    proto::{CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
 };
 
 static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
@@ -343,9 +343,13 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             if let Some(kp) = key_pair {
                 kp
             } else {
-                error!("Key pair not found during Proxy setup. Key pair generation step might have failed.");
+                error!(
+                    "Key pair not found during Proxy setup. Key pair generation step might have failed."
+                );
                 self.clear_setup_session();
-                return Err(Status::internal("Key pair not found during Proxy setup. Key pair generation step might have failed."));
+                return Err(Status::internal(
+                    "Key pair not found during Proxy setup. Key pair generation step might have failed.",
+                ));
             }
         };
 

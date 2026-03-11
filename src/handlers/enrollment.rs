@@ -1,5 +1,5 @@
-use axum::{extract::State, routing::post, Json, Router};
-use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use axum::{Json, Router, extract::State, routing::post};
+use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
 use time::OffsetDateTime;
 
 use super::register_mfa::router as register_mfa_router;
@@ -8,8 +8,8 @@ use crate::{
     handlers::{get_core_response, mobile_client::register_mobile_auth},
     http::{AppState, ENROLLMENT_COOKIE_NAME},
     proto::{
-        core_request, core_response, ActivateUserRequest, DeviceConfigResponse, DeviceInfo,
-        EnrollmentStartRequest, EnrollmentStartResponse, ExistingDevice, NewDevice,
+        ActivateUserRequest, DeviceConfigResponse, DeviceInfo, EnrollmentStartRequest,
+        EnrollmentStartResponse, ExistingDevice, NewDevice, core_request, core_response,
     },
 };
 
@@ -46,7 +46,9 @@ async fn start_enrollment_process(
         .grpc_server
         .send(core_request::Payload::EnrollmentStart(req), device_info)?;
     let payload = get_core_response(rx, None).await?;
-    debug!("Receving payload from the core service. Try to set private cookie for starting enrollment process.");
+    debug!(
+        "Receving payload from the core service. Try to set private cookie for starting enrollment process."
+    );
     if let core_response::Payload::EnrollmentStart(response) = payload {
         info!(
             "Started enrollment process for user {:?} by admin {:?}",

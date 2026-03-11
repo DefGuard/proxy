@@ -1,13 +1,13 @@
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 use axum_extra::extract::PrivateCookieJar;
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use serde::Deserialize;
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
     http::{AppState, ENROLLMENT_COOKIE_NAME},
-    proto::{core_request, core_response, DeviceInfo, RegisterMobileAuthRequest},
+    proto::{DeviceInfo, RegisterMobileAuthRequest, core_request, core_response},
 };
 
 fn validate_register_request_data(data: &RegisterMobileAuth) -> Result<(), ApiError> {

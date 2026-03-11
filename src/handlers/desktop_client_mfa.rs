@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use axum::{
+    Json, Router,
     extract::{
-        ws::{Message, WebSocket},
         Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
     },
     response::{IntoResponse, Response},
     routing::{any, post},
-    Json, Router,
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
@@ -19,10 +19,9 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        core_request,
-        core_response::{self, Payload},
         AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse,
-        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
+        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo, core_request,
+        core_response::{self, Payload},
     },
 };
 

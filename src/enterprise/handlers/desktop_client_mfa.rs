@@ -1,15 +1,15 @@
-use axum::{extract::State, Json};
-use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use axum::{Json, extract::State};
+use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
 use tracing::{debug, error, info, warn};
 
 use crate::{
     enterprise::handlers::openid_login::{
-        AuthenticationResponse, FlowType, CSRF_COOKIE_NAME, NONCE_COOKIE_NAME,
+        AuthenticationResponse, CSRF_COOKIE_NAME, FlowType, NONCE_COOKIE_NAME,
     },
     error::ApiError,
     handlers::get_core_response,
     http::AppState,
-    proto::{core_request, core_response, ClientMfaOidcAuthenticateRequest, DeviceInfo},
+    proto::{ClientMfaOidcAuthenticateRequest, DeviceInfo, core_request, core_response},
 };
 
 #[instrument(level = "debug", skip(state))]

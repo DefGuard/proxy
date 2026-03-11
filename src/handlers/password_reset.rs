@@ -1,5 +1,5 @@
-use axum::{extract::State, routing::post, Json, Router};
-use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use axum::{Json, Router, extract::State, routing::post};
+use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
 use time::OffsetDateTime;
 
 use crate::{
@@ -7,8 +7,8 @@ use crate::{
     handlers::get_core_response,
     http::{AppState, PASSWORD_RESET_COOKIE_NAME},
     proto::{
-        core_request, core_response, DeviceInfo, PasswordResetInitializeRequest,
-        PasswordResetRequest, PasswordResetStartRequest, PasswordResetStartResponse,
+        DeviceInfo, PasswordResetInitializeRequest, PasswordResetRequest,
+        PasswordResetStartRequest, PasswordResetStartResponse, core_request, core_response,
     },
 };
 

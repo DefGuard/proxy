@@ -5,31 +5,30 @@ use std::{
     net::SocketAddr,
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, RwLock,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
 };
 
 use axum_extra::extract::cookie::Key;
 use defguard_version::{
-    get_tracing_variables,
-    server::{grpc::DefguardVersionInterceptor, DefguardVersionLayer},
-    ComponentInfo, DefguardComponent, Version,
+    ComponentInfo, DefguardComponent, Version, get_tracing_variables,
+    server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{
-    transport::{Identity, Server, ServerTlsConfig},
     Request, Response, Status, Streaming,
+    transport::{Identity, Server, ServerTlsConfig},
 };
 use tower::ServiceBuilder;
 use tracing::Instrument;
 
 use crate::{
+    MIN_CORE_VERSION, VERSION,
     error::ApiError,
     http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
-    proto::{core_request, core_response, proxy_server, CoreRequest, CoreResponse, DeviceInfo},
-    MIN_CORE_VERSION, VERSION,
+    proto::{CoreRequest, CoreResponse, DeviceInfo, core_request, core_response, proxy_server},
 };
 
 // connected clients
@@ -293,21 +292,21 @@ impl proxy_server::Proxy for ProxyServer {
         let cert_path = self.cert_dir.join(GRPC_CERT_NAME);
         let key_path = self.cert_dir.join(GRPC_KEY_NAME);
 
-        if let Err(err) = tokio::fs::remove_file(&cert_path).await {
-            if err.kind() != std::io::ErrorKind::NotFound {
-                error!(
-                    "Failed to remove gRPC certificate at {:?}: {err}",
-                    cert_path
-                );
-                return Err(Status::internal("Failed to remove gRPC certificate"));
-            }
+        if let Err(err) = tokio::fs::remove_file(&cert_path).await
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            error!(
+                "Failed to remove gRPC certificate at {:?}: {err}",
+                cert_path
+            );
+            return Err(Status::internal("Failed to remove gRPC certificate"));
         }
 
-        if let Err(err) = tokio::fs::remove_file(&key_path).await {
-            if err.kind() != std::io::ErrorKind::NotFound {
-                error!("Failed to remove gRPC key at {:?}: {err}", key_path);
-                return Err(Status::internal("Failed to remove gRPC key"));
-            }
+        if let Err(err) = tokio::fs::remove_file(&key_path).await
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            error!("Failed to remove gRPC key at {:?}: {err}", key_path);
+            return Err(Status::internal("Failed to remove gRPC key"));
         }
 
         *self
