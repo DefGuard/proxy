@@ -96,8 +96,7 @@ jobs:
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
+          toolchain: 1.89.0 # "stable" causes rust-lld: error on aarch64-linux          target: ${{ matrix.target }}
           override: true
 
       - name: Setup `packer`
