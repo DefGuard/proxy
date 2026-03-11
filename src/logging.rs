@@ -1,26 +1,25 @@
 use std::fmt::Write as _;
 
 use defguard_version::{
-    tracing::{
-        build_version_suffix, extract_version_info_from_context, VersionFieldLayer,
-        VersionFilteredFields, VersionSuffixWriter,
-    },
     ComponentInfo, DefguardVersionError, Version,
+    tracing::{
+        VersionFieldLayer, VersionFilteredFields, VersionSuffixWriter, build_version_suffix,
+        extract_version_info_from_context,
+    },
 };
 use log::LevelFilter;
 use tokio::sync::mpsc::Sender;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
+    EnvFilter, Layer,
     fmt::{
-        self,
+        self, FmtContext, FormattedFields,
         format::{self, FormatEvent, FormatFields, Writer},
         time::{FormatTime, SystemTime},
-        FmtContext, FormattedFields,
     },
     layer::SubscriberExt,
     registry::LookupSpan,
     util::SubscriberInitExt,
-    EnvFilter, Layer,
 };
 
 use crate::proto::LogEntry;
@@ -121,13 +120,13 @@ where
                 seen = true;
 
                 let extensions = span.extensions();
-                if let Some(fields) = extensions.get::<FormattedFields<N>>() {
-                    if !fields.is_empty() {
-                        match span_name {
-                            x if x == self.span => http_log = Some(format!("{fields}")),
-                            _ => {
-                                let _ = write!(context_logs, " {{{fields}}}");
-                            }
+                if let Some(fields) = extensions.get::<FormattedFields<N>>()
+                    && !fields.is_empty()
+                {
+                    match span_name {
+                        x if x == self.span => http_log = Some(format!("{fields}")),
+                        _ => {
+                            let _ = write!(context_logs, " {{{fields}}}");
                         }
                     }
                 }

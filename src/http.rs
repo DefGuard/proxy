@@ -4,32 +4,34 @@ use std::{
     io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
-    sync::{atomic::Ordering, Arc, RwLock},
+    sync::{Arc, RwLock, atomic::Ordering},
     time::Duration,
 };
 
 use anyhow::Context;
 use axum::{
+    Json, Router,
     body::Body,
     extract::{ConnectInfo, FromRef, State},
-    http::{header::HeaderValue, Request, Response, StatusCode},
+    http::{Request, Response, StatusCode, header::HeaderValue},
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
-    serve, Json, Router,
+    serve,
 };
 use axum_extra::extract::cookie::Key;
 use clap::crate_version;
-use defguard_version::{server::DefguardVersionLayer, Version};
+use defguard_version::{Version, server::DefguardVersionLayer};
 use serde::Serialize;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt, net::TcpListener, task::JoinSet};
 use tower_governor::{
-    governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
 };
 use tower_http::trace::{self, TraceLayer};
-use tracing::{info_span, Level};
+use tracing::{Level, info_span};
 
 use crate::{
+    LogsReceiver, VERSION,
     assets::{index, web_asset},
     config::EnvConfig,
     enterprise::handlers::openid_login,
@@ -37,7 +39,6 @@ use crate::{
     grpc::{Configuration, ProxyServer},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     setup::ProxySetupServer,
-    LogsReceiver, VERSION,
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
@@ -146,12 +147,12 @@ async fn core_version_middleware(
 ) -> Response<Body> {
     let mut response = next.run(request).await;
 
-    if let Some(core_version) = app_state.grpc_server.core_version.lock().unwrap().as_ref() {
-        if let Ok(core_version_header) = HeaderValue::from_str(&core_version.to_string()) {
-            response
-                .headers_mut()
-                .insert(DEFGUARD_CORE_VERSION_HEADER, core_version_header);
-        }
+    if let Some(core_version) = app_state.grpc_server.core_version.lock().unwrap().as_ref()
+        && let Ok(core_version_header) = HeaderValue::from_str(&core_version.to_string())
+    {
+        response
+            .headers_mut()
+            .insert(DEFGUARD_CORE_VERSION_HEADER, core_version_header);
     }
 
     let core_connected = app_state.grpc_server.connected.load(Ordering::Relaxed);

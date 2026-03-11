@@ -1,7 +1,7 @@
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use axum_extra::extract::{
-    cookie::{Cookie, SameSite},
     PrivateCookieJar,
+    cookie::{Cookie, SameSite},
 };
 use serde::{Deserialize, Serialize};
 use time::Duration;
@@ -12,8 +12,8 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        core_request, core_response, AuthCallbackRequest, AuthCallbackResponse, AuthFlowType,
-        AuthInfoRequest, DeviceInfo,
+        AuthCallbackRequest, AuthCallbackResponse, AuthFlowType, AuthInfoRequest, DeviceInfo,
+        core_request, core_response,
     },
 };
 

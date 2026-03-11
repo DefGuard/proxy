@@ -1,14 +1,14 @@
 use std::{fs::read_to_string, io::ErrorKind, path::Path, sync::Arc};
 
 use defguard_proxy::{
+    VERSION,
     config::get_env_config,
     grpc::Configuration,
-    http::{run_server, GRPC_CERT_NAME, GRPC_KEY_NAME},
+    http::{GRPC_CERT_NAME, GRPC_KEY_NAME, run_server},
     logging::init_tracing,
-    VERSION,
 };
 use defguard_version::Version;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
 fn read_optional_cert_file(
     file_path: &Path,
