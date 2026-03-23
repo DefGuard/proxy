@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.14",
-    "@inlang/paraglide-js": "2.10.0",
+    "@inlang/paraglide-js": "2.15.1",
     "@tanstack/devtools-vite": "^0.5.4",
     "@tanstack/router-plugin": "^1.166.7",
     "@types/lodash-es": "^4.17.12",
