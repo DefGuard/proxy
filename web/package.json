@@ -63,7 +63,8 @@
   },
   "pnpm": {
     "overrides": {
-      "seroval": "^1.4.1"
+      "seroval": "^1.4.1",
+      "kysely": "^0.28.12"
     }
   }
 }
