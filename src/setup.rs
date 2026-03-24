@@ -7,15 +7,22 @@ use defguard_version::{
     DefguardComponent, Version,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
-use tokio::sync::mpsc;
+use tokio::sync::{Notify, mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{Request, Response, Status, transport::Server};
+use tonic::{
+    Request, Response, Status,
+    transport::{Identity, Server, ServerTlsConfig},
+};
 
 use crate::{
     CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
+    acme::{Port80Permit, run_acme_http01},
     error::ApiError,
     grpc::Configuration,
-    proto::{CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
+    proto::{
+        AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeProgress, AcmeStep, CertificateInfo,
+        DerPayload, LogEntry, acme_issue_event, proxy_setup_server,
+    },
 };
 
 static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
@@ -26,12 +33,20 @@ static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::
     )
 });
 
+/// Notified when setup is fully complete - either after a successful `IssueAcme` run or after
+/// an explicit `FinishSetup` call.  The setup server waits on this before shutting down so the
+/// main gRPC server can bind the same port afterward.
+static SETUP_DONE_NOTIFY: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::new()));
+
 const AUTH_HEADER: &str = "authorization";
 
 pub(crate) struct ProxySetupServer {
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
     logs_rx: LogsReceiver,
     current_session_token: Arc<Mutex<Option<String>>>,
+    /// Sender used to request a graceful hand-off of port 80 from the main HTTP server loop
+    /// before the ACME challenge listener binds.  `None` when the main server is not on port 80.
+    port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
 }
 
 impl Clone for ProxySetupServer {
@@ -40,40 +55,106 @@ impl Clone for ProxySetupServer {
             key_pair: Arc::clone(&self.key_pair),
             logs_rx: Arc::clone(&self.logs_rx),
             current_session_token: Arc::clone(&self.current_session_token),
+            port80_pause_tx: self.port80_pause_tx.clone(),
         }
     }
 }
 
 impl ProxySetupServer {
-    pub fn new(logs_rx: LogsReceiver) -> Self {
+    pub fn new(
+        logs_rx: LogsReceiver,
+        port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+    ) -> Self {
         Self {
             key_pair: Arc::new(Mutex::new(None)),
             logs_rx,
             current_session_token: Arc::new(Mutex::new(None)),
+            port80_pause_tx,
         }
     }
 
     /// Await setup connection from Defguard Core and process it.
-    /// Spins up a dedicated temporary gRPC server over HTTP to handle the setup process.
-    /// The setup process involves generating a CSR, sending it to Core and receiving signed TLS certificates.
-    /// Returns the received gRPC configuration (locally generated key pair and remotely signed certificate) upon successful setup.
+    ///
+    /// **Phase 1 - plain HTTP setup server:**
+    /// Spins up a plain HTTP gRPC server on `addr` to handle the initial handshake: `Start`,
+    /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` deposits a
+    /// `Configuration` into `SETUP_CHANNEL`.
+    ///
+    /// **Phase 2 - TLS gRPC server (same port):**
+    /// Immediately after Phase 1 exits, a new TLS gRPC server is started on the same `addr`
+    /// using the just-received cert+key.  Core reconnects over `https://` and calls either:
+    /// - `IssueAcme` (Let's Encrypt flow): shuts down on successful ACME completion.
+    /// - `FinishSetup` (non-ACME flows): shuts down immediately.
+    ///
+    /// On ACME failure the Phase-2 server stays alive so Core can retry without re-running
+    /// the full adoption flow.
+    ///
+    /// Returns the received gRPC configuration (locally generated key pair and remotely signed
+    /// certificate) upon successful setup.
     pub(crate) async fn await_initial_setup(
         &self,
         addr: SocketAddr,
     ) -> Result<Configuration, anyhow::Error> {
         info!("gRPC waiting for setup connection from Core on {addr}");
-        debug!("Initializing gRPC server builder for setup process");
-        let server_builder = Server::builder();
-        let mut server_config = None;
 
-        debug!("Parsing proxy version: {}", VERSION);
         let own_version = Version::parse(VERSION)?;
+        debug!("Proxy version: {}", VERSION);
 
-        debug!(
-            "Setting up version interceptor with minimum Core version: {}",
-            MIN_CORE_VERSION
-        );
-        server_builder
+        let config_slot: Arc<tokio::sync::Mutex<Option<Configuration>>> =
+            Arc::new(tokio::sync::Mutex::new(None));
+        let config_slot_writer = Arc::clone(&config_slot);
+
+        // Phase 1: plain HTTP
+        Server::builder()
+            .layer(tonic::service::InterceptorLayer::new(
+                DefguardVersionInterceptor::new(
+                    own_version.clone(),
+                    DefguardComponent::Core,
+                    MIN_CORE_VERSION,
+                    false,
+                ),
+            ))
+            .layer(DefguardVersionLayer::new(own_version.clone()))
+            .add_service(proxy_setup_server::ProxySetupServer::new(self.clone()))
+            .serve_with_shutdown(addr, async move {
+                debug!("Phase 1: waiting for SendCert to deliver configuration");
+                // SETUP_CHANNEL is CommsChannel<Option<Configuration>>, so recv() returns
+                // Option<Option<Configuration>>.  send_cert always sends Some(cfg).
+                if let Some(Some(cfg)) = SETUP_CHANNEL.1.lock().await.recv().await {
+                    debug!("Phase 1: configuration received from SendCert");
+                    *config_slot_writer.lock().await = Some(cfg);
+                } else {
+                    error!("Phase 1: SETUP_CHANNEL closed unexpectedly without configuration");
+                }
+                debug!("Phase 1: plain-HTTP server will now shut down");
+            })
+            .await
+            .map_err(|err| {
+                error!("Phase 1 gRPC server error: {err}");
+                ApiError::Unexpected("Phase 1 gRPC server error during setup".into())
+            })?;
+        debug!("Phase 1: plain-HTTP setup server shut down on {addr}");
+
+        let configuration = config_slot.lock().await.take().ok_or_else(|| {
+            error!("No configuration received after Phase 1 setup");
+            ApiError::Unexpected("No configuration received after Phase 1 setup".into())
+        })?;
+
+        // Phase 2: TLS gRPC server
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        debug!("Phase 2: starting TLS gRPC setup server on {addr}");
+
+        let tls_config = ServerTlsConfig::new().identity(Identity::from_pem(
+            configuration.grpc_cert_pem.as_bytes(),
+            configuration.grpc_key_pem.as_bytes(),
+        ));
+
+        Server::builder()
+            .tls_config(tls_config)
+            .map_err(|err| {
+                error!("Failed to configure TLS for Phase 2 setup server: {err}");
+                ApiError::Unexpected("Failed to configure TLS for Phase 2 setup server".into())
+            })?
             .layer(tonic::service::InterceptorLayer::new(
                 DefguardVersionInterceptor::new(
                     own_version.clone(),
@@ -85,36 +166,21 @@ impl ProxySetupServer {
             .layer(DefguardVersionLayer::new(own_version))
             .add_service(proxy_setup_server::ProxySetupServer::new(self.clone()))
             .serve_with_shutdown(addr, async {
-                debug!("Setup server started, waiting for configuration from Core");
-                let config = SETUP_CHANNEL.1.lock().await.recv().await;
-                if let Some(cfg) = config {
-                    debug!("Received the passed Proxy configuration");
-                    server_config = cfg;
-                } else {
-                    error!("Setup communication channel closed unexpectedly");
-                }
+                // Wait indefinitely for Core to either:
+                //   - Call IssueAcme (Let's Encrypt): SETUP_DONE_NOTIFY fires on success.
+                //   - Call FinishSetup (no ACME): SETUP_DONE_NOTIFY fires immediately.
+                debug!("Phase 2: waiting for IssueAcme or FinishSetup signal");
+                SETUP_DONE_NOTIFY.notified().await;
+                debug!("Phase 2: setup done signal received; TLS server will shut down");
             })
             .await
             .map_err(|err| {
-                error!("gRPC server error during setup: {err}");
-                ApiError::Unexpected("gRPC server error during setup".into())
+                error!("Phase 2 gRPC server error: {err}");
+                ApiError::Unexpected("Phase 2 gRPC server error during setup".into())
             })?;
+        debug!("Phase 2: TLS setup server shut down on {addr}");
 
-        debug!("gRPC setup server on {addr} has shutdown after completing setup");
-        debug!("Validating received server configuration");
-
-        Ok(server_config.map_or_else(
-            || {
-                error!("No server configuration received after setup completion");
-                Err(ApiError::Unexpected(
-                    "No server configuration received after setup".into(),
-                ))
-            },
-            |cfg| {
-                debug!("Returning received server configuration");
-                Ok(cfg)
-            },
-        )?)
+        Ok(configuration)
     }
 
     fn is_setup_in_progress(&self) -> bool {
@@ -160,6 +226,7 @@ impl ProxySetupServer {
 
 #[tonic::async_trait]
 impl proxy_setup_server::ProxySetup for ProxySetupServer {
+    type IssueAcmeStream = UnboundedReceiverStream<Result<AcmeIssueEvent, Status>>;
     type StartStream = UnboundedReceiverStream<Result<LogEntry, Status>>;
 
     #[instrument(skip(self, request))]
@@ -280,9 +347,9 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         debug!("Certificate Signing Request prepared");
 
         self.key_pair
-            .lock()
-            .expect("Failed to acquire lock on key pair during proxy setup when trying to store generated key pair")
-            .replace(key_pair);
+			.lock()
+			.expect("Failed to acquire lock on key pair during proxy setup when trying to store generated key pair")
+			.replace(key_pair);
 
         debug!("Encoding Certificate Signing Request for transmission");
         let csr_der = csr.to_der();
@@ -336,10 +403,10 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
 
         let key_pair = {
             let key_pair = self
-                .key_pair
-                .lock()
-                .expect("Failed to acquire lock on key pair during proxy setup when trying to receive certificate")
-                .take();
+				.key_pair
+				.lock()
+				.expect("Failed to acquire lock on key pair during proxy setup when trying to receive certificate")
+				.take();
             if let Some(kp) = key_pair {
                 kp
             } else {
@@ -370,10 +437,165 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             }
         }
 
-        debug!("Setup process completed successfully, cleaning up temporary session");
         self.clear_setup_session();
+        debug!(
+            "SendCert completed; Phase-1 session cleared, Phase-2 TLS server will accept new Start call"
+        );
 
         debug!("Confirming successful setup to Core");
+        Ok(Response::new(()))
+    }
+
+    #[instrument(skip(self, request))]
+    async fn issue_acme(
+        &self,
+        request: Request<AcmeChallenge>,
+    ) -> Result<Response<Self::IssueAcmeStream>, Status> {
+        debug!("Core requested ACME HTTP-01 certificate issuance");
+        let token = request
+            .metadata()
+            .get(AUTH_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "))
+            .ok_or_else(|| Status::unauthenticated("Missing or invalid authorization token"))?;
+
+        if !self.verify_session_token(token) {
+            error!("Invalid session token in issue_acme request");
+            return Err(Status::unauthenticated("Invalid session token"));
+        }
+
+        let challenge = request.into_inner();
+        let domain = challenge.domain.clone();
+        let use_staging = challenge.use_staging;
+        let existing_credentials = challenge.account_credentials_json.clone();
+
+        info!("Starting ACME HTTP-01 for domain: {domain} (staging={use_staging})");
+
+        let (tx, rx) = mpsc::unbounded_channel::<Result<AcmeIssueEvent, Status>>();
+        let self_clone = self.clone();
+
+        // Emit the first progress step immediately - we are connected and about to start.
+        let connecting_event = AcmeIssueEvent {
+            payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
+                step: AcmeStep::Connecting as i32,
+            })),
+        };
+        let _ = tx.send(Ok(connecting_event));
+
+        tokio::spawn(async move {
+            // Request a graceful hand-off of port 80 from the main HTTP server if it is bound
+            // there, so the ACME challenge listener can bind.  `port80_pause_tx` is `Some` only
+            // when the main server runs on port 80; if it's `None` the port is already free.
+            let permit: Option<Port80Permit> =
+                if let Some(ref pause_tx) = self_clone.port80_pause_tx {
+                    let (ready_tx, ready_rx) = oneshot::channel::<()>();
+                    let (done_tx, done_rx) = oneshot::channel::<()>();
+                    if pause_tx.send((ready_tx, done_rx)).await.is_err() {
+                        error!(
+                            "Failed to request port-80 hand-off for ACME setup; \
+						 HTTP server may have stopped"
+                        );
+                        let _ = tx.send(Err(Status::internal(
+                            "Failed to request port-80 hand-off for ACME",
+                        )));
+                        self_clone.clear_setup_session();
+                        return;
+                    }
+                    Some(Port80Permit {
+                        ready: ready_rx,
+                        done_tx,
+                    })
+                } else {
+                    // Main server is not on port 80 - no hand-off needed.
+                    None
+                };
+
+            // Channel used by run_acme_http01 to emit intermediate progress steps.
+            let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<AcmeStep>();
+
+            // Forward progress steps from acme.rs onto the gRPC response stream.
+            let tx_fwd = tx.clone();
+            tokio::spawn(async move {
+                while let Some(step) = progress_rx.recv().await {
+                    let event = AcmeIssueEvent {
+                        payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
+                            step: step as i32,
+                        })),
+                    };
+                    if tx_fwd.send(Ok(event)).is_err() {
+                        // Core disconnected - stop forwarding.
+                        break;
+                    }
+                }
+            });
+
+            let result = run_acme_http01(
+                domain.clone(),
+                use_staging,
+                existing_credentials,
+                permit,
+                progress_tx,
+            )
+            .await;
+
+            match result {
+                Ok(acme_result) => {
+                    let cert_event = AcmeIssueEvent {
+                        payload: Some(acme_issue_event::Payload::Certificate(AcmeCertificate {
+                            cert_pem: acme_result.cert_pem,
+                            key_pem: acme_result.key_pem,
+                            account_credentials_json: acme_result.account_credentials_json,
+                        })),
+                    };
+                    if tx.send(Ok(cert_event)).is_err() {
+                        error!(
+                            "ACME result stream receiver disconnected before cert could be sent"
+                        );
+                    } else {
+                        info!("ACME certificate for domain '{domain}' streamed to Core");
+                    }
+                    // Success: clear session and signal the setup server to shut down so the
+                    // main gRPC server can start.
+                    self_clone.clear_setup_session();
+                    SETUP_DONE_NOTIFY.notify_one();
+                    debug!("ACME success: setup server shutdown signaled");
+                }
+                Err(err) => {
+                    error!("ACME HTTP-01 failed for domain '{domain}': {err}");
+                    let _ = tx.send(Err(Status::internal(format!(
+                        "ACME HTTP-01 certificate issuance failed: {err}"
+                    ))));
+                    // Failure: clear session only - do NOT notify SETUP_DONE_NOTIFY.
+                    // The setup server stays alive so Core can retry (call Start + IssueAcme
+                    // again) without needing a full re-adoption.
+                    self_clone.clear_setup_session();
+                    debug!("ACME failed: setup server remains alive for retry");
+                }
+            }
+        });
+
+        Ok(Response::new(UnboundedReceiverStream::new(rx)))
+    }
+
+    #[instrument(skip(self, request))]
+    async fn finish_setup(&self, request: Request<()>) -> Result<Response<()>, Status> {
+        debug!("Core signaled setup complete without ACME");
+        let token = request
+            .metadata()
+            .get(AUTH_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "))
+            .ok_or_else(|| Status::unauthenticated("Missing or invalid authorization token"))?;
+
+        if !self.verify_session_token(token) {
+            error!("Invalid session token in finish_setup request");
+            return Err(Status::unauthenticated("Invalid session token"));
+        }
+
+        self.clear_setup_session();
+        SETUP_DONE_NOTIFY.notify_one();
+        info!("Setup finalized without ACME; setup server will shut down");
+
         Ok(Response::new(()))
     }
 }

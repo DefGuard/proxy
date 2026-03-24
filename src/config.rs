@@ -79,6 +79,11 @@ pub struct EnvConfig {
         default_value = "/etc/defguard/certs"
     )]
     pub cert_dir: PathBuf,
+
+    /// Port for the HTTPS server. When Core sends TLS certificates over gRPC, the HTTP
+    /// server is restarted on this port using those certificates.
+    #[arg(long, env = "DEFGUARD_PROXY_HTTPS_PORT", default_value_t = 443)]
+    pub https_port: u16,
 }
 
 #[derive(thiserror::Error, Debug)]

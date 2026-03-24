@@ -7,6 +7,7 @@ use crate::proto::LogEntry;
 
 pub mod assets;
 pub mod config;
+mod acme;
 mod enterprise;
 mod error;
 pub mod grpc;

@@ -35,6 +35,12 @@ fn read_optional_cert_file(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install the aws-lc-rs CryptoProvider as the process-wide default for rustls.
+    // Both aws-lc-rs and ring are pulled in transitively; without an explicit selection
+    // rustls panics when it cannot determine which provider to use.
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     // configuration
     if dotenvy::from_filename(".env.local").is_err() {
         dotenvy::dotenv().ok();

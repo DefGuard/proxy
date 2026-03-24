@@ -25,10 +25,11 @@ use tower::ServiceBuilder;
 use tracing::Instrument;
 
 use crate::{
-    MIN_CORE_VERSION, VERSION,
-    error::ApiError,
-    http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
-    proto::{CoreRequest, CoreResponse, DeviceInfo, core_request, core_response, proxy_server},
+	MIN_CORE_VERSION, VERSION,
+	acme,
+	error::ApiError,
+	http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
+	proto::{CoreRequest, CoreResponse, DeviceInfo, core_request, core_response, proxy_server},
 };
 
 // connected clients
@@ -50,6 +51,10 @@ pub(crate) struct ProxyServer {
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
     reset_tx: broadcast::Sender<()>,
+    https_cert_tx: broadcast::Sender<(String, String)>,
+    /// `Some` only when the main HTTP server is bound to port 80.
+    /// Used to hand off port 80 gracefully during ACME HTTP-01 challenges.
+        port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
 }
 
 impl ProxyServer {
@@ -59,6 +64,8 @@ impl ProxyServer {
         cookie_key: Arc<RwLock<Option<Key>>>,
         cert_dir: PathBuf,
         reset_tx: broadcast::Sender<()>,
+        https_cert_tx: broadcast::Sender<(String, String)>,
+    port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
     ) -> Self {
         Self {
             cookie_key,
@@ -70,6 +77,8 @@ impl ProxyServer {
             config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
+            https_cert_tx,
+            port80_pause_tx,
         }
     }
 
@@ -191,6 +200,8 @@ impl Clone for ProxyServer {
             config: Arc::clone(&self.config),
             cert_dir: self.cert_dir.clone(),
             reset_tx: self.reset_tx.clone(),
+            https_cert_tx: self.https_cert_tx.clone(),
+            port80_pause_tx: self.port80_pause_tx.clone(),
         }
     }
 }
@@ -236,10 +247,13 @@ impl proxy_server::Proxy for ProxyServer {
             .insert(address, tx);
         self.connected.store(true, Ordering::Relaxed);
 
-        let clients = Arc::clone(&self.clients);
-        let results = Arc::clone(&self.results);
-        let connected = Arc::clone(&self.connected);
-        let cookie_key = Arc::clone(&self.cookie_key);
+		let clients = Arc::clone(&self.clients);
+		let results = Arc::clone(&self.results);
+		let connected = Arc::clone(&self.connected);
+		let cookie_key = Arc::clone(&self.cookie_key);
+		let https_cert_tx = self.https_cert_tx.clone();
+		let current_id = Arc::clone(&self.current_id);
+		let port80_pause_tx = self.port80_pause_tx.clone();
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
@@ -249,18 +263,114 @@ impl proxy_server::Proxy for ProxyServer {
                             debug!("Received message from Defguard Core ID={}", response.id);
                             connected.store(true, Ordering::Relaxed);
                             if let Some(payload) = response.payload {
-                                if let core_response::Payload::InitialInfo(payload) = payload {
-                                    info!("Received private cookies key");
-                                    let key = Key::from(&payload.private_cookies_key);
-                                    *cookie_key.write().unwrap() = Some(key);
-                                } else {
-                                    let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                    if let Some(rx) = maybe_rx {
-                                        if let Err(err) = rx.send(payload) {
-                                            error!("Failed to send message to rx {:?}", err.type_id());
+                                match payload {
+                                    core_response::Payload::InitialInfo(info) => {
+                                        info!("Received private cookies key");
+                                        let key = Key::from(&info.private_cookies_key);
+                                        *cookie_key.write().unwrap() = Some(key);
+                                    }
+                                    core_response::Payload::HttpsCerts(certs) => {
+                                        info!("Received HTTPS certificates from Core");
+                                        if let Err(err) =
+                                            https_cert_tx.send((certs.cert_pem, certs.key_pem))
+                                        {
+                                            error!(
+                                                "Failed to broadcast HTTPS certificates: {err}"
+                                            );
                                         }
-                                    } else {
-                                        error!("Missing receiver for response #{}", response.id);
+                                    }
+                                    core_response::Payload::AcmeChallenge(req) => {
+                                        info!(
+                                            domain = %req.domain,
+                                            staging = req.use_staging,
+                                            "Received ACME challenge request from Core"
+                                        );
+                                        let clients_clone = Arc::clone(&clients);
+                                        let acme_id = Arc::clone(&current_id);
+                                        let pause_tx = port80_pause_tx.clone();
+                                        tokio::spawn(async move {
+                                            // `pause_tx` is `Some` only when the main server
+                                            // is on port 80 and port 80 may still be in use.
+                                            // Request a hand-off if so; otherwise proceed directly.
+                                            let permit = if let Some(tx) = pause_tx {
+                                                    let (ready_tx, ready_rx) = oneshot::channel::<()>();
+                                                    let (done_tx, done_rx) = oneshot::channel::<()>();
+                                                    if tx.send((ready_tx, done_rx)).await.is_err() {
+                                                        error!(
+                                                            "Failed to request port-80 hand-off \
+                                                             for ACME; HTTP server may have stopped"
+                                                        );
+                                                        return;
+                                                    }
+                                                    Some(acme::Port80Permit {
+                                                        ready: ready_rx,
+                                                        done_tx,
+                                                    })
+                                                } else {
+                                                    None
+                                                };
+                                            let (progress_tx, _progress_rx) =
+                                                mpsc::unbounded_channel();
+                                            match acme::run_acme_http01(
+                                                req.domain,
+                                                req.use_staging,
+                                                req.account_credentials_json,
+                                                permit,
+                                                progress_tx,
+                                            )
+                                            .await
+                                            {
+                                                Ok(result) => {
+                                                    let id = acme_id
+                                                        .fetch_add(1, Ordering::Relaxed);
+                                                    let msg = CoreRequest {
+                                                        id,
+                                                        device_info: None,
+                                                        payload: Some(
+                                                            core_request::Payload::AcmeCertificate(
+                                                                crate::proto::AcmeCertificate {
+                                                                    cert_pem: result.cert_pem,
+                                                                    key_pem: result.key_pem,
+                                                                    account_credentials_json:
+                                                                        result
+                                                                            .account_credentials_json,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    };
+                                                    let clients_lock =
+                                                        clients_clone.read().expect(
+                                                        "Failed to lock clients map for ACME \
+                                                            certificate send",
+                                                    );
+                                                    for tx in clients_lock.values() {
+                                                        if let Err(err) =
+                                                            tx.send(Ok(msg.clone()))
+                                                        {
+                                                            error!(
+                                                                "Failed to send AcmeCertificate \
+                                                                    to core: {err}"
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                                Err(err) => {
+                                                    error!(
+                                                        "ACME HTTP-01 issuance failed: {err:#}"
+                                                    );
+                                                }
+                                            }
+                                        });
+                                    }
+                                    other => {
+                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
+                                        if let Some(rx) = maybe_rx {
+                                            if let Err(err) = rx.send(other) {
+                                                error!("Failed to send message to rx {:?}", err.type_id());
+                                            }
+                                        } else {
+                                            error!("Missing receiver for response #{}", response.id);
+                                        }
                                     }
                                 }
                             }
