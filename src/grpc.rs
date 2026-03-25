@@ -25,11 +25,14 @@ use tower::ServiceBuilder;
 use tracing::Instrument;
 
 use crate::{
-	MIN_CORE_VERSION, VERSION,
-	acme,
-	error::ApiError,
-	http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
-	proto::{CoreRequest, CoreResponse, DeviceInfo, core_request, core_response, proxy_server},
+    MIN_CORE_VERSION, VERSION, acme,
+    acme::Port80Permit,
+    error::ApiError,
+    http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
+    proto::{
+        AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeProgress, AcmeStep, CoreRequest,
+        CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response, proxy_server,
+    },
 };
 
 // connected clients
@@ -54,7 +57,7 @@ pub(crate) struct ProxyServer {
     https_cert_tx: broadcast::Sender<(String, String)>,
     /// `Some` only when the main HTTP server is bound to port 80.
     /// Used to hand off port 80 gracefully during ACME HTTP-01 challenges.
-        port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+    port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
 }
 
 impl ProxyServer {
@@ -65,7 +68,7 @@ impl ProxyServer {
         cert_dir: PathBuf,
         reset_tx: broadcast::Sender<()>,
         https_cert_tx: broadcast::Sender<(String, String)>,
-    port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+        port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
     ) -> Self {
         Self {
             cookie_key,
@@ -209,6 +212,7 @@ impl Clone for ProxyServer {
 #[tonic::async_trait]
 impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
+    type TriggerAcmeStream = UnboundedReceiverStream<Result<AcmeIssueEvent, Status>>;
 
     /// Handle bidirectional communication with Defguard core.
     #[instrument(name = "bidirectional_communication", level = "info", skip(self))]
@@ -247,13 +251,13 @@ impl proxy_server::Proxy for ProxyServer {
             .insert(address, tx);
         self.connected.store(true, Ordering::Relaxed);
 
-		let clients = Arc::clone(&self.clients);
-		let results = Arc::clone(&self.results);
-		let connected = Arc::clone(&self.connected);
-		let cookie_key = Arc::clone(&self.cookie_key);
-		let https_cert_tx = self.https_cert_tx.clone();
-		let current_id = Arc::clone(&self.current_id);
-		let port80_pause_tx = self.port80_pause_tx.clone();
+        let clients = Arc::clone(&self.clients);
+        let results = Arc::clone(&self.results);
+        let connected = Arc::clone(&self.connected);
+        let cookie_key = Arc::clone(&self.cookie_key);
+        let https_cert_tx = self.https_cert_tx.clone();
+        let current_id = Arc::clone(&self.current_id);
+        let port80_pause_tx = self.port80_pause_tx.clone();
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
@@ -440,5 +444,107 @@ impl proxy_server::Proxy for ProxyServer {
 
         info!("Removed gRPC certificate files; entering setup mode");
         Ok(Response::new(()))
+    }
+
+    #[instrument(skip(self, request))]
+    async fn trigger_acme(
+        &self,
+        request: Request<AcmeChallenge>,
+    ) -> Result<Response<Self::TriggerAcmeStream>, Status> {
+        let challenge = request.into_inner();
+        let domain = challenge.domain.clone();
+        let use_staging = challenge.use_staging;
+        let existing_credentials = challenge.account_credentials_json.clone();
+
+        info!("Starting ACME HTTP-01 for domain: {domain} (staging={use_staging})");
+
+        let (tx, rx) = mpsc::unbounded_channel::<Result<AcmeIssueEvent, Status>>();
+
+        // Emit the first progress step immediately — we are connected and about to start.
+        let _ = tx.send(Ok(AcmeIssueEvent {
+            payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
+                step: AcmeStep::Connecting as i32,
+            })),
+        }));
+
+        let pause_tx = self.port80_pause_tx.clone();
+        tokio::spawn(async move {
+            // Request a graceful hand-off of port 80 from the main HTTP server if it is bound
+            // there, so the ACME challenge listener can bind.
+            let permit: Option<Port80Permit> = if let Some(ref pause_tx) = pause_tx {
+                let (ready_tx, ready_rx) = oneshot::channel::<()>();
+                let (done_tx, done_rx) = oneshot::channel::<()>();
+                if pause_tx.send((ready_tx, done_rx)).await.is_err() {
+                    error!(
+                        "Failed to request port-80 hand-off for ACME; \
+                         HTTP server may have stopped"
+                    );
+                    let _ = tx.send(Err(Status::internal(
+                        "Failed to request port-80 hand-off for ACME",
+                    )));
+                    return;
+                }
+                Some(Port80Permit {
+                    ready: ready_rx,
+                    done_tx,
+                })
+            } else {
+                None
+            };
+
+            // Channel used by run_acme_http01 to emit intermediate progress steps.
+            let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<AcmeStep>();
+
+            // Forward progress steps from acme.rs onto the gRPC response stream.
+            let tx_fwd = tx.clone();
+            tokio::spawn(async move {
+                while let Some(step) = progress_rx.recv().await {
+                    let event = AcmeIssueEvent {
+                        payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
+                            step: step as i32,
+                        })),
+                    };
+                    if tx_fwd.send(Ok(event)).is_err() {
+                        // Core disconnected — stop forwarding.
+                        break;
+                    }
+                }
+            });
+
+            match acme::run_acme_http01(
+                domain.clone(),
+                use_staging,
+                existing_credentials,
+                permit,
+                progress_tx,
+            )
+            .await
+            {
+                Ok(acme_result) => {
+                    let cert_event = AcmeIssueEvent {
+                        payload: Some(acme_issue_event::Payload::Certificate(AcmeCertificate {
+                            cert_pem: acme_result.cert_pem,
+                            key_pem: acme_result.key_pem,
+                            account_credentials_json: acme_result.account_credentials_json,
+                        })),
+                    };
+                    if tx.send(Ok(cert_event)).is_err() {
+                        error!(
+                            "ACME result stream receiver disconnected before cert could be sent"
+                        );
+                    } else {
+                        info!("ACME certificate for domain '{domain}' streamed to Core");
+                    }
+                }
+                Err(err) => {
+                    error!("ACME HTTP-01 failed for domain '{domain}': {err}");
+                    let _ = tx.send(Err(Status::internal(format!(
+                        "ACME HTTP-01 certificate issuance failed: {err}"
+                    ))));
+                }
+            }
+        });
+
+        Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
 }

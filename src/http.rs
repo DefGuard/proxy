@@ -181,9 +181,8 @@ async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
 pub async fn run_setup(
     env_config: &EnvConfig,
     logs_rx: LogsReceiver,
-    port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
 ) -> anyhow::Result<Configuration> {
-    let setup_server = ProxySetupServer::new(logs_rx, port80_pause_tx);
+    let setup_server = ProxySetupServer::new(logs_rx);
     let cert_dir = Path::new(&env_config.cert_dir);
     if !cert_dir.exists() {
         tokio::fs::create_dir_all(cert_dir).await.map_err(|err| {
@@ -326,7 +325,6 @@ pub async fn run_server(
     } else {
         (None, None)
     };
-    let port80_pause_tx_for_setup = port80_pause_tx.clone();
 
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new(
@@ -365,7 +363,6 @@ pub async fn run_server(
                 let conf = run_setup(
                     &env_config_clone,
                     Arc::clone(&logs_rx),
-                    port80_pause_tx_for_setup.clone(),
                 )
                 .await?;
                 info!("Setup process completed successfully");

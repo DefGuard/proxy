@@ -55,7 +55,9 @@ futures-util = "0.3"
 ammonia = "4.1"
 chrono = "0.4"
 axum-server = { version = "0.7", features = ["tls-rustls"] }
-rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
+rustls = { version = "0.23", default-features = false, features = [
+    "aws-lc-rs",
+] }
 instant-acme = { version = "0.8", features = ["hyper-rustls", "aws-lc-rs"] }
 
 [build-dependencies]
