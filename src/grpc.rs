@@ -25,13 +25,14 @@ use tower::ServiceBuilder;
 use tracing::Instrument;
 
 use crate::{
-    MIN_CORE_VERSION, VERSION, acme,
+    LogsReceiver, MIN_CORE_VERSION, VERSION, acme,
     acme::Port80Permit,
     error::ApiError,
     http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{
-        AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeProgress, AcmeStep, CoreRequest,
-        CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response, proxy_server,
+        AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
+        CoreRequest, CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response,
+        proxy_server,
     },
 };
 
@@ -58,6 +59,9 @@ pub(crate) struct ProxyServer {
     /// `Some` only when the main HTTP server is bound to port 80.
     /// Used to hand off port 80 gracefully during ACME HTTP-01 challenges.
     port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+    /// Shared log receiver - written by `GrpcLogLayer` for every tracing event.
+    /// Drained during ACME execution to collect proxy log lines for error reporting.
+    logs_rx: LogsReceiver,
 }
 
 impl ProxyServer {
@@ -69,6 +73,7 @@ impl ProxyServer {
         reset_tx: broadcast::Sender<()>,
         https_cert_tx: broadcast::Sender<(String, String)>,
         port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+        logs_rx: LogsReceiver,
     ) -> Self {
         Self {
             cookie_key,
@@ -82,6 +87,7 @@ impl ProxyServer {
             reset_tx,
             https_cert_tx,
             port80_pause_tx,
+            logs_rx,
         }
     }
 
@@ -205,6 +211,7 @@ impl Clone for ProxyServer {
             reset_tx: self.reset_tx.clone(),
             https_cert_tx: self.https_cert_tx.clone(),
             port80_pause_tx: self.port80_pause_tx.clone(),
+            logs_rx: Arc::clone(&self.logs_rx),
         }
     }
 }
@@ -460,14 +467,21 @@ impl proxy_server::Proxy for ProxyServer {
 
         let (tx, rx) = mpsc::unbounded_channel::<Result<AcmeIssueEvent, Status>>();
 
-        // Emit the first progress step immediately — we are connected and about to start.
+        // Emit the first progress step immediately - we are connected and about to start.
         let _ = tx.send(Ok(AcmeIssueEvent {
             payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
                 step: AcmeStep::Connecting as i32,
             })),
         }));
 
+        // Drain any stale log entries accumulated before this ACME run started.
+        {
+            let mut rx_guard = self.logs_rx.lock().await;
+            while rx_guard.try_recv().is_ok() {}
+        }
+
         let pause_tx = self.port80_pause_tx.clone();
+        let logs_rx = Arc::clone(&self.logs_rx);
         tokio::spawn(async move {
             // Request a graceful hand-off of port 80 from the main HTTP server if it is bound
             // there, so the ACME challenge listener can bind.
@@ -505,7 +519,7 @@ impl proxy_server::Proxy for ProxyServer {
                         })),
                     };
                     if tx_fwd.send(Ok(event)).is_err() {
-                        // Core disconnected — stop forwarding.
+                        // Core disconnected - stop forwarding.
                         break;
                     }
                 }
@@ -538,6 +552,30 @@ impl proxy_server::Proxy for ProxyServer {
                 }
                 Err(err) => {
                     error!("ACME HTTP-01 failed for domain '{domain}': {err}");
+
+                    // Drain collected log lines and forward them to Core before the error status.
+                    let log_lines: Vec<String> = {
+                        let mut rx_guard = logs_rx.lock().await;
+                        let mut lines = Vec::new();
+                        while let Ok(entry) = rx_guard.try_recv() {
+                            lines.push(format!(
+                                "{} {} {}: message={}",
+                                entry.timestamp,
+                                entry.level.to_uppercase(),
+                                entry.target,
+                                entry.message
+                            ));
+                        }
+                        lines
+                    };
+                    if !log_lines.is_empty() {
+                        let _ = tx.send(Ok(AcmeIssueEvent {
+                            payload: Some(acme_issue_event::Payload::Logs(AcmeLogs {
+                                lines: log_lines,
+                            })),
+                        }));
+                    }
+
                     let _ = tx.send(Err(Status::internal(format!(
                         "ACME HTTP-01 certificate issuance failed: {err}"
                     ))));

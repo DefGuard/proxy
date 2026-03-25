@@ -57,17 +57,19 @@ pub async fn run_acme_http01(
     progress_tx: mpsc::UnboundedSender<AcmeStep>,
 ) -> anyhow::Result<AcmeCertResult> {
     info!("Starting ACME HTTP-01 certificate issuance for domain: {domain}");
+    let env_label = if use_staging { "staging" } else { "production" };
+    info!("Using Let's Encrypt {env_label} environment");
 
     // Restore or create account.
     let (account, credentials) = if existing_credentials_json.is_empty() {
-        info!("Creating new ACME account");
+        info!("No stored ACME account found; creating a new one with Let's Encrypt");
         let builder = Account::builder().context("Failed to create ACME account builder")?;
         let dir_url = if use_staging {
             LetsEncrypt::Staging.url().to_owned()
         } else {
             LetsEncrypt::Production.url().to_owned()
         };
-        info!("Using ACME directory URL: {dir_url}");
+        info!("Registering account at ACME directory: {dir_url}");
         let (account, credentials) = builder
             .create(
                 &NewAccount {
@@ -80,6 +82,7 @@ pub async fn run_acme_http01(
             )
             .await
             .context("Failed to create ACME account")?;
+        info!("ACME account registered successfully");
         (account, credentials)
     } else {
         info!("Restoring existing ACME account from stored credentials");
@@ -90,6 +93,7 @@ pub async fn run_acme_http01(
             .from_credentials(creds)
             .await
             .context("Failed to restore ACME account from credentials")?;
+        info!("ACME account restored successfully");
         // After restoring there are no new credentials returned - re-serialize the same ones.
         let restored_creds: AccountCredentials =
             serde_json::from_str(&existing_credentials_json)
@@ -104,6 +108,7 @@ pub async fn run_acme_http01(
         .new_order(&NewOrder::new(&[Identifier::Dns(domain.clone())]))
         .await
         .context("Failed to create ACME order")?;
+    info!("ACME order placed for domain: {domain}");
 
     // Collect all (token, key_authorization) pairs we need to serve.
     let challenge_map: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
@@ -175,7 +180,7 @@ pub async fn run_acme_http01(
         let token = challenge.token.clone();
         let key_auth = challenge.key_authorization().as_str().to_owned();
 
-        debug!("HTTP-01 challenge token: {token}");
+        info!("Preparing HTTP-01 challenge for domain: {domain} (token: {token})");
 
         {
             let mut map = challenge_map.lock().unwrap();
@@ -186,20 +191,22 @@ pub async fn run_acme_http01(
             .set_ready()
             .await
             .context("Failed to signal ACME challenge as ready")?;
+        info!("HTTP-01 challenge signalled as ready; waiting for Let's Encrypt to validate");
     }
 
     // LE will now attempt HTTP-01 validation against our challenge server.
     let _ = progress_tx.send(AcmeStep::ValidatingDomain);
+    info!("Polling Let's Encrypt for domain validation result...");
 
     // Wait for the order to become ready for finalization.
     let status = order
         .poll_ready(&RetryPolicy::default())
         .await
         .context("ACME order did not become ready")?;
-    debug!("ACME order status after poll_ready: {status:?}");
+    info!("Domain validation complete, order status: {status:?}");
 
     server_handle.abort();
-    info!("ACME challenge server shut down");
+    info!("ACME challenge server shut down; port 80 released");
 
     if let Some(done_tx) = port80_permit {
         let _ = done_tx.send(());
@@ -207,11 +214,13 @@ pub async fn run_acme_http01(
 
     // Domain validated; finalizing order and retrieving the certificate.
     let _ = progress_tx.send(AcmeStep::IssuingCertificate);
+    info!("Finalizing ACME order and requesting certificate issuance...");
 
     let key_pem = order
         .finalize()
         .await
         .context("Failed to finalize ACME order")?;
+    info!("ACME order finalized; polling for certificate...");
 
     // Poll until the certificate is issued.
     let cert_pem = order

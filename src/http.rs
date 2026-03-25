@@ -326,6 +326,11 @@ pub async fn run_server(
         (None, None)
     };
 
+    // Both the gRPC setup loop and the permanent ProxyServer
+    // share the same Arc<Mutex<Receiver<LogEntry>>> so they draw from the same channel.
+    let logs_rx = logs_rx
+        .ok_or_else(|| anyhow::anyhow!("Log receiver not available; cannot start server"))?;
+
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new(
         Arc::clone(&cookie_key),
@@ -333,6 +338,7 @@ pub async fn run_server(
         reset_tx,
         https_cert_tx,
         port80_pause_tx,
+        Arc::clone(&logs_rx),
     );
 
     // Preload existing TLS configuration so /api/v1/info can report "disconnected"
@@ -347,11 +353,6 @@ pub async fn run_server(
     // Start gRPC server.
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
-        let logs_rx = logs_rx.ok_or_else(|| {
-            anyhow::anyhow!(
-                "gRPC logs receiver not available for setup process; reset cannot be handled"
-            )
-        })?;
         let mut proxy_configuration = config;
 
         loop {
@@ -360,11 +361,7 @@ pub async fn run_server(
                 conf
             } else {
                 info!("gRPC certificates not found, running setup process");
-                let conf = run_setup(
-                    &env_config_clone,
-                    Arc::clone(&logs_rx),
-                )
-                .await?;
+                let conf = run_setup(&env_config_clone, Arc::clone(&logs_rx)).await?;
                 info!("Setup process completed successfully");
                 proxy_configuration = Some(conf.clone());
                 conf
