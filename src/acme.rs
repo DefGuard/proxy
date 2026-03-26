@@ -9,12 +9,12 @@ use instant_acme::{
     Account, AccountCredentials, ChallengeType, Identifier, LetsEncrypt, NewAccount, NewOrder,
     RetryPolicy,
 };
-use serde_json;
+use serde::Deserialize;
 use tokio::{
     net::TcpListener,
     sync::{mpsc, oneshot},
 };
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::proto::AcmeStep;
 
@@ -39,6 +39,77 @@ pub struct AcmeCertResult {
     pub account_credentials_json: String,
 }
 
+/// Minimal subset of the Cloudflare DoH JSON response we care about.
+#[derive(Debug, Deserialize)]
+struct DohResponse {
+    /// DNS response code (0 = NOERROR).
+    #[serde(rename = "Status")]
+    status: u32,
+    /// Answer records; may be absent on NXDOMAIN.
+    #[serde(rename = "Answer")]
+    answer: Option<Vec<serde_json::Value>>,
+}
+
+/// Performs a DNS pre-flight check for `domain` using Cloudflare's DoH endpoint.
+///
+/// Returns `Ok(())` if the domain resolves to at least one A or AAAA record.
+/// Returns `Err(...)` if the lookup fails or the
+/// domain does not resolve.
+async fn check_domain_resolves(domain: &str) -> anyhow::Result<()> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .context("Failed to build HTTP client for DoH pre-flight check")?;
+
+    // Try both A and AAAA; succeed as long as either has an answer.
+    for qtype in &["A", "AAAA"] {
+        let url = format!("https://1.1.1.1/dns-query?name={domain}&type={qtype}");
+        let response = client
+            .get(&url)
+            .header("Accept", "application/dns-json")
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) if resp.status().is_success() => match resp.json::<DohResponse>().await {
+                Ok(doh) if doh.status == 0 => {
+                    let has_answers = doh.answer.as_ref().is_some_and(|a| !a.is_empty());
+                    if has_answers {
+                        info!("DNS pre-flight: domain '{domain}' resolved ({qtype} record found)");
+                        return Ok(());
+                    }
+                }
+                Ok(doh) => {
+                    debug!(
+                        "DNS pre-flight: {qtype} lookup for '{domain}' returned status {}",
+                        doh.status
+                    );
+                }
+                Err(e) => {
+                    warn!(
+                        "DNS pre-flight: failed to parse DoH response for '{domain}' ({qtype}): {e}"
+                    );
+                }
+            },
+            Ok(resp) => {
+                warn!(
+                    "DNS pre-flight: DoH request for '{domain}' ({qtype}) returned HTTP {}",
+                    resp.status()
+                );
+            }
+            Err(e) => {
+                warn!("DNS pre-flight: DoH request for '{domain}' ({qtype}) failed: {e}");
+            }
+        }
+    }
+
+    Err(anyhow!(
+        "Domain '{domain}' does not resolve to any A or AAAA record. \
+         Make sure your DNS is configured to point '{domain}' to this server's public IP \
+         address before obtaining a Let's Encrypt certificate."
+    ))
+}
+
 /// Run a full ACME HTTP-01 certificate issuance for the given domain.
 ///
 /// - If `existing_credentials_json` is non-empty, the ACME account is restored from it.
@@ -51,24 +122,25 @@ pub struct AcmeCertResult {
 ///   the (potentially refreshed) account credentials JSON.
 pub async fn run_acme_http01(
     domain: String,
-    use_staging: bool,
     existing_credentials_json: String,
     port80_permit: Option<Port80Permit>,
     progress_tx: mpsc::UnboundedSender<AcmeStep>,
 ) -> anyhow::Result<AcmeCertResult> {
     info!("Starting ACME HTTP-01 certificate issuance for domain: {domain}");
-    let env_label = if use_staging { "staging" } else { "production" };
-    info!("Using Let's Encrypt {env_label} environment");
+    info!("Using Let's Encrypt production environment");
+
+    // DNS pre-flight: verify the domain resolves before attempting ACME.
+    let _ = progress_tx.send(AcmeStep::CheckingDomain);
+    info!("DNS pre-flight check for domain: {domain}");
+    check_domain_resolves(&domain).await?;
+
+    let _ = progress_tx.send(AcmeStep::Connecting);
 
     // Restore or create account.
     let (account, credentials) = if existing_credentials_json.is_empty() {
         info!("No stored ACME account found; creating a new one with Let's Encrypt");
         let builder = Account::builder().context("Failed to create ACME account builder")?;
-        let dir_url = if use_staging {
-            LetsEncrypt::Staging.url().to_owned()
-        } else {
-            LetsEncrypt::Production.url().to_owned()
-        };
+        let dir_url = LetsEncrypt::Production.url().to_owned();
         info!("Registering account at ACME directory: {dir_url}");
         let (account, credentials) = builder
             .create(

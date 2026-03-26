@@ -293,7 +293,6 @@ impl proxy_server::Proxy for ProxyServer {
                                     core_response::Payload::AcmeChallenge(req) => {
                                         info!(
                                             domain = %req.domain,
-                                            staging = req.use_staging,
                                             "Received ACME challenge request from Core"
                                         );
                                         let clients_clone = Arc::clone(&clients);
@@ -324,7 +323,6 @@ impl proxy_server::Proxy for ProxyServer {
                                                 mpsc::unbounded_channel();
                                             match acme::run_acme_http01(
                                                 req.domain,
-                                                req.use_staging,
                                                 req.account_credentials_json,
                                                 permit,
                                                 progress_tx,
@@ -460,19 +458,11 @@ impl proxy_server::Proxy for ProxyServer {
     ) -> Result<Response<Self::TriggerAcmeStream>, Status> {
         let challenge = request.into_inner();
         let domain = challenge.domain.clone();
-        let use_staging = challenge.use_staging;
         let existing_credentials = challenge.account_credentials_json.clone();
 
-        info!("Starting ACME HTTP-01 for domain: {domain} (staging={use_staging})");
+        info!("Starting ACME HTTP-01 for domain: {domain}");
 
         let (tx, rx) = mpsc::unbounded_channel::<Result<AcmeIssueEvent, Status>>();
-
-        // Emit the first progress step immediately - we are connected and about to start.
-        let _ = tx.send(Ok(AcmeIssueEvent {
-            payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
-                step: AcmeStep::Connecting as i32,
-            })),
-        }));
 
         // Drain any stale log entries accumulated before this ACME run started.
         {
@@ -527,7 +517,6 @@ impl proxy_server::Proxy for ProxyServer {
 
             match acme::run_acme_http01(
                 domain.clone(),
-                use_staging,
                 existing_credentials,
                 permit,
                 progress_tx,
@@ -551,7 +540,12 @@ impl proxy_server::Proxy for ProxyServer {
                     }
                 }
                 Err(err) => {
-                    error!("ACME HTTP-01 failed for domain '{domain}': {err}");
+                    let chain = err
+                        .chain()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<_>>()
+                        .join(": ");
+                    error!("ACME HTTP-01 failed for domain '{domain}': {chain}");
 
                     // Drain collected log lines and forward them to Core before the error status.
                     let log_lines: Vec<String> = {
@@ -577,7 +571,7 @@ impl proxy_server::Proxy for ProxyServer {
                     }
 
                     let _ = tx.send(Err(Status::internal(format!(
-                        "ACME HTTP-01 certificate issuance failed: {err}"
+                        "ACME HTTP-01 certificate issuance failed: {chain}"
                     ))));
                 }
             }

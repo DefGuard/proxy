@@ -9,10 +9,7 @@ use defguard_version::{
 };
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{
-    Request, Response, Status,
-    transport::Server,
-};
+use tonic::{Request, Response, Status, transport::Server};
 
 use crate::{
     CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
@@ -367,9 +364,7 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         }
 
         self.clear_setup_session();
-        debug!(
-            "SendCert completed; setup session cleared"
-        );
+        debug!("SendCert completed; setup session cleared");
 
         debug!("Confirming successful setup to Core");
         Ok(Response::new(()))
