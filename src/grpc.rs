@@ -263,8 +263,6 @@ impl proxy_server::Proxy for ProxyServer {
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
         let https_cert_tx = self.https_cert_tx.clone();
-        let current_id = Arc::clone(&self.current_id);
-        let port80_pause_tx = self.port80_pause_tx.clone();
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
@@ -289,87 +287,6 @@ impl proxy_server::Proxy for ProxyServer {
                                                 "Failed to broadcast HTTPS certificates: {err}"
                                             );
                                         }
-                                    }
-                                    core_response::Payload::AcmeChallenge(req) => {
-                                        info!(
-                                            domain = %req.domain,
-                                            "Received ACME challenge request from Core"
-                                        );
-                                        let clients_clone = Arc::clone(&clients);
-                                        let acme_id = Arc::clone(&current_id);
-                                        let pause_tx = port80_pause_tx.clone();
-                                        tokio::spawn(async move {
-                                            // `pause_tx` is `Some` only when the main server
-                                            // is on port 80 and port 80 may still be in use.
-                                            // Request a hand-off if so; otherwise proceed directly.
-                                            let permit = if let Some(tx) = pause_tx {
-                                                    let (ready_tx, ready_rx) = oneshot::channel::<()>();
-                                                    let (done_tx, done_rx) = oneshot::channel::<()>();
-                                                    if tx.send((ready_tx, done_rx)).await.is_err() {
-                                                        error!(
-                                                            "Failed to request port-80 hand-off \
-                                                             for ACME; HTTP server may have stopped"
-                                                        );
-                                                        return;
-                                                    }
-                                                    Some(acme::Port80Permit {
-                                                        ready: ready_rx,
-                                                        done_tx,
-                                                    })
-                                                } else {
-                                                    None
-                                                };
-                                            let (progress_tx, _progress_rx) =
-                                                mpsc::unbounded_channel();
-                                            match acme::run_acme_http01(
-                                                req.domain,
-                                                req.account_credentials_json,
-                                                permit,
-                                                progress_tx,
-                                            )
-                                            .await
-                                            {
-                                                Ok(result) => {
-                                                    let id = acme_id
-                                                        .fetch_add(1, Ordering::Relaxed);
-                                                    let msg = CoreRequest {
-                                                        id,
-                                                        device_info: None,
-                                                        payload: Some(
-                                                            core_request::Payload::AcmeCertificate(
-                                                                crate::proto::AcmeCertificate {
-                                                                    cert_pem: result.cert_pem,
-                                                                    key_pem: result.key_pem,
-                                                                    account_credentials_json:
-                                                                        result
-                                                                            .account_credentials_json,
-                                                                },
-                                                            ),
-                                                        ),
-                                                    };
-                                                    let clients_lock =
-                                                        clients_clone.read().expect(
-                                                        "Failed to lock clients map for ACME \
-                                                            certificate send",
-                                                    );
-                                                    for tx in clients_lock.values() {
-                                                        if let Err(err) =
-                                                            tx.send(Ok(msg.clone()))
-                                                        {
-                                                            error!(
-                                                                "Failed to send AcmeCertificate \
-                                                                    to core: {err}"
-                                                            );
-                                                        }
-                                                    }
-                                                }
-                                                Err(err) => {
-                                                    error!(
-                                                        "ACME HTTP-01 issuance failed: {err:#}"
-                                                    );
-                                                }
-                                            }
-                                        });
                                     }
                                     other => {
                                         let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
