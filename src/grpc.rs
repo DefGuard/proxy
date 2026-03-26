@@ -432,13 +432,8 @@ impl proxy_server::Proxy for ProxyServer {
                 }
             });
 
-            match acme::run_acme_http01(
-                domain.clone(),
-                existing_credentials,
-                permit,
-                progress_tx,
-            )
-            .await
+            match acme::run_acme_http01(domain.clone(), existing_credentials, permit, progress_tx)
+                .await
             {
                 Ok(acme_result) => {
                     let cert_event = AcmeIssueEvent {
