@@ -54,26 +54,25 @@ impl ProxySetupServer {
     }
 
     /// Await setup connection from Defguard Core and process it.
-    /// Spins up a dedicated temporary gRPC server over HTTP to handle the setup process.
-    /// The setup process involves generating a CSR, sending it to Core and receiving signed TLS certificates.
-    /// Returns the received gRPC configuration (locally generated key pair and remotely signed certificate) upon successful setup.
+    ///
+    /// Spins up a plain HTTP gRPC server on `addr` to handle the initial handshake: `Start`,
+    /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` deposits a
+    /// `Configuration` into `SETUP_CHANNEL`, after which this function returns the received
+    /// gRPC configuration (locally generated key pair and remotely signed certificate).
     pub(crate) async fn await_initial_setup(
         &self,
         addr: SocketAddr,
     ) -> Result<Configuration, anyhow::Error> {
         info!("gRPC waiting for setup connection from Core on {addr}");
-        debug!("Initializing gRPC server builder for setup process");
-        let server_builder = Server::builder();
-        let mut server_config = None;
 
-        debug!("Parsing proxy version: {}", VERSION);
         let own_version = Version::parse(VERSION)?;
+        debug!("Proxy version: {}", VERSION);
 
-        debug!(
-            "Setting up version interceptor with minimum Core version: {}",
-            MIN_CORE_VERSION
-        );
-        server_builder
+        let config_slot: Arc<tokio::sync::Mutex<Option<Configuration>>> =
+            Arc::new(tokio::sync::Mutex::new(None));
+        let config_slot_writer = Arc::clone(&config_slot);
+
+        Server::builder()
             .layer(tonic::service::InterceptorLayer::new(
                 DefguardVersionInterceptor::new(
                     own_version.clone(),
@@ -82,39 +81,33 @@ impl ProxySetupServer {
                     false,
                 ),
             ))
-            .layer(DefguardVersionLayer::new(own_version))
+            .layer(DefguardVersionLayer::new(own_version.clone()))
             .add_service(proxy_setup_server::ProxySetupServer::new(self.clone()))
-            .serve_with_shutdown(addr, async {
-                debug!("Setup server started, waiting for configuration from Core");
-                let config = SETUP_CHANNEL.1.lock().await.recv().await;
-                if let Some(cfg) = config {
-                    debug!("Received the passed Proxy configuration");
-                    server_config = cfg;
+            .serve_with_shutdown(addr, async move {
+                debug!("Waiting for SendCert to deliver configuration");
+                // SETUP_CHANNEL is CommsChannel<Option<Configuration>>, so recv() returns
+                // Option<Option<Configuration>>.  send_cert always sends Some(cfg).
+                if let Some(Some(cfg)) = SETUP_CHANNEL.1.lock().await.recv().await {
+                    debug!("Configuration received from SendCert");
+                    *config_slot_writer.lock().await = Some(cfg);
                 } else {
-                    error!("Setup communication channel closed unexpectedly");
+                    error!("SETUP_CHANNEL closed unexpectedly without configuration");
                 }
+                debug!("Plain-HTTP server will now shut down");
             })
             .await
             .map_err(|err| {
-                error!("gRPC server error during setup: {err}");
+                error!("Setup gRPC server error: {err}");
                 ApiError::Unexpected("gRPC server error during setup".into())
             })?;
+        debug!("Plain-HTTP setup server shut down on {addr}");
 
-        debug!("gRPC setup server on {addr} has shutdown after completing setup");
-        debug!("Validating received server configuration");
+        let configuration = config_slot.lock().await.take().ok_or_else(|| {
+            error!("No configuration received after setup");
+            ApiError::Unexpected("No configuration received after setup".into())
+        })?;
 
-        Ok(server_config.map_or_else(
-            || {
-                error!("No server configuration received after setup completion");
-                Err(ApiError::Unexpected(
-                    "No server configuration received after setup".into(),
-                ))
-            },
-            |cfg| {
-                debug!("Returning received server configuration");
-                Ok(cfg)
-            },
-        )?)
+        Ok(configuration)
     }
 
     fn is_setup_in_progress(&self) -> bool {
@@ -280,9 +273,9 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         debug!("Certificate Signing Request prepared");
 
         self.key_pair
-            .lock()
-            .expect("Failed to acquire lock on key pair during proxy setup when trying to store generated key pair")
-            .replace(key_pair);
+			.lock()
+			.expect("Failed to acquire lock on key pair during proxy setup when trying to store generated key pair")
+			.replace(key_pair);
 
         debug!("Encoding Certificate Signing Request for transmission");
         let csr_der = csr.to_der();
@@ -336,10 +329,10 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
 
         let key_pair = {
             let key_pair = self
-                .key_pair
-                .lock()
-                .expect("Failed to acquire lock on key pair during proxy setup when trying to receive certificate")
-                .take();
+				.key_pair
+				.lock()
+				.expect("Failed to acquire lock on key pair during proxy setup when trying to receive certificate")
+				.take();
             if let Some(kp) = key_pair {
                 kp
             } else {
@@ -370,8 +363,8 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             }
         }
 
-        debug!("Setup process completed successfully, cleaning up temporary session");
         self.clear_setup_session();
+        debug!("SendCert completed; setup session cleared");
 
         debug!("Confirming successful setup to Core");
         Ok(Response::new(()))

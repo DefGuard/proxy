@@ -25,10 +25,15 @@ use tower::ServiceBuilder;
 use tracing::Instrument;
 
 use crate::{
-    MIN_CORE_VERSION, VERSION,
+    LogsReceiver, MIN_CORE_VERSION, VERSION, acme,
+    acme::Port80Permit,
     error::ApiError,
     http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
-    proto::{CoreRequest, CoreResponse, DeviceInfo, core_request, core_response, proxy_server},
+    proto::{
+        AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
+        CoreRequest, CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response,
+        proxy_server,
+    },
 };
 
 // connected clients
@@ -50,6 +55,13 @@ pub(crate) struct ProxyServer {
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
     reset_tx: broadcast::Sender<()>,
+    https_cert_tx: broadcast::Sender<(String, String)>,
+    /// `Some` only when the main HTTP server is bound to port 80.
+    /// Used to hand off port 80 gracefully during ACME HTTP-01 challenges.
+    port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+    /// Shared log receiver - written by `GrpcLogLayer` for every tracing event.
+    /// Drained during ACME execution to collect proxy log lines for error reporting.
+    logs_rx: LogsReceiver,
 }
 
 impl ProxyServer {
@@ -59,6 +71,9 @@ impl ProxyServer {
         cookie_key: Arc<RwLock<Option<Key>>>,
         cert_dir: PathBuf,
         reset_tx: broadcast::Sender<()>,
+        https_cert_tx: broadcast::Sender<(String, String)>,
+        port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
+        logs_rx: LogsReceiver,
     ) -> Self {
         Self {
             cookie_key,
@@ -70,6 +85,9 @@ impl ProxyServer {
             config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
+            https_cert_tx,
+            port80_pause_tx,
+            logs_rx,
         }
     }
 
@@ -191,6 +209,9 @@ impl Clone for ProxyServer {
             config: Arc::clone(&self.config),
             cert_dir: self.cert_dir.clone(),
             reset_tx: self.reset_tx.clone(),
+            https_cert_tx: self.https_cert_tx.clone(),
+            port80_pause_tx: self.port80_pause_tx.clone(),
+            logs_rx: Arc::clone(&self.logs_rx),
         }
     }
 }
@@ -198,6 +219,7 @@ impl Clone for ProxyServer {
 #[tonic::async_trait]
 impl proxy_server::Proxy for ProxyServer {
     type BidiStream = UnboundedReceiverStream<Result<CoreRequest, Status>>;
+    type TriggerAcmeStream = UnboundedReceiverStream<Result<AcmeIssueEvent, Status>>;
 
     /// Handle bidirectional communication with Defguard core.
     #[instrument(name = "bidirectional_communication", level = "info", skip(self))]
@@ -240,6 +262,7 @@ impl proxy_server::Proxy for ProxyServer {
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
+        let https_cert_tx = self.https_cert_tx.clone();
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
@@ -249,18 +272,31 @@ impl proxy_server::Proxy for ProxyServer {
                             debug!("Received message from Defguard Core ID={}", response.id);
                             connected.store(true, Ordering::Relaxed);
                             if let Some(payload) = response.payload {
-                                if let core_response::Payload::InitialInfo(payload) = payload {
-                                    info!("Received private cookies key");
-                                    let key = Key::from(&payload.private_cookies_key);
-                                    *cookie_key.write().unwrap() = Some(key);
-                                } else {
-                                    let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                    if let Some(rx) = maybe_rx {
-                                        if let Err(err) = rx.send(payload) {
-                                            error!("Failed to send message to rx {:?}", err.type_id());
+                                match payload {
+                                    core_response::Payload::InitialInfo(info) => {
+                                        info!("Received private cookies key");
+                                        let key = Key::from(&info.private_cookies_key);
+                                        *cookie_key.write().unwrap() = Some(key);
+                                    }
+                                    core_response::Payload::HttpsCerts(certs) => {
+                                        info!("Received HTTPS certificates from Core");
+                                        if let Err(err) =
+                                            https_cert_tx.send((certs.cert_pem, certs.key_pem))
+                                        {
+                                            error!(
+                                                "Failed to broadcast HTTPS certificates: {err}"
+                                            );
                                         }
-                                    } else {
-                                        error!("Missing receiver for response #{}", response.id);
+                                    }
+                                    other => {
+                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
+                                        if let Some(rx) = maybe_rx {
+                                            if let Err(err) = rx.send(other) {
+                                                error!("Failed to send message to rx {:?}", err.type_id());
+                                            }
+                                        } else {
+                                            error!("Missing receiver for response #{}", response.id);
+                                        }
                                     }
                                 }
                             }
@@ -330,5 +366,129 @@ impl proxy_server::Proxy for ProxyServer {
 
         info!("Removed gRPC certificate files; entering setup mode");
         Ok(Response::new(()))
+    }
+
+    #[instrument(skip(self, request))]
+    async fn trigger_acme(
+        &self,
+        request: Request<AcmeChallenge>,
+    ) -> Result<Response<Self::TriggerAcmeStream>, Status> {
+        let challenge = request.into_inner();
+        let domain = challenge.domain.clone();
+        let existing_credentials = challenge.account_credentials_json.clone();
+
+        info!("Starting ACME HTTP-01 for domain: {domain}");
+
+        let (tx, rx) = mpsc::unbounded_channel::<Result<AcmeIssueEvent, Status>>();
+
+        // Drain any stale log entries accumulated before this ACME run started.
+        {
+            let mut rx_guard = self.logs_rx.lock().await;
+            while rx_guard.try_recv().is_ok() {}
+        }
+
+        let pause_tx = self.port80_pause_tx.clone();
+        let logs_rx = Arc::clone(&self.logs_rx);
+        tokio::spawn(async move {
+            // Request a graceful hand-off of port 80 from the main HTTP server if it is bound
+            // there, so the ACME challenge listener can bind.
+            let permit: Option<Port80Permit> = if let Some(ref pause_tx) = pause_tx {
+                let (ready_tx, ready_rx) = oneshot::channel::<()>();
+                let (done_tx, done_rx) = oneshot::channel::<()>();
+                if pause_tx.send((ready_tx, done_rx)).await.is_err() {
+                    error!(
+                        "Failed to request port-80 hand-off for ACME; \
+                         HTTP server may have stopped"
+                    );
+                    let _ = tx.send(Err(Status::internal(
+                        "Failed to request port-80 hand-off for ACME",
+                    )));
+                    return;
+                }
+                Some(Port80Permit {
+                    ready: ready_rx,
+                    done_tx,
+                })
+            } else {
+                None
+            };
+
+            // Channel used by run_acme_http01 to emit intermediate progress steps.
+            let (progress_tx, mut progress_rx) = mpsc::unbounded_channel::<AcmeStep>();
+
+            // Forward progress steps from acme.rs onto the gRPC response stream.
+            let tx_fwd = tx.clone();
+            tokio::spawn(async move {
+                while let Some(step) = progress_rx.recv().await {
+                    let event = AcmeIssueEvent {
+                        payload: Some(acme_issue_event::Payload::Progress(AcmeProgress {
+                            step: step as i32,
+                        })),
+                    };
+                    if tx_fwd.send(Ok(event)).is_err() {
+                        // Core disconnected - stop forwarding.
+                        break;
+                    }
+                }
+            });
+
+            match acme::run_acme_http01(domain.clone(), existing_credentials, permit, progress_tx)
+                .await
+            {
+                Ok(acme_result) => {
+                    let cert_event = AcmeIssueEvent {
+                        payload: Some(acme_issue_event::Payload::Certificate(AcmeCertificate {
+                            cert_pem: acme_result.cert_pem,
+                            key_pem: acme_result.key_pem,
+                            account_credentials_json: acme_result.account_credentials_json,
+                        })),
+                    };
+                    if tx.send(Ok(cert_event)).is_err() {
+                        error!(
+                            "ACME result stream receiver disconnected before cert could be sent"
+                        );
+                    } else {
+                        info!("ACME certificate for domain '{domain}' streamed to Core");
+                    }
+                }
+                Err(err) => {
+                    let chain = err
+                        .chain()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<_>>()
+                        .join(": ");
+                    error!("ACME HTTP-01 failed for domain '{domain}': {chain}");
+
+                    // Drain collected log lines and forward them to Core before the error status.
+                    let log_lines: Vec<String> = {
+                        let mut rx_guard = logs_rx.lock().await;
+                        let mut lines = Vec::new();
+                        while let Ok(entry) = rx_guard.try_recv() {
+                            lines.push(format!(
+                                "{} {} {}: message={}",
+                                entry.timestamp,
+                                entry.level.to_uppercase(),
+                                entry.target,
+                                entry.message
+                            ));
+                        }
+                        lines
+                    };
+                    if !log_lines.is_empty() {
+                        let _ = tx.send(Ok(AcmeIssueEvent {
+                            payload: Some(acme_issue_event::Payload::Logs(AcmeLogs {
+                                lines: log_lines,
+                            })),
+                        }));
+                    }
+
+                    let _ = tx.send(Err(Status::internal(format!(
+                        "ACME HTTP-01 certificate issuance failed: {chain}"
+                    ))));
+                }
+            }
+        });
+
+        Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
 }

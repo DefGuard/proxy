@@ -54,6 +54,12 @@ tower = "0.5"
 futures-util = "0.3"
 ammonia = "4.1"
 chrono = "0.4"
+axum-server = { version = "0.8", features = ["tls-rustls"] }
+rustls = { version = "0.23", default-features = false, features = [
+    "aws-lc-rs",
+] }
+instant-acme = { version = "0.8", features = ["hyper-rustls", "aws-lc-rs"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json"] }
 
 [build-dependencies]
 tonic-prost-build = "0.14"
