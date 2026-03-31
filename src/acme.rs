@@ -194,23 +194,20 @@ pub async fn run_acme_http01(
             let map = Arc::clone(&map_for_server);
             async move {
                 let map = map.lock().unwrap();
-                match map.get(&token) {
-                    Some(key_auth) => {
-                        debug!("Serving ACME challenge for token: {token}");
-                        (
-                            axum::http::StatusCode::OK,
-                            [(axum::http::header::CONTENT_TYPE, "text/plain")],
-                            key_auth.clone(),
-                        )
-                    }
-                    None => {
-                        error!("Unknown ACME challenge token: {token}");
-                        (
-                            axum::http::StatusCode::NOT_FOUND,
-                            [(axum::http::header::CONTENT_TYPE, "text/plain")],
-                            String::new(),
-                        )
-                    }
+                if let Some(key_auth) = map.get(&token) {
+                    debug!("Serving ACME challenge for token: {token}");
+                    (
+                        axum::http::StatusCode::OK,
+                        [(axum::http::header::CONTENT_TYPE, "text/plain")],
+                        key_auth.clone(),
+                    )
+                } else {
+                    error!("Unknown ACME challenge token: {token}");
+                    (
+                        axum::http::StatusCode::NOT_FOUND,
+                        [(axum::http::header::CONTENT_TYPE, "text/plain")],
+                        String::new(),
+                    )
                 }
             }
         }),

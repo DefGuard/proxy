@@ -454,7 +454,7 @@ impl proxy_server::Proxy for ProxyServer {
                 Err(err) => {
                     let chain = err
                         .chain()
-                        .map(|e| e.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect::<Vec<_>>()
                         .join(": ");
                     error!("ACME HTTP-01 failed for domain '{domain}': {chain}");
