@@ -339,6 +339,7 @@ pub async fn run_server(
         https_cert_tx,
         port80_pause_tx,
         Arc::clone(&logs_rx),
+        env_config.acme_staging,
     );
 
     // Preload existing TLS configuration so /api/v1/info can report "disconnected"

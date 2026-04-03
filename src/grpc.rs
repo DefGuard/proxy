@@ -62,6 +62,7 @@ pub(crate) struct ProxyServer {
     /// Shared log receiver - written by `GrpcLogLayer` for every tracing event.
     /// Drained during ACME execution to collect proxy log lines for error reporting.
     logs_rx: LogsReceiver,
+    acme_staging: bool,
 }
 
 impl ProxyServer {
@@ -74,6 +75,7 @@ impl ProxyServer {
         https_cert_tx: broadcast::Sender<(String, String)>,
         port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
         logs_rx: LogsReceiver,
+        acme_staging: bool,
     ) -> Self {
         Self {
             cookie_key,
@@ -88,6 +90,7 @@ impl ProxyServer {
             https_cert_tx,
             port80_pause_tx,
             logs_rx,
+            acme_staging,
         }
     }
 
@@ -212,6 +215,7 @@ impl Clone for ProxyServer {
             https_cert_tx: self.https_cert_tx.clone(),
             port80_pause_tx: self.port80_pause_tx.clone(),
             logs_rx: Arc::clone(&self.logs_rx),
+            acme_staging: self.acme_staging,
         }
     }
 }
@@ -389,6 +393,7 @@ impl proxy_server::Proxy for ProxyServer {
 
         let pause_tx = self.port80_pause_tx.clone();
         let logs_rx = Arc::clone(&self.logs_rx);
+        let acme_staging = self.acme_staging;
         tokio::spawn(async move {
             // Request a graceful hand-off of port 80 from the main HTTP server if it is bound
             // there, so the ACME challenge listener can bind.
@@ -432,8 +437,14 @@ impl proxy_server::Proxy for ProxyServer {
                 }
             });
 
-            match acme::run_acme_http01(domain.clone(), existing_credentials, permit, progress_tx)
-                .await
+            match acme::run_acme_http01(
+                domain.clone(),
+                existing_credentials,
+                acme_staging,
+                permit,
+                progress_tx,
+            )
+            .await
             {
                 Ok(acme_result) => {
                     let cert_event = AcmeIssueEvent {
