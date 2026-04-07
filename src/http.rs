@@ -580,7 +580,7 @@ pub async fn run_server(
                     } else {
                         std::future::pending().await
                     }
-                }, if current_tls.is_none() => {
+                } => {
                     info!("ACME task requested port 80; pausing HTTP server");
                     handle.graceful_shutdown(Some(Duration::from_secs(10)));
                     let _ = server_task.await;
