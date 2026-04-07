@@ -17,13 +17,18 @@ use axum::{
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
-    serve,
 };
 use axum_extra::extract::cookie::Key;
+use axum_server::tls_rustls::RustlsConfig;
 use clap::crate_version;
 use defguard_version::{Version, server::DefguardVersionLayer};
 use serde::Serialize;
-use tokio::{fs::OpenOptions, io::AsyncWriteExt, net::TcpListener, task::JoinSet};
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::{broadcast, mpsc, oneshot},
+    task::JoinSet,
+};
 use tower_governor::{
     GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
 };
@@ -293,6 +298,12 @@ async fn ensure_configured(
     next.run(request).await
 }
 
+async fn build_tls_config(cert_pem: &str, key_pem: &str) -> anyhow::Result<RustlsConfig> {
+    RustlsConfig::from_pem(cert_pem.as_bytes().to_vec(), key_pem.as_bytes().to_vec())
+        .await
+        .context("Failed to build HTTPS TLS configuration from PEM")
+}
+
 pub async fn run_server(
     env_config: EnvConfig,
     config: Option<Configuration>,
@@ -304,12 +315,30 @@ pub async fn run_server(
     let mut tasks = JoinSet::new();
     let cookie_key = Arc::default();
     let (reset_tx, mut reset_rx) = tokio::sync::broadcast::channel(1);
+    let (https_cert_tx, https_cert_rx) = broadcast::channel::<(String, String)>(1);
+
+    // When the main HTTP server is on port 80, create a channel so the ACME task can request
+    // a graceful hand-off of port 80 before binding its temporary challenge listener.
+    let (port80_pause_tx, port80_pause_rx) = if env_config.http_port == 80 {
+        let (tx, rx) = mpsc::channel::<(oneshot::Sender<()>, oneshot::Receiver<()>)>(1);
+        (Some(tx), Some(rx))
+    } else {
+        (None, None)
+    };
+
+    // Both the gRPC setup loop and the permanent ProxyServer
+    // share the same Arc<Mutex<Receiver<LogEntry>>> so they draw from the same channel.
+    let logs_rx = logs_rx
+        .ok_or_else(|| anyhow::anyhow!("Log receiver not available; cannot start server"))?;
 
     // connect to upstream gRPC server
     let grpc_server = ProxyServer::new(
         Arc::clone(&cookie_key),
         env_config.cert_dir.clone(),
         reset_tx,
+        https_cert_tx,
+        port80_pause_tx,
+        Arc::clone(&logs_rx),
     );
 
     // Preload existing TLS configuration so /api/v1/info can report "disconnected"
@@ -324,11 +353,6 @@ pub async fn run_server(
     // Start gRPC server.
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
-        let logs_rx = logs_rx.ok_or_else(|| {
-            anyhow::anyhow!(
-                "gRPC logs receiver not available for setup process; reset cannot be handled"
-            )
-        })?;
         let mut proxy_configuration = config;
 
         loop {
@@ -477,20 +501,99 @@ pub async fn run_server(
     // Start web server.
     debug!("Spawning API web server");
     tasks.spawn(async move {
-        let addr = SocketAddr::new(
+        let http_addr = SocketAddr::new(
             env_config
                 .http_bind_address
                 .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
             env_config.http_port,
         );
-        let listener = TcpListener::bind(&addr).await?;
-        info!("API web server is listening on {addr}");
-        serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .await
-        .context("Error running HTTP server")
+        let https_addr = SocketAddr::new(
+            env_config
+                .http_bind_address
+                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+            env_config.https_port,
+        );
+        let mut current_tls: Option<(String, String)> = None;
+        let mut https_cert_rx = https_cert_rx;
+        let mut port80_pause_rx = port80_pause_rx;
+
+        loop {
+            let handle = axum_server::Handle::new();
+            let handle_clone = handle.clone();
+            let app_service = app.clone().into_make_service_with_connect_info::<SocketAddr>();
+            let tls_certs = current_tls.clone();
+
+            let mut server_task = tokio::spawn(async move {
+                if let Some((cert_pem, key_pem)) = tls_certs {
+                    let tls_config = build_tls_config(&cert_pem, &key_pem).await?;
+                    info!("API web server is listening on https://{https_addr}");
+                    axum_server::bind_rustls(https_addr, tls_config)
+                        .handle(handle_clone)
+                        .serve(app_service)
+                        .await
+                        .context("Error running HTTPS server")
+                } else {
+                    info!("API web server is listening on http://{http_addr}");
+                    axum_server::bind(http_addr)
+                        .handle(handle_clone)
+                        .serve(app_service)
+                        .await
+                        .context("Error running HTTP server")
+                }
+            });
+
+            tokio::select! {
+                result = &mut server_task => {
+                    match result {
+                        Ok(Ok(())) => {}
+                        Ok(Err(err)) => return Err(err),
+                        Err(join_err) => {
+                            return Err(anyhow::anyhow!("Web server task panicked: {join_err}"));
+                        }
+                    }
+                    break;
+                }
+                result = https_cert_rx.recv() => {
+                    match result {
+                        Ok(certs) => {
+                            info!("Received new HTTPS certificates, restarting web server with TLS");
+                            current_tls = Some(certs);
+                            handle.graceful_shutdown(Some(Duration::from_secs(30)));
+                            let _ = server_task.await;
+                        }
+                        Err(broadcast::error::RecvError::Lagged(_)) => {
+                            warn!("Missed HTTPS certificate update; will apply next one");
+                        }
+                        Err(broadcast::error::RecvError::Closed) => {
+                            error!("HTTPS certificate channel closed unexpectedly");
+                            break;
+                        }
+                    }
+                }
+                // An ACME task needs port 80: gracefully stop the current HTTP server,
+                // signal the task that port 80 is free, wait until it's done, then let
+                // the loop restart the server.
+                Some((ready_tx, done_rx)) = async {
+                    if let Some(rx) = port80_pause_rx.as_mut() {
+                        rx.recv().await
+                    } else {
+                        std::future::pending().await
+                    }
+                }, if current_tls.is_none() => {
+                    info!("ACME task requested port 80; pausing HTTP server");
+                    handle.graceful_shutdown(Some(Duration::from_secs(10)));
+                    let _ = server_task.await;
+                    // Port 80 is now free - tell the ACME task to proceed.
+                    let _ = ready_tx.send(());
+                    // Wait for the ACME task to finish with port 80.
+                    let _ = done_rx.await;
+                    info!("ACME task released port 80; restarting HTTP server");
+                    // Loop will restart the server automatically.
+                }
+            }
+        }
+
+        Ok(())
     });
 
     // TODO: Possibly switch to using select! macro

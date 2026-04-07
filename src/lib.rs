@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 
 use crate::proto::LogEntry;
 
+mod acme;
 pub mod assets;
 pub mod config;
 mod enterprise;
