@@ -56,6 +56,7 @@ pub(crate) struct ProxyServer {
     cert_dir: PathBuf,
     reset_tx: broadcast::Sender<()>,
     https_cert_tx: broadcast::Sender<(String, String)>,
+    clear_https_tx: broadcast::Sender<()>,
     /// `Some` only when the main HTTP server is bound to port 80.
     /// Used to hand off port 80 gracefully during ACME HTTP-01 challenges.
     port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
@@ -73,6 +74,7 @@ impl ProxyServer {
         cert_dir: PathBuf,
         reset_tx: broadcast::Sender<()>,
         https_cert_tx: broadcast::Sender<(String, String)>,
+        clear_https_tx: broadcast::Sender<()>,
         port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
         logs_rx: LogsReceiver,
         acme_staging: bool,
@@ -88,6 +90,7 @@ impl ProxyServer {
             cert_dir,
             reset_tx,
             https_cert_tx,
+            clear_https_tx,
             port80_pause_tx,
             logs_rx,
             acme_staging,
@@ -213,6 +216,7 @@ impl Clone for ProxyServer {
             cert_dir: self.cert_dir.clone(),
             reset_tx: self.reset_tx.clone(),
             https_cert_tx: self.https_cert_tx.clone(),
+            clear_https_tx: self.clear_https_tx.clone(),
             port80_pause_tx: self.port80_pause_tx.clone(),
             logs_rx: Arc::clone(&self.logs_rx),
             acme_staging: self.acme_staging,
@@ -267,6 +271,7 @@ impl proxy_server::Proxy for ProxyServer {
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
         let https_cert_tx = self.https_cert_tx.clone();
+        let clear_https_tx = self.clear_https_tx.clone();
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
@@ -290,6 +295,12 @@ impl proxy_server::Proxy for ProxyServer {
                                             error!(
                                                 "Failed to broadcast HTTPS certificates: {err}"
                                             );
+                                        }
+                                    }
+                                    core_response::Payload::ClearHttpsCerts(_) => {
+                                        info!("Received ClearHttpsCerts from Core");
+                                        if let Err(err) = clear_https_tx.send(()) {
+                                            error!("Failed to broadcast ClearHttpsCerts: {err}");
                                         }
                                     }
                                     other => {
