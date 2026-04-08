@@ -69,7 +69,7 @@ pub(crate) struct ProxyServer {
 impl ProxyServer {
     /// Create new `ProxyServer`.
     #[must_use]
-	#[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         cookie_key: Arc<RwLock<Option<Key>>>,
         cert_dir: PathBuf,
