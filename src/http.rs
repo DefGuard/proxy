@@ -316,6 +316,7 @@ pub async fn run_server(
     let cookie_key = Arc::default();
     let (reset_tx, mut reset_rx) = tokio::sync::broadcast::channel(1);
     let (https_cert_tx, https_cert_rx) = broadcast::channel::<(String, String)>(1);
+    let (clear_https_tx, clear_https_rx) = broadcast::channel::<()>(1);
 
     // When the main HTTP server is on port 80, create a channel so the ACME task can request
     // a graceful hand-off of port 80 before binding its temporary challenge listener.
@@ -337,8 +338,10 @@ pub async fn run_server(
         env_config.cert_dir.clone(),
         reset_tx,
         https_cert_tx,
+        clear_https_tx,
         port80_pause_tx,
         Arc::clone(&logs_rx),
+        env_config.acme_staging,
     );
 
     // Preload existing TLS configuration so /api/v1/info can report "disconnected"
@@ -515,6 +518,7 @@ pub async fn run_server(
         );
         let mut current_tls: Option<(String, String)> = None;
         let mut https_cert_rx = https_cert_rx;
+        let mut clear_https_rx = clear_https_rx;
         let mut port80_pause_rx = port80_pause_rx;
 
         loop {
@@ -570,6 +574,23 @@ pub async fn run_server(
                         }
                     }
                 }
+                result = clear_https_rx.recv() => {
+                    match result {
+                        Ok(()) => {
+                            info!("Received ClearHttpsCerts, restarting web server without TLS");
+                            current_tls = None;
+                            handle.graceful_shutdown(Some(Duration::from_secs(30)));
+                            let _ = server_task.await;
+                        }
+                        Err(broadcast::error::RecvError::Lagged(_)) => {
+                            warn!("Missed ClearHttpsCerts update; will apply next one");
+                        }
+                        Err(broadcast::error::RecvError::Closed) => {
+                            error!("ClearHttpsCerts channel closed unexpectedly");
+                            break;
+                        }
+                    }
+                }
                 // An ACME task needs port 80: gracefully stop the current HTTP server,
                 // signal the task that port 80 is free, wait until it's done, then let
                 // the loop restart the server.
@@ -579,7 +600,7 @@ pub async fn run_server(
                     } else {
                         std::future::pending().await
                     }
-                }, if current_tls.is_none() => {
+                } => {
                     info!("ACME task requested port 80; pausing HTTP server");
                     handle.graceful_shutdown(Some(Duration::from_secs(10)));
                     let _ = server_task.await;

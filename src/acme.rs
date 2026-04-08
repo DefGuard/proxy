@@ -123,11 +123,18 @@ async fn check_domain_resolves(domain: &str) -> anyhow::Result<()> {
 pub async fn run_acme_http01(
     domain: String,
     existing_credentials_json: String,
+    use_staging: bool,
     port80_permit: Option<Port80Permit>,
     progress_tx: mpsc::UnboundedSender<AcmeStep>,
 ) -> anyhow::Result<AcmeCertResult> {
     info!("Starting ACME HTTP-01 certificate issuance for domain: {domain}");
-    info!("Using Let's Encrypt production environment");
+    let dir_url = if use_staging {
+        info!("Using Let's Encrypt staging environment");
+        LetsEncrypt::Staging.url().to_owned()
+    } else {
+        info!("Using Let's Encrypt production environment");
+        LetsEncrypt::Production.url().to_owned()
+    };
 
     // DNS pre-flight: verify the domain resolves before attempting ACME.
     let _ = progress_tx.send(AcmeStep::CheckingDomain);
@@ -140,7 +147,6 @@ pub async fn run_acme_http01(
     let (account, credentials) = if existing_credentials_json.is_empty() {
         info!("No stored ACME account found; creating a new one with Let's Encrypt");
         let builder = Account::builder().context("Failed to create ACME account builder")?;
-        let dir_url = LetsEncrypt::Production.url().to_owned();
         info!("Registering account at ACME directory: {dir_url}");
         let (account, credentials) = builder
             .create(
@@ -149,7 +155,7 @@ pub async fn run_acme_http01(
                     contact: &[],
                     only_return_existing: false,
                 },
-                dir_url,
+                dir_url.clone(),
                 None,
             )
             .await
