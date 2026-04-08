@@ -80,8 +80,6 @@ pub(super) async fn mfa_auth_callback(
         code: payload.code,
         nonce,
         state: payload.state,
-        #[allow(deprecated)]
-        callback_url: String::new(),
     };
 
     debug!("Sending MFA OIDC authenticate request to core service");

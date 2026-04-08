@@ -28,7 +28,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]")
         // Compiling protos using path on build time.
         .compile_protos(
-            &["proto/v2/proxy.proto", "proto/common/client_types.proto"],
+            &[
+                "proto/v2/proxy.proto",
+                "proto/v2/common.proto",
+                "proto/common/client_types.proto",
+            ],
             &["proto"],
         )?;
 

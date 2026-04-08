@@ -24,6 +24,12 @@ pub(crate) mod generated {
             }
         }
 
+        pub(crate) mod common {
+            pub(crate) mod v2 {
+                tonic::include_proto!("defguard.common.v2");
+            }
+        }
+
         pub mod client_types {
             tonic::include_proto!("defguard.client_types");
         }
@@ -32,6 +38,7 @@ pub(crate) mod generated {
 
 pub(crate) mod proto {
     pub(crate) use crate::generated::defguard::client_types::*;
+    pub(crate) use crate::generated::defguard::common::v2::*;
     pub(crate) use crate::generated::defguard::proxy::v2::*;
 }
 
