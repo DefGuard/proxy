@@ -56,24 +56,29 @@ pub(crate) struct ProxyServer {
     cert_dir: PathBuf,
     reset_tx: broadcast::Sender<()>,
     https_cert_tx: broadcast::Sender<(String, String)>,
+    clear_https_tx: broadcast::Sender<()>,
     /// `Some` only when the main HTTP server is bound to port 80.
     /// Used to hand off port 80 gracefully during ACME HTTP-01 challenges.
     port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
     /// Shared log receiver - written by `GrpcLogLayer` for every tracing event.
     /// Drained during ACME execution to collect proxy log lines for error reporting.
     logs_rx: LogsReceiver,
+    acme_staging: bool,
 }
 
 impl ProxyServer {
-    #[must_use]
     /// Create new `ProxyServer`.
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         cookie_key: Arc<RwLock<Option<Key>>>,
         cert_dir: PathBuf,
         reset_tx: broadcast::Sender<()>,
         https_cert_tx: broadcast::Sender<(String, String)>,
+        clear_https_tx: broadcast::Sender<()>,
         port80_pause_tx: Option<mpsc::Sender<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
         logs_rx: LogsReceiver,
+        acme_staging: bool,
     ) -> Self {
         Self {
             cookie_key,
@@ -86,8 +91,10 @@ impl ProxyServer {
             cert_dir,
             reset_tx,
             https_cert_tx,
+            clear_https_tx,
             port80_pause_tx,
             logs_rx,
+            acme_staging,
         }
     }
 
@@ -210,8 +217,10 @@ impl Clone for ProxyServer {
             cert_dir: self.cert_dir.clone(),
             reset_tx: self.reset_tx.clone(),
             https_cert_tx: self.https_cert_tx.clone(),
+            clear_https_tx: self.clear_https_tx.clone(),
             port80_pause_tx: self.port80_pause_tx.clone(),
             logs_rx: Arc::clone(&self.logs_rx),
+            acme_staging: self.acme_staging,
         }
     }
 }
@@ -263,6 +272,7 @@ impl proxy_server::Proxy for ProxyServer {
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
         let https_cert_tx = self.https_cert_tx.clone();
+        let clear_https_tx = self.clear_https_tx.clone();
         tokio::spawn(
             async move {
                 let mut stream = request.into_inner();
@@ -286,6 +296,12 @@ impl proxy_server::Proxy for ProxyServer {
                                             error!(
                                                 "Failed to broadcast HTTPS certificates: {err}"
                                             );
+                                        }
+                                    }
+                                    core_response::Payload::ClearHttpsCerts(_) => {
+                                        info!("Received ClearHttpsCerts from Core");
+                                        if let Err(err) = clear_https_tx.send(()) {
+                                            error!("Failed to broadcast ClearHttpsCerts: {err}");
                                         }
                                     }
                                     other => {
@@ -389,6 +405,7 @@ impl proxy_server::Proxy for ProxyServer {
 
         let pause_tx = self.port80_pause_tx.clone();
         let logs_rx = Arc::clone(&self.logs_rx);
+        let acme_staging = self.acme_staging;
         tokio::spawn(async move {
             // Request a graceful hand-off of port 80 from the main HTTP server if it is bound
             // there, so the ACME challenge listener can bind.
@@ -432,8 +449,14 @@ impl proxy_server::Proxy for ProxyServer {
                 }
             });
 
-            match acme::run_acme_http01(domain.clone(), existing_credentials, permit, progress_tx)
-                .await
+            match acme::run_acme_http01(
+                domain.clone(),
+                existing_credentials,
+                acme_staging,
+                permit,
+                progress_tx,
+            )
+            .await
             {
                 Ok(acme_result) => {
                     let cert_event = AcmeIssueEvent {

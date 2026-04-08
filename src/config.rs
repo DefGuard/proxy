@@ -84,6 +84,10 @@ pub struct EnvConfig {
     /// server is restarted on this port using those certificates.
     #[arg(long, env = "DEFGUARD_PROXY_HTTPS_PORT", default_value_t = 443)]
     pub https_port: u16,
+
+    /// Use Let's Encrypt staging environment for ACME issuance.
+    #[arg(long, env = "DEFGUARD_PROXY_ACME_STAGING", default_value_t = false)]
+    pub acme_staging: bool,
 }
 
 #[derive(thiserror::Error, Debug)]
