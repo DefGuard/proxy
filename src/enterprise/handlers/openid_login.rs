@@ -164,8 +164,6 @@ async fn auth_callback(
     let request = AuthCallbackRequest {
         code: payload.code,
         nonce,
-        #[allow(deprecated)]
-        callback_url: String::new(),
     };
 
     let rx = state

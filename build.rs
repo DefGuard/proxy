@@ -27,7 +27,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Make all messages serde-serializable.
         .type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]")
         // Compiling protos using path on build time.
-        .compile_protos(&["proto/core/proxy.proto"], &["proto/core"])?;
+        .compile_protos(
+            &[
+                "proto/v2/proxy.proto",
+                "proto/v2/common.proto",
+                "proto/common/client_types.proto",
+            ],
+            &["proto"],
+        )?;
 
     println!("cargo:rerun-if-changed=proto");
     Ok(())

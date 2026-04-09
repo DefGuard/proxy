@@ -16,8 +16,30 @@ pub mod http;
 pub mod logging;
 mod setup;
 
+pub(crate) mod generated {
+    pub(crate) mod defguard {
+        pub(crate) mod proxy {
+            pub(crate) mod v2 {
+                tonic::include_proto!("defguard.proxy.v2");
+            }
+        }
+
+        pub(crate) mod common {
+            pub(crate) mod v2 {
+                tonic::include_proto!("defguard.common.v2");
+            }
+        }
+
+        pub mod client_types {
+            tonic::include_proto!("defguard.client_types");
+        }
+    }
+}
+
 pub(crate) mod proto {
-    tonic::include_proto!("defguard.proxy");
+    pub(crate) use crate::generated::defguard::client_types::*;
+    pub(crate) use crate::generated::defguard::common::v2::*;
+    pub(crate) use crate::generated::defguard::proxy::v2::*;
 }
 
 #[macro_use]
