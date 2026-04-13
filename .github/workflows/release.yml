@@ -1,12 +1,18 @@
 name: Make a new release
 on:
   push:
+    # REMOVE: test only
+    branches:
+       - cross
     tags:
       - v*.*.*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  SQLX_OFFLINE: "1"
 
 jobs:
   build-docker-release:
@@ -44,12 +50,18 @@ jobs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - name: Create GitHub release
-        id: release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v3
+        if: github.ref_type == 'tag'
         with:
           draft: true
           generate_release_notes: true
+
+      - name: Create test GitHub release
+        uses: softprops/action-gh-release@v3
+        if: github.ref_type != 'tag'
+        with:
+          draft: true
+          name: test
 
   create-sbom:
     needs: [create-release, build-docker-release]
@@ -73,8 +85,10 @@ jobs:
           cache: true
           version: 10
 
+      # Change to '--frozen-lockfile' once this gets fixed:
+      # https://github.com/pnpm/action-setup/issues/40
       - name: Build frontend
-        run: pnpm install --ignore-scripts --frozen-lockfile && pnpm build
+        run: pnpm install --ignore-scripts --no-frozen-lockfile && pnpm build
         working-directory: web
 
   build-binaries:
@@ -111,39 +125,40 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
+        if: matrix.build == 'linux'
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
+          targets: "aarch64-unknown-linux-gnu"
 
       - name: Setup `packer`
         uses: hashicorp/setup-packer@main
         id: setup
 
-      - name: Set up Docker BuildX
-        uses: docker/setup-buildx-action@v4
-        with:
-          config-inline: |
-            [registry."docker.io"]
-              mirrors = ["dockerhub-proxy.teonite.net"]
-
       - name: Build release binary
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release --target ${{ matrix.target }}
+        if: matrix.build == 'linux'
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Cross-build release binary
+        if: matrix.build == 'linux-arm64'
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          PKG_CONFIG_SYSROOT_DIR: /usr/lib/aarch64-linux-gnu
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Cross-build release binary
+        if: matrix.build == 'freebsd'
+        run: |
+          rsync -rlptxzH -e 'ssh -l root' --del ./ freebsd:work/
+          ssh root@freebsd 'cd work && cargo build --locked --release'
+          scp root@freebsd:work/target/release/defguard-proxy defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}
 
       - name: Rename binary
         run: mv target/${{ matrix.target }}/release/defguard-proxy defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}
 
       - name: Tar
-        uses: a7ul/tar-action@v1.2.0
-        with:
-          command: c
-          files: |
+        run:
+          tar -zcf defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz \
             defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}
-          outPath: defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
 
       - name: Upload release archive
         uses: actions/upload-release-asset@v1.0.2
@@ -159,7 +174,10 @@ jobs:
         if: matrix.build == 'linux'
         uses: bpicode/github-action-fpm@master
         with:
-          fpm_args: "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/bin/defguard-proxy defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service example-config.toml=/etc/defguard/proxy.toml"
+          fpm_args:
+            "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/bin/defguard-proxy
+            defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
+            example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.deb"
 
       - name: Upload DEB
@@ -177,7 +195,10 @@ jobs:
         if: matrix.build == 'linux'
         uses: bpicode/github-action-fpm@master
         with:
-          fpm_args: "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/bin/defguard-proxy defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service example-config.toml=/etc/defguard/proxy.toml"
+          fpm_args:
+            "defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}=/usr/bin/defguard-proxy
+            defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
+            example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm"
 
       - name: Upload RPM
@@ -189,4 +210,25 @@ jobs:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm
           asset_name: defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm
+          asset_content_type: application/octet-stream
+
+      - name: Build FreeBSD package
+        if: matrix.build == 'freebsd'
+        uses: bpicode/github-action-fpm@master
+        with:
+          fpm_args:
+            "defguard-${{ github.ref_name }}-${{ matrix.target }}=/usr/local/bin/defguard-proxy
+            defguard-proxy.service.freebsd=/usr/local/etc/rc.d/defguard-proxy
+            example-config.toml=/etc/defguard/proxy.toml"
+          fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type freebsd --version ${{ env.VERSION }} --package defguard-${{ env.VERSION }}_${{ matrix.target }}.pkg --freebsd-osversion '*' --depends openssl"
+
+      - name: Upload FreeBSD
+        if: matrix.build == 'freebsd'
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-${{ env.VERSION }}_${{ matrix.target }}.pkg
+          asset_name: defguard-${{ env.VERSION }}_${{ matrix.target }}.pkg
           asset_content_type: application/octet-stream
