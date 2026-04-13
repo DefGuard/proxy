@@ -11,10 +11,11 @@ concurrency:
 
 jobs:
   build-binaries:
-    needs: [create-release]
+    # needs: [create-release]
     runs-on:
       - self-hosted
-      - ${{ matrix.os }}
+      - Linux
+      # - ${{ matrix.os }}
       - X64
     # strategy:
     #   fail-fast: false
