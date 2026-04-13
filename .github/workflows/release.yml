@@ -82,6 +82,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        node-version: 25
+
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
