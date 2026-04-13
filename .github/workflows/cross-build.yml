@@ -35,7 +35,7 @@ jobs:
 
       - name: Build on FreeBSD
         run:
-          ssh freebsd 'cd work && cargo build --locked --release'
+          ssh root@freebsd 'cd work && cargo build --locked --release'
 
       - name: Copy binary to host
         run:
