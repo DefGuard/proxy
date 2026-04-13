@@ -33,9 +33,12 @@ jobs:
       - name: Test in FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
+          envs: 'VERSION'
+          usesh: true
           run: |
             pwd
             ls -l
             uname -a
             pkg update && pkg install rust
             cargo -vV
+            echo "${VERSION}"
