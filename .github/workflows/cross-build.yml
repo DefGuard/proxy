@@ -49,5 +49,9 @@ jobs:
       - name: Test in FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
-          pkg update && pkg install rust
-          cargo -vV
+          run: |
+            pwd
+            ls -l
+            uname -a
+            pkg update && pkg install rust
+            cargo -vV
