@@ -28,14 +28,15 @@ jobs:
           submodules: recursive
 
       - name: Install required packages to run the virtual machine
-        run: apt update && apt install -y zstd
+        run: apt-get update && apt-get install -y zstd
 
       # IMPORTANT: this will fail with Proxmox.
       - name: Test in FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
           envs: 'VERSION'
-          release: "14.4"
+          # release: "14.4"
+          sync: nfs
           usesh: true
           run: |
             pwd
