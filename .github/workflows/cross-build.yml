@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-binaries:
+  build-freebsd:
     # needs: [create-release]
     runs-on:
       - self-hosted
@@ -31,13 +31,12 @@ jobs:
 
       - name: Sync with FreeBSD
         run:
-          pwd
+          rsync -rlptxzH -e ssh --del ./ freebsd:work/
 
-      # - name: Build on FreeBSD
-      #   run: |
-      #     pwd
-      #     ls -l
-      #     uname -a
-      #     pkg update && pkg install rust
-      #     cargo -vV
-      #     echo "${VERSION}"
+      - name: Build on FreeBSD
+        run:
+          ssh freebsd 'cd work && cargo build --locked --release'
+
+      - name: Copy binary to host
+        run:
+          scp work/target/release/defguard-proxy .
