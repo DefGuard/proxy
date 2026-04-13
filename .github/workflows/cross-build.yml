@@ -30,10 +30,12 @@ jobs:
       - name: Install required packages to run the virtual machine
         run: apt update && apt install -y zstd
 
+      # IMPORTANT: this will fail with Proxmox.
       - name: Test in FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
           envs: 'VERSION'
+          release: "14.4"
           usesh: true
           run: |
             pwd
