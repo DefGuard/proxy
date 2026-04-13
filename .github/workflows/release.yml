@@ -71,7 +71,10 @@ jobs:
 
   build-web:
     runs-on:
-      - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
+      # - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
+      - self-hosted
+      - Linux
+      - X64
 
     steps:
       - name: Checkout
@@ -123,6 +126,11 @@ jobs:
           VERSION=${GITHUB_REF_NAME#v}
           echo Version: $VERSION
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Install Rust stable
         if: matrix.build == 'linux'
