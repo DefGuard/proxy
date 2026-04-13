@@ -31,7 +31,7 @@ jobs:
 
       - name: Sync with FreeBSD
         run:
-          rsync -rlptxzH -e ssh --del ./ freebsd:work/
+          rsync -rlptxzH -e 'ssh -l root' --del ./ freebsd:work/
 
       - name: Build on FreeBSD
         run:
@@ -39,4 +39,4 @@ jobs:
 
       - name: Copy binary to host
         run:
-          scp work/target/release/defguard-proxy .
+          scp root@freebsd:work/target/release/defguard-proxy .
