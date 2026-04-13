@@ -27,6 +27,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install required packages to run the virtual machine
+        run: apt update && apt install -y zstd
+
       - name: Test in FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
