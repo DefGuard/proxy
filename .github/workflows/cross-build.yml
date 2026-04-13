@@ -35,8 +35,10 @@ jobs:
           cache: true
           version: 10
 
+      # Add '--frozen-lockfile' once this gets fixed:
+      # https://github.com/DefGuard/proxy/actions
       - name: Build frontend
-        run: pnpm install --ignore-scripts --frozen-lockfile && pnpm build
+        run: pnpm install --ignore-scripts && pnpm build
         working-directory: web
 
       - name: Sync with FreeBSD
