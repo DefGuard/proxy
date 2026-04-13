@@ -13,7 +13,9 @@ jobs:
   build-binaries:
     # needs: [create-release]
     runs-on:
-      - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
+      - self-hosted
+      - Linux
+      - X64
     steps:
       # Store the version, stripping any v-prefix
       - name: Write release version
@@ -27,21 +29,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install required packages to run the virtual machine
-        run: apt-get update && apt-get install -y zstd
+      - name: Sync with FreeBSD
+        run:
+          pwd
 
-      # IMPORTANT: this will fail with Proxmox.
-      - name: Test in FreeBSD
-        uses: vmactions/freebsd-vm@v1
-        with:
-          envs: 'VERSION'
-          # release: "14.4"
-          sync: nfs
-          usesh: true
-          run: |
-            pwd
-            ls -l
-            uname -a
-            pkg update && pkg install rust
-            cargo -vV
-            echo "${VERSION}"
+      # - name: Build on FreeBSD
+      #   run: |
+      #     pwd
+      #     ls -l
+      #     uname -a
+      #     pkg update && pkg install rust
+      #     cargo -vV
+      #     echo "${VERSION}"
