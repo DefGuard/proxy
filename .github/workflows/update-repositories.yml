@@ -47,7 +47,7 @@ jobs:
             else
               codename="trixie"
             fi
-            
+
             echo "Uploading $deb_file to $codename"
             deb-s3 upload -l \
               --bucket=apt.defguard.net \
@@ -73,8 +73,8 @@ jobs:
           export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_APT }}
           export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_KEY_APT }}
           export AWS_REGION=eu-north-1
-          sudo apt update -y
-          sudo apt install -y awscli curl jq
+          sudo apt-get update -y
+          sudo apt-get install -y awscli curl jq
 
           for DIST in trixie bookworm; do
             aws s3 cp s3://apt.defguard.net/dists/${DIST}/Release .

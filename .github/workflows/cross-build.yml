@@ -29,6 +29,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+          version: 10
+
+      - name: Build frontend
+        run: pnpm install --ignore-scripts --frozen-lockfile && pnpm build
+        working-directory: web
+
       - name: Sync with FreeBSD
         run:
           rsync -rlptxzH -e 'ssh -l root' --del ./ freebsd:work/

@@ -57,8 +57,30 @@ jobs:
     with:
       upload_url: ${{ needs.create-release.outputs.upload_url }}
 
+  build-web:
+    runs-on:
+      - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+          version: 10
+
+      - name: Build frontend
+        run: pnpm install --ignore-scripts --frozen-lockfile && pnpm build
+        working-directory: web
+
   build-binaries:
-    needs: [create-release]
+    needs:
+      - build-web
+      - create-release
     runs-on:
       - self-hosted
       - ${{ matrix.os }}
@@ -88,15 +110,11 @@ jobs:
           echo Version: $VERSION
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.89.0 # "stable" causes rust-lld: error on aarch64-linux          target: ${{ matrix.target }}
+          toolchain: stable
+          target: ${{ matrix.target }}
           override: true
 
       - name: Setup `packer`
@@ -110,31 +128,9 @@ jobs:
             [registry."docker.io"]
               mirrors = ["dockerhub-proxy.teonite.net"]
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          # FIXME: temporarily pinned because of https://github.com/pnpm/pnpm/pull/9959
-          version: 10.17
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 25
-          cache: "pnpm"
-          cache-dependency-path: ./web/pnpm-lock.yaml
-
-      - name: Install frontend dependencies
-        run: pnpm install --ignore-scripts --frozen-lockfile
-        working-directory: web
-
-      - name: Build frontend
-        run: pnpm build
-        working-directory: web
-
       - name: Build release binary
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true
           command: build
           args: --locked --release --target ${{ matrix.target }}
 
