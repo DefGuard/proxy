@@ -53,18 +53,20 @@ jobs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: shogo82148/actions-create-release@v1
         if: github.ref_type == 'tag'
         with:
           draft: true
           generate_release_notes: true
 
+      # For testing
       - name: Create test GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: shogo82148/actions-create-release@v1
         if: github.ref_type != 'tag'
         with:
           draft: true
-          name: test
+          overwrite: true
+          tag_name: test
 
   create-sbom:
     needs:
@@ -122,9 +124,9 @@ jobs:
       - name: Build Linux x86_64 binary
         run: |
           cargo build --locked --release --target x86_64-unknown-linux-gnu
-          mv target/x86_64-unknown-linux-gnu/release/defguard-proxy defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu
-          tar -zcf defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz \
-            defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu
+          mv target/x86_64-unknown-linux-gnu/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu
+          tar -zcf defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz \
+            defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu
 
       - name: Build Linux aarch64 binary
         env:
@@ -132,23 +134,23 @@ jobs:
           PKG_CONFIG_SYSROOT_DIR: /usr/lib/aarch64-linux-gnu
         run: |
           cargo build --locked --release --target aarch64-unknown-linux-gnu
-          mv target/aarch64-unknown-linux-gnu/release/defguard-proxy defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu
-          tar -zcf defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu.tar.gz \
-            defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu
+          mv target/aarch64-unknown-linux-gnu/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu
+          tar -zcf defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz \
+            defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu
 
       - name: Build FreeBSD binary
         run: |
           rsync -rlptxzH -e 'ssh -l root' --del ./ freebsd:work/
           ssh root@freebsd 'cd work && cargo build --locked --release'
-          scp root@freebsd:work/target/release/defguard-proxy defguard-proxy-${{ github.ref_name }}-x86_64-unknown-freebsd
-          tar -zcf defguard-proxy-${{ github.ref_name }}-x86_64-unknown-freebsd.tar.gz \
-            defguard-proxy-${{ github.ref_name }}-x86_64-unknown-freebsd
+          scp root@freebsd:work/target/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd
+          tar -zcf defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd.tar.gz \
+            defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd
 
       - name: Build x86_64 DEB package
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
-            "defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
+            "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb"
@@ -157,7 +159,7 @@ jobs:
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
-            "defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
+            "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb"
@@ -166,7 +168,7 @@ jobs:
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
-            "defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
+            "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm"
@@ -175,7 +177,7 @@ jobs:
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
-            "defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
+            "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-freebsd.rpm"
@@ -184,7 +186,7 @@ jobs:
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
-            "defguard-${{ github.ref_name }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
+            "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
             defguard-proxy.service.freebsd=/usr/local/etc/rc.d/defguard-proxy
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type freebsd --version ${{ env.VERSION }} --package defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
@@ -195,7 +197,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
+          asset_path: defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz
           asset_content_type: application/gzip
           overwrite: true
 
@@ -205,7 +207,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu.tar.gz
+          asset_path: defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload FreeBSD x86_64 archive
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd.tar.gz
           asset_content_type: application/gzip
           overwrite: true
 
