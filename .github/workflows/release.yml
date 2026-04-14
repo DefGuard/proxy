@@ -53,16 +53,18 @@ jobs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - name: Create GitHub release
-        uses: shogo82148/actions-create-release@v1
+        id: release
         if: github.ref_type == 'tag'
+        uses: shogo82148/actions-create-release@v1
         with:
           draft: true
           generate_release_notes: true
 
       # For testing
       - name: Create test GitHub release
-        uses: shogo82148/actions-create-release@v1
+        id: release
         if: github.ref_type != 'tag'
+        uses: shogo82148/actions-create-release@v1
         with:
           draft: true
           overwrite: true
