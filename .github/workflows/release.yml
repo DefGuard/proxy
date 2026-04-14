@@ -13,6 +13,9 @@ concurrency:
 
 env:
   SQLX_OFFLINE: "1"
+  # sccache
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   build-docker-release:
@@ -113,6 +116,9 @@ jobs:
         with:
           targets: "aarch64-unknown-linux-gnu"
 
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Build Linux x86_64 binary
         run: |
           cargo build --locked --release --target x86_64-unknown-linux-gnu
@@ -138,18 +144,8 @@ jobs:
           tar -zcf defguard-proxy-${{ github.ref_name }}-x86_64-unknown-freebsd.tar.gz \
             defguard-proxy-${{ github.ref_name }}-x86_64-unknown-freebsd
 
-      # - name: Upload release archive
-      #   uses: actions/upload-release-asset@v1.0.2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ needs.create-release.outputs.upload_url }}
-      #     asset_path: defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
-      #     asset_name: defguard-proxy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
-      #     asset_content_type: application/octet-stream
-
       - name: Build x86_64 DEB package
-        uses: bpicode/github-action-fpm@master
+        uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
@@ -158,7 +154,7 @@ jobs:
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb"
 
       - name: Build aarch64 DEB package
-        uses: bpicode/github-action-fpm@master
+        uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
@@ -166,18 +162,8 @@ jobs:
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb"
 
-      # - name: Upload DEB
-      #   uses: actions/upload-release-asset@v1.0.2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ needs.create-release.outputs.upload_url }}
-      #     asset_path: defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb
-      #     asset_name: defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb
-      #     asset_content_type: application/octet-stream
-
       - name: Build x86_64 RPM package
-        uses: bpicode/github-action-fpm@master
+        uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
@@ -186,7 +172,7 @@ jobs:
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm"
 
       - name: Build aarch64 RPM package
-        uses: bpicode/github-action-fpm@master
+        uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
@@ -194,18 +180,8 @@ jobs:
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-freebsd.rpm"
 
-      # - name: Upload RPM
-      #   uses: actions/upload-release-asset@v1.0.2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ needs.create-release.outputs.upload_url }}
-      #     asset_path: defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm
-      #     asset_name: defguard-proxy-${{ env.VERSION }}-${{ matrix.target }}.rpm
-      #     asset_content_type: application/octet-stream
-
       - name: Build FreeBSD package
-        uses: bpicode/github-action-fpm@master
+        uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-${{ github.ref_name }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
@@ -213,12 +189,72 @@ jobs:
             example-config.toml=/etc/defguard/proxy.toml"
           fpm_opts: "--architecture ${{ matrix.arch }} --debug --output-type freebsd --version ${{ env.VERSION }} --package defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
 
-      # - name: Upload FreeBSD
-      #   uses: actions/upload-release-asset@v1.0.2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ needs.create-release.outputs.upload_url }}
-      #     asset_path: defguard-${{ env.VERSION }}_${{ matrix.target }}.pkg
-      #     asset_name: defguard-${{ env.VERSION }}_${{ matrix.target }}.pkg
-      #     asset_content_type: application/octet-stream
+      - name: Upload Linux x86_64 archive
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload Linux aarch64 archive
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ github.ref_name }}-aarch64-unknown-linux-gnu.tar.gz
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload Linux x86_64 DEB
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload Linux aarch64 DEB
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload Linux x86_64 RPM
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload Linux aarch64 RPM
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm
+          asset_content_type: application/gzip
+          overwrite: true
+
+      - name: Upload FreeBSD package
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg
+          asset_content_type: application/x-pkg
+          overwrite: true
