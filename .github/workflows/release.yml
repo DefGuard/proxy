@@ -61,6 +61,7 @@ jobs:
           generate_release_notes: true
           overwrite: true
           release_name: test
+          tag_name: test
 
   create-sbom:
     needs:
