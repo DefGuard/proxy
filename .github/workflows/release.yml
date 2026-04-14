@@ -1,9 +1,6 @@
 name: Make a new release
 on:
   push:
-    # TODO: remove
-    branches:
-       - cross
     tags:
       - v*.*.*
 
@@ -57,11 +54,7 @@ jobs:
         uses: shogo82148/actions-create-release@v1
         with:
           draft: true
-          # TODO: remove
           generate_release_notes: true
-          overwrite: true
-          release_name: test
-          tag_name: test
 
   create-sbom:
     needs:
@@ -148,7 +141,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb"
+          fpm_opts: "--architecture amd64 --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb"
 
       - name: Build aarch64 DEB package
         uses: defGuard/fpm-action@main
@@ -157,7 +150,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture arm64 --debug --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb"
+          fpm_opts: "--architecture arm64 --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb"
 
       - name: Build x86_64 RPM package
         uses: defGuard/fpm-action@main
@@ -166,7 +159,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm"
+          fpm_opts: "--architecture amd64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm"
 
       - name: Build aarch64 RPM package
         uses: defGuard/fpm-action@main
@@ -175,7 +168,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture arm64 --debug --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-freebsd.rpm"
+          fpm_opts: "--architecture arm64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-freebsd.rpm"
 
       - name: Build FreeBSD package
         uses: defGuard/fpm-action@main
@@ -184,7 +177,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
             defguard-proxy.service.freebsd=/usr/local/etc/rc.d/defguard-proxy
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --debug --output-type freebsd --version ${{ env.VERSION }} --package defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
+          fpm_opts: "--architecture amd64 --output-type freebsd --version ${{ env.VERSION }} --package defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
 
       - name: Upload Linux x86_64 archive
         uses: shogo82148/actions-upload-release-asset@v1
