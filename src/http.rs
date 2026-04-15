@@ -55,6 +55,8 @@ const X_FORWARDED_FOR: &str = "x-forwarded-for";
 const X_POWERED_BY: &str = "x-powered-by";
 pub const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
 pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
+pub const GRPC_CA_CERT_NAME: &str = "grpc_ca_cert.pem";
+pub const CORE_CLIENT_CERT_NAME: &str = "core_client_cert.pem";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -217,7 +219,8 @@ pub async fn run_setup(
     let Configuration {
         grpc_cert_pem,
         grpc_key_pem,
-        ..
+        grpc_ca_cert_pem,
+        core_client_cert_der,
     } = &configuration;
 
     let cert_path = cert_dir.join(GRPC_CERT_NAME);
@@ -247,6 +250,7 @@ pub async fn run_setup(
         })?;
     // Write key to a file.
     options
+        .clone()
         .open(&key_path)
         .await?
         .write_all(grpc_key_pem.as_bytes())
@@ -262,6 +266,24 @@ pub async fn run_setup(
                 err.into()
             }
         })?;
+    // Write CA certificate to a file.
+    options
+        .clone()
+        .open(cert_dir.join(GRPC_CA_CERT_NAME))
+        .await?
+        .write_all(grpc_ca_cert_pem.as_bytes())
+        .await?;
+    // Write Core client certificate (PEM-encoded) to a file for serial pinning on restart.
+    let core_client_cert_pem =
+        defguard_certs::der_to_pem(core_client_cert_der, defguard_certs::PemLabel::Certificate)
+            .map_err(|err| {
+                anyhow::anyhow!("Failed to PEM-encode Core client certificate: {err}")
+            })?;
+    options
+        .open(cert_dir.join(CORE_CLIENT_CERT_NAME))
+        .await?
+        .write_all(core_client_cert_pem.as_bytes())
+        .await?;
 
     Ok(configuration)
 }

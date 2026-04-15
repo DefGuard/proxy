@@ -15,7 +15,7 @@ use crate::{
     CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
     error::ApiError,
     grpc::Configuration,
-    proto::{CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
+    proto::{CertBundle, CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
 };
 
 static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
@@ -291,8 +291,8 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
     }
 
     #[instrument(skip(self, request))]
-    async fn send_cert(&self, request: Request<DerPayload>) -> Result<Response<()>, Status> {
-        debug!("Core sending back signed certificate for installation");
+    async fn send_cert(&self, request: Request<CertBundle>) -> Result<Response<()>, Status> {
+        debug!("Core sending back signed certificate bundle for installation");
         let token = request
             .metadata()
             .get(AUTH_HEADER)
@@ -306,26 +306,50 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             return Err(Status::unauthenticated("Invalid session token"));
         }
 
-        let der_payload = request.into_inner();
-        let cert_der = der_payload.der_data;
-        debug!(
-            "Received signed certificate from Core ({} bytes)",
-            cert_der.len()
-        );
+        let bundle = request.into_inner();
 
-        debug!("Parsing received certificate DER data");
-        let grpc_cert_pem =
-            match defguard_certs::der_to_pem(&cert_der, defguard_certs::PemLabel::Certificate) {
-                Ok(pem) => pem,
-                Err(err) => {
-                    error!("Failed to convert certificate DER to PEM: {err}");
-                    self.clear_setup_session();
-                    return Err(Status::internal(format!(
-                        "Failed to convert certificate DER to PEM: {err}"
-                    )));
-                }
-            };
-        debug!("Certificate processed successfully");
+        debug!(
+            "Received component certificate from Core ({} bytes)",
+            bundle.component_cert_der.len()
+        );
+        debug!("Parsing component certificate DER data");
+        let grpc_cert_pem = match defguard_certs::der_to_pem(
+            &bundle.component_cert_der,
+            defguard_certs::PemLabel::Certificate,
+        ) {
+            Ok(pem) => pem,
+            Err(err) => {
+                error!("Failed to convert component certificate DER to PEM: {err}");
+                self.clear_setup_session();
+                return Err(Status::internal(format!(
+                    "Failed to convert component certificate DER to PEM: {err}"
+                )));
+            }
+        };
+
+        debug!(
+            "Received CA certificate from Core ({} bytes)",
+            bundle.ca_cert_der.len()
+        );
+        debug!("Parsing CA certificate DER data");
+        let grpc_ca_cert_pem = match defguard_certs::der_to_pem(
+            &bundle.ca_cert_der,
+            defguard_certs::PemLabel::Certificate,
+        ) {
+            Ok(pem) => pem,
+            Err(err) => {
+                error!("Failed to convert CA certificate DER to PEM: {err}");
+                self.clear_setup_session();
+                return Err(Status::internal(format!(
+                    "Failed to convert CA certificate DER to PEM: {err}"
+                )));
+            }
+        };
+
+        debug!(
+            "Received Core client certificate ({} bytes); will pin serial for mTLS",
+            bundle.core_client_cert_der.len()
+        );
 
         let key_pair = {
             let key_pair = self
@@ -349,6 +373,8 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         let configuration = Configuration {
             grpc_key_pem: key_pair.serialize_pem(),
             grpc_cert_pem,
+            grpc_ca_cert_pem,
+            core_client_cert_der: bundle.core_client_cert_der,
         };
 
         debug!("Passing configuration to gRPC server for finalization");
