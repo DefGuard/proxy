@@ -15,7 +15,10 @@ use defguard_version::{
     ComponentInfo, DefguardComponent, Version, get_tracing_variables,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
-use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio::{
+    fs::remove_file,
+    sync::{broadcast, mpsc, oneshot},
+};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{
     Request, Response, Status, Streaming,
@@ -28,7 +31,7 @@ use crate::{
     LogsReceiver, MIN_CORE_VERSION, VERSION, acme,
     acme::Port80Permit,
     error::ApiError,
-    http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
+    http::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{
         AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
         CoreRequest, CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response,
@@ -347,8 +350,10 @@ impl proxy_server::Proxy for ProxyServer {
         debug!("Received purge request, removing gRPC certificate files");
         let cert_path = self.cert_dir.join(GRPC_CERT_NAME);
         let key_path = self.cert_dir.join(GRPC_KEY_NAME);
+        let ca_cert_path = self.cert_dir.join(GRPC_CA_CERT_NAME);
+        let core_client_cert_path = self.cert_dir.join(CORE_CLIENT_CERT_NAME);
 
-        if let Err(err) = tokio::fs::remove_file(&cert_path).await
+        if let Err(err) = remove_file(&cert_path).await
             && err.kind() != std::io::ErrorKind::NotFound
         {
             error!(
@@ -358,11 +363,31 @@ impl proxy_server::Proxy for ProxyServer {
             return Err(Status::internal("Failed to remove gRPC certificate"));
         }
 
-        if let Err(err) = tokio::fs::remove_file(&key_path).await
+        if let Err(err) = remove_file(&key_path).await
             && err.kind() != std::io::ErrorKind::NotFound
         {
             error!("Failed to remove gRPC key at {:?}: {err}", key_path);
             return Err(Status::internal("Failed to remove gRPC key"));
+        }
+
+        if let Err(err) = remove_file(&ca_cert_path).await
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            error!(
+                "Failed to remove CA certificate at {:?}: {err}",
+                ca_cert_path
+            );
+            return Err(Status::internal("Failed to remove CA certificate"));
+        }
+
+        if let Err(err) = remove_file(&core_client_cert_path).await
+            && err.kind() != std::io::ErrorKind::NotFound
+        {
+            error!(
+                "Failed to remove Core client certificate at {:?}: {err}",
+                core_client_cert_path
+            );
+            return Err(Status::internal("Failed to remove Core client certificate"));
         }
 
         *self
