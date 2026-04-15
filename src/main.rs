@@ -4,7 +4,7 @@ use defguard_proxy::{
     VERSION,
     config::get_env_config,
     grpc::Configuration,
-    http::{GRPC_CERT_NAME, GRPC_KEY_NAME, run_server},
+    http::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME, run_server},
     logging::init_tracing,
 };
 use defguard_version::Version;
@@ -50,18 +50,31 @@ async fn main() -> anyhow::Result<()> {
     let cert_dir = env_config.cert_dir.clone();
     let grpc_cert_path = cert_dir.join(GRPC_CERT_NAME);
     let grpc_key_path = cert_dir.join(GRPC_KEY_NAME);
+    let grpc_ca_cert_path = cert_dir.join(GRPC_CA_CERT_NAME);
+    let core_client_cert_path = cert_dir.join(CORE_CLIENT_CERT_NAME);
 
     let grpc_cert = read_optional_cert_file(&grpc_cert_path, &cert_dir, "certificate")?;
     let grpc_key = read_optional_cert_file(&grpc_key_path, &cert_dir, "key")?;
+    let grpc_ca_cert = read_optional_cert_file(&grpc_ca_cert_path, &cert_dir, "CA certificate")?;
+    let core_client_cert_pem =
+        read_optional_cert_file(&core_client_cert_path, &cert_dir, "Core client certificate")?;
 
-    let proxy_configuration = if let (Some(grpc_cert), Some(grpc_key)) = (grpc_cert, grpc_key) {
-        Some(Configuration {
-            grpc_cert_pem: grpc_cert,
-            grpc_key_pem: grpc_key,
-        })
-    } else {
-        None
-    };
+    let proxy_configuration =
+        if let (Some(grpc_cert), Some(grpc_key), Some(grpc_ca_cert), Some(client_cert_pem)) =
+            (grpc_cert, grpc_key, grpc_ca_cert, core_client_cert_pem)
+        {
+            let core_client_cert_der = defguard_certs::parse_pem_certificate(&client_cert_pem)
+                .map_err(|e| anyhow::anyhow!("Failed to parse Core client cert: {e}"))?
+                .to_vec();
+            Some(Configuration {
+                grpc_cert_pem: grpc_cert,
+                grpc_key_pem: grpc_key,
+                grpc_ca_cert_pem: grpc_ca_cert,
+                core_client_cert_der,
+            })
+        } else {
+            None
+        };
 
     // TODO: The channel size may need to be adjusted or some other approach should be used
     // to avoid dropping log messages.
