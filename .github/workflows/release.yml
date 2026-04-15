@@ -170,7 +170,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture arm64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-freebsd.rpm"
+          fpm_opts: "--architecture arm64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm"
 
       - name: Build FreeBSD package
         uses: defGuard/fpm-action@main
