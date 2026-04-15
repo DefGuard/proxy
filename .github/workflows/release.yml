@@ -98,8 +98,10 @@ jobs:
       # Change to '--frozen-lockfile' once this gets fixed:
       # https://github.com/pnpm/action-setup/issues/40
       - name: Build frontend
-        run: pnpm install --ignore-scripts --no-frozen-lockfile && pnpm build
         working-directory: web
+        run: |
+          pnpm install --ignore-scripts --no-frozen-lockfile
+          pnpm build
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -128,9 +130,9 @@ jobs:
 
       - name: Build FreeBSD binary
         run: |
-          rsync -rlptxzH -e 'ssh -l root' --del ./ freebsd:work/
-          ssh root@freebsd 'cd work && cargo build --locked --release'
-          scp root@freebsd:work/target/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd
+          rsync -rlptxzH -e 'ssh -l root' --del ./ freebsd:work/edge/
+          ssh root@freebsd 'cd work/edge && cargo build --locked --release'
+          scp root@freebsd:work/edge/target/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd
           tar -zcf defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd.tar.gz \
             defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd
 
@@ -168,7 +170,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture arm64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-freebsd.rpm"
+          fpm_opts: "--architecture arm64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm"
 
       - name: Build FreeBSD package
         uses: defGuard/fpm-action@main
@@ -177,7 +179,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
             defguard-proxy.service.freebsd=/usr/local/etc/rc.d/defguard-proxy
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --output-type freebsd --version ${{ env.VERSION }} --package defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
+          fpm_opts: "--architecture amd64 --output-type freebsd --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
 
       - name: Upload Linux x86_64 archive
         uses: shogo82148/actions-upload-release-asset@v1
@@ -255,6 +257,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: defguard-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg
+          asset_path: defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg
           asset_content_type: application/x-pkg
           overwrite: true
