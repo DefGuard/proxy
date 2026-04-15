@@ -1,15 +1,18 @@
 use std::{
     net::SocketAddr,
     sync::{Arc, LazyLock, Mutex},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use defguard_version::{
     DefguardComponent, Version,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
+use rustls_pki_types::{CertificateDer, UnixTime};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{Request, Response, Status, transport::Server};
+use tonic::{Request, Response, Status, service::InterceptorLayer, transport::Server};
+use webpki::{KeyUsage, anchor_from_trusted_cert};
 
 use crate::{
     CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
@@ -27,6 +30,65 @@ static SETUP_CHANNEL: LazyLock<CommsChannel<Option<TlsConfig>>> = LazyLock::new(
 });
 
 const AUTH_HEADER: &str = "authorization";
+
+/// Verify that both `component_der` and `core_client_der` are signed by `ca_der`.
+///
+/// Uses ECDSA P-256 / SHA-256 via aws-lc-rs. Returns an error message string on
+/// any failure so the caller can forward it as a gRPC status.
+fn validate_cert_bundle(
+    ca_der: &[u8],
+    component_der: &[u8],
+    core_client_der: &[u8],
+) -> Result<(), String> {
+    let sig_algs: &[&dyn rustls_pki_types::SignatureVerificationAlgorithm] = &[
+        webpki::aws_lc_rs::ECDSA_P256_SHA256,
+        webpki::aws_lc_rs::ECDSA_P256_SHA384,
+    ];
+
+    let ca_cert_der = CertificateDer::from(ca_der);
+    let trust_anchor = anchor_from_trusted_cert(&ca_cert_der)
+        .map_err(|e| format!("Failed to parse CA certificate as trust anchor: {e}"))?;
+    let trust_anchors = [trust_anchor];
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO);
+    let time = UnixTime::since_unix_epoch(now);
+
+    // Verify component (server) certificate.
+    let component_cert_der = CertificateDer::from(component_der);
+    let component_ee = webpki::EndEntityCert::try_from(&component_cert_der)
+        .map_err(|e| format!("Failed to parse component certificate: {e}"))?;
+    component_ee
+        .verify_for_usage(
+            sig_algs,
+            &trust_anchors,
+            &[],
+            time,
+            KeyUsage::server_auth(),
+            None,
+            None,
+        )
+        .map_err(|e| format!("Component certificate failed chain validation: {e}"))?;
+
+    // Verify Core client certificate.
+    let core_client_cert_der = CertificateDer::from(core_client_der);
+    let core_client_ee = webpki::EndEntityCert::try_from(&core_client_cert_der)
+        .map_err(|e| format!("Failed to parse Core client certificate: {e}"))?;
+    core_client_ee
+        .verify_for_usage(
+            sig_algs,
+            &trust_anchors,
+            &[],
+            time,
+            KeyUsage::client_auth(),
+            None,
+            None,
+        )
+        .map_err(|e| format!("Core client certificate failed chain validation: {e}"))?;
+
+    Ok(())
+}
 
 pub(crate) struct ProxySetupServer {
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
@@ -73,14 +135,12 @@ impl ProxySetupServer {
         let config_slot_writer = Arc::clone(&config_slot);
 
         Server::builder()
-            .layer(tonic::service::InterceptorLayer::new(
-                DefguardVersionInterceptor::new(
-                    own_version.clone(),
-                    DefguardComponent::Core,
-                    MIN_CORE_VERSION,
-                    false,
-                ),
-            ))
+            .layer(InterceptorLayer::new(DefguardVersionInterceptor::new(
+                own_version.clone(),
+                DefguardComponent::Core,
+                MIN_CORE_VERSION,
+                false,
+            )))
             .layer(DefguardVersionLayer::new(own_version.clone()))
             .add_service(proxy_setup_server::ProxySetupServer::new(self.clone()))
             .serve_with_shutdown(addr, async move {
@@ -307,6 +367,18 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         }
 
         let bundle = request.into_inner();
+
+        debug!("Validating certificate bundle received from Core");
+        if let Err(reason) = validate_cert_bundle(
+            &bundle.ca_cert_der,
+            &bundle.component_cert_der,
+            &bundle.core_client_cert_der,
+        ) {
+            error!("Certificate bundle validation failed: {reason}");
+            self.clear_setup_session();
+            return Err(Status::invalid_argument(reason));
+        }
+        debug!("Certificate bundle validated successfully against CA");
 
         debug!(
             "Received component certificate from Core ({} bytes)",
