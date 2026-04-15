@@ -107,9 +107,9 @@ export interface FileRoutesByFullPath {
   '/openid/error': typeof OpenidErrorRoute
   '/password/finish': typeof PasswordFinishRoute
   '/password/sent': typeof PasswordSentRoute
-  '/password': typeof PasswordIndexRoute
+  '/password/': typeof PasswordIndexRoute
   '/openid/mfa/callback': typeof OpenidMfaCallbackRoute
-  '/openid/mfa': typeof OpenidMfaIndexRoute
+  '/openid/mfa/': typeof OpenidMfaIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -158,9 +158,9 @@ export interface FileRouteTypes {
     | '/openid/error'
     | '/password/finish'
     | '/password/sent'
-    | '/password'
+    | '/password/'
     | '/openid/mfa/callback'
-    | '/openid/mfa'
+    | '/openid/mfa/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -266,7 +266,7 @@ declare module '@tanstack/react-router' {
     '/password/': {
       id: '/password/'
       path: '/password'
-      fullPath: '/password'
+      fullPath: '/password/'
       preLoaderRoute: typeof PasswordIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -301,7 +301,7 @@ declare module '@tanstack/react-router' {
     '/openid/mfa/': {
       id: '/openid/mfa/'
       path: '/openid/mfa'
-      fullPath: '/openid/mfa'
+      fullPath: '/openid/mfa/'
       preLoaderRoute: typeof OpenidMfaIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
