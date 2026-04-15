@@ -40,7 +40,7 @@ use crate::{
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
 #[derive(Debug, Clone, Default)]
-pub struct Configuration {
+pub struct TlsConfig {
     pub grpc_key_pem: String,
     pub grpc_cert_pem: String,
     /// PEM-encoded CA certificate used to verify Core's mTLS client certificate chain.
@@ -55,7 +55,7 @@ pub(crate) struct ProxyServer {
     results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
-    config: Arc<Mutex<Option<Configuration>>>,
+    tls_config: Arc<Mutex<Option<TlsConfig>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
     reset_tx: broadcast::Sender<()>,
@@ -91,7 +91,7 @@ impl ProxyServer {
             results: Arc::new(RwLock::new(HashMap::new())),
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
-            config: Arc::new(Mutex::new(None)),
+            tls_config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
             https_cert_tx,
@@ -102,17 +102,17 @@ impl ProxyServer {
         }
     }
 
-    pub(crate) fn configure(&self, config: Configuration) {
+    pub(crate) fn configure(&self, config: TlsConfig) {
         let mut lock = self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to acquire lock on config mutex when applying proxy configuration");
         *lock = Some(config);
     }
 
-    pub(crate) fn get_configuration(&self) -> Option<Configuration> {
+    pub(crate) fn get_configuration(&self) -> Option<TlsConfig> {
         let lock = self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to acquire lock on config mutex when retrieving proxy configuration");
         lock.clone()
@@ -201,7 +201,7 @@ impl ProxyServer {
 
     pub(crate) fn setup_completed(&self) -> bool {
         let lock = self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to acquire lock on config mutex when checking setup status");
         lock.is_some()
@@ -217,7 +217,7 @@ impl Clone for ProxyServer {
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
             cookie_key: Arc::clone(&self.cookie_key),
-            config: Arc::clone(&self.config),
+            tls_config: Arc::clone(&self.tls_config),
             cert_dir: self.cert_dir.clone(),
             reset_tx: self.reset_tx.clone(),
             https_cert_tx: self.https_cert_tx.clone(),
@@ -366,7 +366,7 @@ impl proxy_server::Proxy for ProxyServer {
         }
 
         *self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to lock config mutex during purge") = None;
         *self

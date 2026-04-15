@@ -14,11 +14,11 @@ use tonic::{Request, Response, Status, transport::Server};
 use crate::{
     CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
     error::ApiError,
-    grpc::Configuration,
+    grpc::TlsConfig,
     proto::{CertBundle, CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
 };
 
-static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
+static SETUP_CHANNEL: LazyLock<CommsChannel<Option<TlsConfig>>> = LazyLock::new(|| {
     let (tx, rx) = mpsc::channel(10);
     (
         Arc::new(tokio::sync::Mutex::new(tx)),
@@ -62,13 +62,13 @@ impl ProxySetupServer {
     pub(crate) async fn await_initial_setup(
         &self,
         addr: SocketAddr,
-    ) -> Result<Configuration, anyhow::Error> {
+    ) -> Result<TlsConfig, anyhow::Error> {
         info!("gRPC waiting for setup connection from Core on {addr}");
 
         let own_version = Version::parse(VERSION)?;
         debug!("Proxy version: {}", VERSION);
 
-        let config_slot: Arc<tokio::sync::Mutex<Option<Configuration>>> =
+        let config_slot: Arc<tokio::sync::Mutex<Option<TlsConfig>>> =
             Arc::new(tokio::sync::Mutex::new(None));
         let config_slot_writer = Arc::clone(&config_slot);
 
@@ -370,7 +370,7 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             }
         };
 
-        let configuration = Configuration {
+        let configuration = TlsConfig {
             grpc_key_pem: key_pair.serialize_pem(),
             grpc_cert_pem,
             grpc_ca_cert_pem,
