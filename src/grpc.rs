@@ -353,42 +353,21 @@ impl proxy_server::Proxy for ProxyServer {
         let ca_cert_path = self.cert_dir.join(GRPC_CA_CERT_NAME);
         let core_client_cert_path = self.cert_dir.join(CORE_CLIENT_CERT_NAME);
 
-        if let Err(err) = remove_file(&cert_path).await
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            error!(
-                "Failed to remove gRPC certificate at {:?}: {err}",
-                cert_path
-            );
-            return Err(Status::internal("Failed to remove gRPC certificate"));
-        }
+        let remove_cert_file = async |path: &std::path::Path, label: &str| -> Result<(), Status> {
+            if let Err(err) = remove_file(path).await
+                && err.kind() != std::io::ErrorKind::NotFound
+            {
+                error!("Failed to remove {label} at {}: {err}", path.display());
+                return Err(Status::internal(format!("Failed to remove {label}")));
+            }
+            info!("Removed {label} at {}", path.display());
+            Ok(())
+        };
 
-        if let Err(err) = remove_file(&key_path).await
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            error!("Failed to remove gRPC key at {:?}: {err}", key_path);
-            return Err(Status::internal("Failed to remove gRPC key"));
-        }
-
-        if let Err(err) = remove_file(&ca_cert_path).await
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            error!(
-                "Failed to remove CA certificate at {:?}: {err}",
-                ca_cert_path
-            );
-            return Err(Status::internal("Failed to remove CA certificate"));
-        }
-
-        if let Err(err) = remove_file(&core_client_cert_path).await
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            error!(
-                "Failed to remove Core client certificate at {:?}: {err}",
-                core_client_cert_path
-            );
-            return Err(Status::internal("Failed to remove Core client certificate"));
-        }
+        remove_cert_file(&cert_path, "gRPC certificate").await?;
+        remove_cert_file(&key_path, "gRPC key").await?;
+        remove_cert_file(&ca_cert_path, "CA certificate").await?;
+        remove_cert_file(&core_client_cert_path, "Core client certificate").await?;
 
         *self
             .tls_config
