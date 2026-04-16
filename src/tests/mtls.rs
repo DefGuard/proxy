@@ -22,7 +22,7 @@ use tonic::{
 };
 
 use crate::grpc::{ProxyServer, TlsConfig};
-use crate::proto::{CoreResponse, proxy_client::ProxyClient};
+use crate::proto::proxy_client::ProxyClient;
 
 struct TestCerts {
     /// PEM-encoded CA certificate (used as the trust root for both server and client validation).
@@ -55,7 +55,7 @@ impl TestCerts {
 
         // Proxy server cert: ServerAuth EKU, IP SAN 127.0.0.1
         let proxy_key = generate_key_pair().unwrap();
-        let proxy_csr = Csr::new(&proxy_key, &["127.0.0.1".to_string()], vec![]).unwrap();
+        let proxy_csr = Csr::new(&proxy_key, &["127.0.0.1".to_string()], Vec::new()).unwrap();
         let proxy_server_cert = ca.sign_server_cert(&proxy_csr).unwrap();
         let proxy_cert_pem = cert_der_to_pem(proxy_server_cert.der()).unwrap();
         let proxy_key_pem = der_to_pem(proxy_key.serialized_der(), PemLabel::PrivateKey).unwrap();
@@ -184,7 +184,7 @@ async fn connect(
 /// The stream body is irrelevant — we only care whether the mTLS + serial-pin interceptors
 /// accept or reject the connection.
 async fn call_bidi(client: &mut ProxyClient<Channel>) -> Status {
-    let empty: Vec<CoreResponse> = vec![];
+    let empty = Vec::new();
     match client.bidi(Request::new(stream::iter(empty))).await {
         Ok(_) => Status::ok("accepted"),
         Err(status) => status,
@@ -255,7 +255,7 @@ async fn no_client_cert_rejected() {
         return;
     };
 
-    let empty: Vec<CoreResponse> = vec![];
+    let empty = Vec::new();
     let result = client.bidi(Request::new(stream::iter(empty))).await;
 
     assert!(
@@ -315,7 +315,7 @@ async fn rogue_ca_client_rejected() {
         return;
     };
 
-    let empty: Vec<CoreResponse> = vec![];
+    let empty = Vec::new();
     let result = client.bidi(Request::new(stream::iter(empty))).await;
 
     assert!(
