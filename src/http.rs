@@ -205,12 +205,15 @@ pub async fn run_setup(
         cert_dir.display()
     );
     let configuration = setup_server
-        .await_initial_setup(SocketAddr::new(
-            env_config
-                .grpc_bind_address
-                .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-            env_config.grpc_port,
-        ))
+        .await_initial_setup(
+            SocketAddr::new(
+                env_config
+                    .grpc_bind_address
+                    .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                env_config.grpc_port,
+            ),
+            env_config,
+        )
         .await?;
     info!("Generated new gRPC TLS certificates and signed by Defguard Core");
 

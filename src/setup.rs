@@ -1,18 +1,22 @@
 use std::{
     net::SocketAddr,
-    sync::{Arc, LazyLock, Mutex},
+    sync::{
+        Arc, LazyLock, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use defguard_version::{
     DefguardComponent, Version,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, transport::Server};
 
 use crate::{
     CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
+    config::EnvConfig,
     error::ApiError,
     grpc::Configuration,
     proto::{CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
@@ -32,6 +36,7 @@ pub(crate) struct ProxySetupServer {
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
     logs_rx: LogsReceiver,
     current_session_token: Arc<Mutex<Option<String>>>,
+    adoption_expired: Arc<AtomicBool>,
 }
 
 impl Clone for ProxySetupServer {
@@ -40,6 +45,7 @@ impl Clone for ProxySetupServer {
             key_pair: Arc::clone(&self.key_pair),
             logs_rx: Arc::clone(&self.logs_rx),
             current_session_token: Arc::clone(&self.current_session_token),
+            adoption_expired: Arc::clone(&self.adoption_expired),
         }
     }
 }
@@ -50,6 +56,7 @@ impl ProxySetupServer {
             key_pair: Arc::new(Mutex::new(None)),
             logs_rx,
             current_session_token: Arc::new(Mutex::new(None)),
+            adoption_expired: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -62,11 +69,29 @@ impl ProxySetupServer {
     pub(crate) async fn await_initial_setup(
         &self,
         addr: SocketAddr,
+        config: &EnvConfig,
     ) -> Result<Configuration, anyhow::Error> {
-        info!("gRPC waiting for setup connection from Core on {addr}");
+        let adoption_timeout = config.adoption_timeout();
+        info!(
+            "gRPC waiting for setup connection from Core on {addr} for {} seconds",
+            adoption_timeout.as_secs()
+        );
 
+        let adoption_expired = Arc::clone(&self.adoption_expired);
+        let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = tokio::time::sleep(adoption_timeout) => {
+                    adoption_expired.store(true, Ordering::Relaxed);
+                    error!(
+                        "Edge adoption expired and is now blocked. Restart the Edge to enable auto-adoption."
+                    );
+                }
+                _ = cancel_rx => {}
+            }
+        });
         let own_version = Version::parse(VERSION)?;
-        debug!("Proxy version: {}", VERSION);
+        debug!("Edge version: {}", VERSION);
 
         let config_slot: Arc<tokio::sync::Mutex<Option<Configuration>>> =
             Arc::new(tokio::sync::Mutex::new(None));
@@ -107,6 +132,7 @@ impl ProxySetupServer {
             ApiError::Unexpected("No configuration received after setup".into())
         })?;
 
+        let _ = cancel_tx.send(());
         Ok(configuration)
     }
 
@@ -158,6 +184,11 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
     #[instrument(skip(self, request))]
     async fn start(&self, request: Request<()>) -> Result<Response<Self::StartStream>, Status> {
         debug!("Core initiated setup process, preparing to stream logs");
+        if self.adoption_expired.load(Ordering::Relaxed) {
+            let error_message = "Edge adoption expired and is now blocked. Restart the Edge to enable auto-adoption.";
+            error!("{error_message}");
+            return Err(Status::failed_precondition(error_message));
+        }
         if self.is_setup_in_progress() {
             error!("Setup already in progress, rejecting new setup request");
             return Err(Status::resource_exhausted("Setup already in progress"));
