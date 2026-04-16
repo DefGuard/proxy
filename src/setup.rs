@@ -140,7 +140,7 @@ impl ProxySetupServer {
         let in_progress = self
             .current_session_token
             .lock()
-            .expect("Failed to acquire lock on current session token during proxy setup")
+            .expect("Failed to acquire lock on current session token during Edge setup")
             .is_some();
         debug!("Setup in progress check: {}", in_progress);
         in_progress
@@ -150,7 +150,7 @@ impl ProxySetupServer {
         debug!("Terminating setup session");
         self.current_session_token
             .lock()
-            .expect("Failed to acquire lock on current session token during proxy setup")
+            .expect("Failed to acquire lock on current session token during Edge setup")
             .take();
         debug!("Setup session terminated");
     }
@@ -159,7 +159,7 @@ impl ProxySetupServer {
         debug!("Establishing new setup session with Core");
         self.current_session_token
             .lock()
-            .expect("Failed to acquire lock on current session token during proxy setup")
+            .expect("Failed to acquire lock on current session token during Edge setup")
             .replace(token);
         debug!("Setup session established");
     }
@@ -169,7 +169,7 @@ impl ProxySetupServer {
         let is_valid = (*self
             .current_session_token
             .lock()
-            .expect("Failed to acquire lock on current session token during proxy setup"))
+            .expect("Failed to acquire lock on current session token during Edge setup"))
         .as_ref()
         .is_some_and(|t| t == token);
         debug!("Authorization validation result: {}", is_valid);
@@ -205,7 +205,7 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         debug!("Setup session authenticated successfully");
         self.initialize_setup_session(token.to_string());
 
-        debug!("Preparing to forward Proxy logs to Core in real-time");
+        debug!("Preparing to forward Edge logs to Core in real-time");
         let logs_rx = self.logs_rx.clone();
 
         let (tx, rx) = mpsc::unbounded_channel();
@@ -239,7 +239,7 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             self_clone.clear_setup_session();
         });
 
-        debug!("Log stream established, Core will now receive real-time Proxy logs");
+        debug!("Log stream established, Core will now receive real-time Edge logs");
         Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
 
@@ -305,7 +305,7 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
 
         self.key_pair
 			.lock()
-			.expect("Failed to acquire lock on key pair during proxy setup when trying to store generated key pair")
+			.expect("Failed to acquire lock on key pair during Edge setup when trying to store generated key pair")
 			.replace(key_pair);
 
         debug!("Encoding Certificate Signing Request for transmission");
@@ -362,17 +362,17 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             let key_pair = self
 				.key_pair
 				.lock()
-				.expect("Failed to acquire lock on key pair during proxy setup when trying to receive certificate")
+				.expect("Failed to acquire lock on key pair during Edge setup when trying to receive certificate")
 				.take();
             if let Some(kp) = key_pair {
                 kp
             } else {
                 error!(
-                    "Key pair not found during Proxy setup. Key pair generation step might have failed."
+                    "Key pair not found during Edge setup. Key pair generation step might have failed."
                 );
                 self.clear_setup_session();
                 return Err(Status::internal(
-                    "Key pair not found during Proxy setup. Key pair generation step might have failed.",
+                    "Key pair not found during Edge setup. Key pair generation step might have failed.",
                 ));
             }
         };
@@ -384,7 +384,7 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
 
         debug!("Passing configuration to gRPC server for finalization");
         match SETUP_CHANNEL.0.lock().await.send(Some(configuration)).await {
-            Ok(()) => info!("Proxy configuration passed to gRPC server successfully"),
+            Ok(()) => info!("Edge configuration passed to gRPC server successfully"),
             Err(err) => {
                 error!("Failed to send configuration to gRPC server: {err}");
                 self.clear_setup_session();
