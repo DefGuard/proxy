@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, net::IpAddr, path::PathBuf};
+use std::{fs::read_to_string, net::IpAddr, path::PathBuf, time::Duration};
 
 use clap::Parser;
 use log::LevelFilter;
@@ -7,6 +7,10 @@ use url::Url;
 
 fn default_url() -> Url {
     Url::parse("http://localhost:8080").unwrap()
+}
+
+fn default_adoption_timeout() -> u64 {
+    10
 }
 
 #[derive(Parser, Debug, Deserialize, Clone)]
@@ -88,6 +92,24 @@ pub struct EnvConfig {
     /// Use Let's Encrypt staging environment for ACME issuance.
     #[arg(long, env = "DEFGUARD_PROXY_ACME_STAGING", default_value_t = false)]
     pub acme_staging: bool,
+
+    /// Time limit in minutes for the auto-adoption process.
+    /// After this time Edge will reject adoption attempts until restarted.
+    #[arg(
+        long,
+        short = 't',
+        env = "DEFGUARD_ADOPTION_TIMEOUT",
+        default_value = "10"
+    )]
+    #[serde(default = "default_adoption_timeout")]
+    pub adoption_timeout: u64,
+}
+
+impl EnvConfig {
+    #[must_use]
+    pub fn adoption_timeout(&self) -> Duration {
+        Duration::from_secs(self.adoption_timeout * 60)
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
