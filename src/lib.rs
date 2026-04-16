@@ -16,6 +16,9 @@ pub mod http;
 pub mod logging;
 mod setup;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) mod generated {
     pub(crate) mod defguard {
         pub(crate) mod proxy {
