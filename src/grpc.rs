@@ -145,9 +145,9 @@ impl ProxyServer {
 
         let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
-            .layer(InterceptorLayer::new(certificate_serial_interceptor(Some(
+            .layer(InterceptorLayer::new(certificate_serial_interceptor(
                 expected_serial,
-            ))))
+            )))
             .layer(tonic::service::InterceptorLayer::new(
                 DefguardVersionInterceptor::new(
                     own_version.clone(),
