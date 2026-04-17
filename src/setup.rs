@@ -1,6 +1,6 @@
 use std::{
     net::SocketAddr,
-    sync::{Arc, LazyLock, Mutex},
+    sync::{Arc, Mutex},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -9,32 +9,26 @@ use defguard_version::{
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
 use rustls_pki_types::{CertificateDer, UnixTime};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, service::InterceptorLayer, transport::Server};
 use webpki::{KeyUsage, anchor_from_trusted_cert};
 
 use crate::{
-    CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
+    LogsReceiver, MIN_CORE_VERSION, VERSION,
     error::ApiError,
     grpc::TlsConfig,
     proto::{CertBundle, CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
 };
 
-static SETUP_CHANNEL: LazyLock<CommsChannel<Option<TlsConfig>>> = LazyLock::new(|| {
-    let (tx, rx) = mpsc::channel(10);
-    (
-        Arc::new(tokio::sync::Mutex::new(tx)),
-        Arc::new(tokio::sync::Mutex::new(rx)),
-    )
-});
-
 const AUTH_HEADER: &str = "authorization";
 
 /// Verify that both `component_der` and `core_client_der` are signed by `ca_der`.
 ///
-/// Uses ECDSA P-256 / SHA-256 via aws-lc-rs. Returns an error message string on
-/// any failure so the caller can forward it as a gRPC status.
+/// Uses ECDSA P-256 via `aws-lc-rs` (Linux-only deployment; FIPS-capable).
+/// The gateway counterpart uses `ring` for FreeBSD/OPNsense compatibility.
+/// Both verify the same algorithm set: `ECDSA_P256_SHA256` and `ECDSA_P256_SHA384`.
+/// Returns an error message string on any failure so the caller can forward it as a gRPC status.
 fn validate_cert_bundle(
     ca_der: &[u8],
     component_der: &[u8],
@@ -94,6 +88,8 @@ pub(crate) struct ProxySetupServer {
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
     logs_rx: LogsReceiver,
     current_session_token: Arc<Mutex<Option<String>>>,
+    setup_tx: Arc<tokio::sync::Mutex<Option<oneshot::Sender<TlsConfig>>>>,
+    setup_rx: Arc<tokio::sync::Mutex<oneshot::Receiver<TlsConfig>>>,
 }
 
 impl Clone for ProxySetupServer {
@@ -102,24 +98,29 @@ impl Clone for ProxySetupServer {
             key_pair: Arc::clone(&self.key_pair),
             logs_rx: Arc::clone(&self.logs_rx),
             current_session_token: Arc::clone(&self.current_session_token),
+            setup_tx: Arc::clone(&self.setup_tx),
+            setup_rx: Arc::clone(&self.setup_rx),
         }
     }
 }
 
 impl ProxySetupServer {
     pub fn new(logs_rx: LogsReceiver) -> Self {
+        let (setup_tx, setup_rx) = oneshot::channel();
         Self {
             key_pair: Arc::new(Mutex::new(None)),
             logs_rx,
             current_session_token: Arc::new(Mutex::new(None)),
+            setup_tx: Arc::new(tokio::sync::Mutex::new(Some(setup_tx))),
+            setup_rx: Arc::new(tokio::sync::Mutex::new(setup_rx)),
         }
     }
 
     /// Await setup connection from Defguard Core and process it.
     ///
     /// Spins up a plain HTTP gRPC server on `addr` to handle the initial handshake: `Start`,
-    /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` deposits a
-    /// `Configuration` into `SETUP_CHANNEL`, after which this function returns the received
+    /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` delivers a
+    /// `TlsConfig` through the oneshot channel, after which this function returns the received
     /// gRPC configuration (locally generated key pair and remotely signed certificate).
     pub(crate) async fn await_initial_setup(
         &self,
@@ -130,9 +131,8 @@ impl ProxySetupServer {
         let own_version = Version::parse(VERSION)?;
         debug!("Proxy version: {}", VERSION);
 
-        let config_slot: Arc<tokio::sync::Mutex<Option<TlsConfig>>> =
-            Arc::new(tokio::sync::Mutex::new(None));
-        let config_slot_writer = Arc::clone(&config_slot);
+        let setup_rx = Arc::clone(&self.setup_rx);
+        let mut server_config = None;
 
         Server::builder()
             .layer(InterceptorLayer::new(DefguardVersionInterceptor::new(
@@ -143,15 +143,17 @@ impl ProxySetupServer {
             )))
             .layer(DefguardVersionLayer::new(own_version.clone()))
             .add_service(proxy_setup_server::ProxySetupServer::new(self.clone()))
-            .serve_with_shutdown(addr, async move {
+            .serve_with_shutdown(addr, async {
                 debug!("Waiting for SendCert to deliver configuration");
-                // SETUP_CHANNEL is CommsChannel<Option<Configuration>>, so recv() returns
-                // Option<Option<Configuration>>.  send_cert always sends Some(cfg).
-                if let Some(Some(cfg)) = SETUP_CHANNEL.1.lock().await.recv().await {
-                    debug!("Configuration received from SendCert");
-                    *config_slot_writer.lock().await = Some(cfg);
-                } else {
-                    error!("SETUP_CHANNEL closed unexpectedly without configuration");
+                let mut rx_guard = setup_rx.lock().await;
+                match (&mut *rx_guard).await {
+                    Ok(cfg) => {
+                        debug!("Configuration received from SendCert");
+                        server_config = Some(cfg);
+                    }
+                    Err(err) => {
+                        error!("Setup communication channel closed unexpectedly: {err}");
+                    }
                 }
                 debug!("Plain-HTTP server will now shut down");
             })
@@ -162,12 +164,10 @@ impl ProxySetupServer {
             })?;
         debug!("Plain-HTTP setup server shut down on {addr}");
 
-        let configuration = config_slot.lock().await.take().ok_or_else(|| {
+        server_config.ok_or_else(|| {
             error!("No configuration received after setup");
-            ApiError::Unexpected("No configuration received after setup".into())
-        })?;
-
-        Ok(configuration)
+            ApiError::Unexpected("No configuration received after setup".into()).into()
+        })
     }
 
     fn is_setup_in_progress(&self) -> bool {
@@ -450,16 +450,18 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
         };
 
         debug!("Passing configuration to gRPC server for finalization");
-        match SETUP_CHANNEL.0.lock().await.send(Some(configuration)).await {
-            Ok(()) => info!("Proxy configuration passed to gRPC server successfully"),
-            Err(err) => {
-                error!("Failed to send configuration to gRPC server: {err}");
-                self.clear_setup_session();
-                return Err(Status::internal(
-                    "Failed to send configuration to gRPC server",
-                ));
-            }
-        }
+        let Some(sender) = self.setup_tx.lock().await.take() else {
+            error!("Setup channel sender already consumed");
+            self.clear_setup_session();
+            return Err(Status::internal("Setup already completed"));
+        };
+        sender.send(configuration).map_err(|_| {
+            let msg = "Failed to send setup configuration through channel";
+            error!(msg);
+            self.clear_setup_session();
+            Status::internal(msg)
+        })?;
+        info!("Proxy configuration passed to gRPC server successfully");
 
         self.clear_setup_session();
         debug!("SendCert completed; setup session cleared");
