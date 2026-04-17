@@ -68,7 +68,7 @@ impl ProxySetupServer {
     /// gRPC configuration (locally generated key pair and remotely signed certificate).
     ///
     /// A timeout is started in the background using `config.adoption_timeout()`. If the timeout
-    /// elapses before setup completes, the `adoption_expired` flag is set and subsequent `Start`
+    /// elapses before setup completes, the `adoption_expired` flag is set and incoming `Start`
     /// requests are rejected with `failed_precondition` until the Edge is restarted.
     /// On successful adoption the timeout is cancelled.
     pub(crate) async fn await_initial_setup(
@@ -78,7 +78,7 @@ impl ProxySetupServer {
     ) -> Result<Configuration, anyhow::Error> {
         let adoption_timeout = config.adoption_timeout();
         info!(
-            "gRPC waiting for setup connection from Core on {addr} for {} minutes",
+            "gRPC waiting for setup connection from Core on {addr} for {} min",
             adoption_timeout.as_secs() / 60
         );
 
