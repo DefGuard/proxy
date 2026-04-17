@@ -66,6 +66,11 @@ impl ProxySetupServer {
     /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` deposits a
     /// `Configuration` into `SETUP_CHANNEL`, after which this function returns the received
     /// gRPC configuration (locally generated key pair and remotely signed certificate).
+    ///
+    /// A timeout is started in the background using `config.adoption_timeout()`. If the timeout
+    /// elapses before setup completes, the `adoption_expired` flag is set and subsequent `Start`
+    /// requests are rejected with `failed_precondition` until the Edge is restarted.
+    /// On successful adoption the timeout is cancelled.
     pub(crate) async fn await_initial_setup(
         &self,
         addr: SocketAddr,
@@ -73,8 +78,8 @@ impl ProxySetupServer {
     ) -> Result<Configuration, anyhow::Error> {
         let adoption_timeout = config.adoption_timeout();
         info!(
-            "gRPC waiting for setup connection from Core on {addr} for {} seconds",
-            adoption_timeout.as_secs()
+            "gRPC waiting for setup connection from Core on {addr} for {} minutes",
+            adoption_timeout.as_secs() / 60
         );
 
         let adoption_expired = Arc::clone(&self.adoption_expired);
@@ -132,7 +137,9 @@ impl ProxySetupServer {
             ApiError::Unexpected("No configuration received after setup".into())
         })?;
 
+        // Skip blocking Edge adoption if adoption was already done
         let _ = cancel_tx.send(());
+
         Ok(configuration)
     }
 
