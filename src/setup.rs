@@ -89,7 +89,7 @@ impl ProxySetupServer {
                 _ = tokio::time::sleep(adoption_timeout) => {
                     adoption_expired.store(true, Ordering::Relaxed);
                     error!(
-                        "Edge adoption expired and is now blocked. Restart the Edge to enable auto-adoption."
+                        "Edge adoption expired and is now blocked. Restart the Edge to enable adoption."
                     );
                 }
                 _ = cancel_rx => {}
@@ -192,7 +192,8 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
     async fn start(&self, request: Request<()>) -> Result<Response<Self::StartStream>, Status> {
         debug!("Core initiated setup process, preparing to stream logs");
         if self.adoption_expired.load(Ordering::Relaxed) {
-            let error_message = "Edge adoption expired and is now blocked. Restart the Edge to enable auto-adoption.";
+            let error_message =
+                "Edge adoption expired and is now blocked. Restart the Edge to enable adoption.";
             error!("{error_message}");
             return Err(Status::failed_precondition(error_message));
         }
