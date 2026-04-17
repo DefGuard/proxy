@@ -11,8 +11,8 @@ use std::{
 };
 
 use axum_extra::extract::cookie::Key;
-use defguard_certs::CertificateInfo;
-use defguard_grpc_tls::server::certificate_serial_interceptor;
+use defguard_certs::{CertificateError, CertificateInfo};
+use defguard_grpc_tls::{certs::server_tls_config, server::certificate_serial_interceptor};
 use defguard_version::{
     ComponentInfo, DefguardComponent, Version, get_tracing_variables,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
@@ -22,11 +22,7 @@ use tokio::{
     sync::{broadcast, mpsc, oneshot},
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{
-    Request, Response, Status, Streaming,
-    service::InterceptorLayer,
-    transport::{Certificate, Identity, Server, ServerTlsConfig},
-};
+use tonic::{Request, Response, Status, Streaming, service::InterceptorLayer, transport::Server};
 use tower::ServiceBuilder;
 use tracing::Instrument;
 
@@ -135,13 +131,15 @@ impl ProxyServer {
 
         // Extract Core client cert serial for pinning (None in no-TLS mode).
         let expected_serial = CertificateInfo::from_der(&tls_config.core_client_cert_der)
-            .expect("core client cert DER stored in TlsConfig must be valid")
+            .map_err(|e: CertificateError| anyhow::anyhow!("invalid core client cert DER: {e}"))?
             .serial;
 
-        let identity = Identity::from_pem(&tls_config.grpc_cert_pem, &tls_config.grpc_key_pem);
-        let ca = Certificate::from_pem(&tls_config.grpc_ca_cert_pem);
-        let mut builder = Server::builder()
-            .tls_config(ServerTlsConfig::new().identity(identity).client_ca_root(ca))?;
+        let tls_config = server_tls_config(
+            &tls_config.grpc_cert_pem,
+            &tls_config.grpc_key_pem,
+            &tls_config.grpc_ca_cert_pem,
+        )?;
+        let mut builder = Server::builder().tls_config(tls_config)?;
 
         let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
