@@ -31,13 +31,13 @@ struct TestCerts {
     proxy_cert_pem: String,
     /// PEM-encoded proxy gRPC server private key.
     proxy_key_pem: String,
-    /// DER-encoded Core client certificate (serial A — matches what the server pins).
+    /// DER-encoded Core client certificate (serial A - matches what the server pins).
     core_client_cert_der: Vec<u8>,
     /// PEM-encoded Core client certificate (serial A).
     core_client_cert_pem: String,
     /// PEM-encoded Core client private key (serial A).
     core_client_key_pem: String,
-    /// PEM-encoded client cert with serial B — valid CA but different serial.
+    /// PEM-encoded client cert with serial B - valid CA but different serial.
     wrong_serial_cert_pem: String,
     /// PEM-encoded private key for the serial-B cert.
     wrong_serial_key_pem: String,
@@ -60,18 +60,18 @@ impl TestCerts {
         let proxy_cert_pem = cert_der_to_pem(proxy_server_cert.der()).unwrap();
         let proxy_key_pem = der_to_pem(proxy_key.serialized_der(), PemLabel::PrivateKey).unwrap();
 
-        // Core client cert A — the "good" serial that the server will pin
+        // Core client cert A - the "good" serial that the server will pin
         let client_a = ca.issue_core_client_cert("core-client-a").unwrap();
         let core_client_cert_der = client_a.cert_der.clone();
         let core_client_cert_pem = cert_der_to_pem(&client_a.cert_der).unwrap();
         let core_client_key_pem = der_to_pem(&client_a.key_der, PemLabel::PrivateKey).unwrap();
 
-        // Core client cert B — different cert (different serial) but same CA
+        // Core client cert B - different cert (different serial) but same CA
         let client_b = ca.issue_core_client_cert("core-client-b").unwrap();
         let wrong_serial_cert_pem = cert_der_to_pem(&client_b.cert_der).unwrap();
         let wrong_serial_key_pem = der_to_pem(&client_b.key_der, PemLabel::PrivateKey).unwrap();
 
-        // Rogue CA + client cert — different trust chain entirely
+        // Rogue CA + client cert - different trust chain entirely
         let rogue_ca = CertificateAuthority::new("Rogue CA", "rogue@rogue.local", 365).unwrap();
         let rogue_client = rogue_ca.issue_core_client_cert("rogue-core").unwrap();
         let rogue_client_cert_pem = cert_der_to_pem(&rogue_client.cert_der).unwrap();
@@ -121,7 +121,7 @@ fn build_proxy_server() -> ProxyServer {
 
 /// Install the rustls AWS-LC crypto provider for the process.
 ///
-/// Must be called before any TLS code runs. Safe to call from multiple tests —
+/// Must be called before any TLS code runs. Safe to call from multiple tests -
 /// subsequent calls after the first succeed-or-fail are silently ignored.
 fn init_crypto() {
     let _ = aws_lc_rs::default_provider().install_default();
@@ -181,7 +181,7 @@ async fn connect(
 
 /// Open a `bidi` streaming call with an empty request stream and return the status code.
 ///
-/// The stream body is irrelevant — we only care whether the mTLS + serial-pin interceptors
+/// The stream body is irrelevant - we only care whether the mTLS + serial-pin interceptors
 /// accept or reject the connection.
 async fn call_bidi(client: &mut ProxyClient<Channel>) -> Status {
     let empty = Vec::new();
@@ -213,7 +213,7 @@ async fn run_errors_without_tls_config() {
 /// A client presenting the correct CA-signed cert with the expected serial must be accepted.
 ///
 /// The `bidi` call may be rejected by the version interceptor (no version headers are sent),
-/// but it must NOT be rejected with `Unauthenticated` — that would indicate the mTLS layer
+/// but it must NOT be rejected with `Unauthenticated` - that would indicate the mTLS layer
 /// or serial-pin interceptor wrongly rejected the cert.
 #[tokio::test]
 async fn valid_mtls_client_accepted() {
@@ -247,7 +247,7 @@ async fn no_client_cert_rejected() {
     let certs = TestCerts::generate();
     let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
 
-    // connect() is lazy in tonic — it doesn't perform the TLS handshake until the first RPC.
+    // connect() is lazy in tonic - it doesn't perform the TLS handshake until the first RPC.
     // We must make an RPC call to actually trigger the handshake and observe the rejection.
     let Ok(mut client) = connect(addr, &certs.ca_cert_pem, None).await else {
         // If connect() fails eagerly, that also counts as rejection.
@@ -302,7 +302,7 @@ async fn rogue_ca_client_rejected() {
     let certs = TestCerts::generate();
     let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
 
-    // connect() is lazy in tonic — the TLS handshake happens on the first RPC.
+    // connect() is lazy in tonic - the TLS handshake happens on the first RPC.
     let Ok(mut client) = connect(
         addr,
         &certs.ca_cert_pem,
@@ -322,13 +322,13 @@ async fn rogue_ca_client_rejected() {
         result.is_err(),
         "rogue-CA client cert must be rejected; got Ok",
     );
-    // Must NOT be a successful gRPC-level response — the error must be transport-level or
+    // Must NOT be a successful gRPC-level response - the error must be transport-level or
     // Unauthenticated, not FailedPrecondition (which would indicate the cert was accepted).
     if let Err(ref status) = result {
         assert_ne!(
             status.code(),
             Code::FailedPrecondition,
-            "rogue-CA cert reached the gRPC handler — server-side CA verification is missing; \
+            "rogue-CA cert reached the gRPC handler - server-side CA verification is missing; \
              got: {status}",
         );
     }
