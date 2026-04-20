@@ -12,9 +12,10 @@ use defguard_certs::{
 use futures_util::stream;
 use rustls::crypto::aws_lc_rs;
 use tokio::{
+    net::TcpStream,
     spawn,
     sync::{Mutex, broadcast, mpsc, oneshot},
-    time::sleep,
+    time::{Instant, sleep},
 };
 use tonic::{
     Code, Request, Status,
@@ -130,6 +131,9 @@ fn init_crypto() {
 /// Spawn a configured `ProxyServer` on an OS-assigned port.
 ///
 /// Returns `(bound_addr, shutdown_tx)`. Drop / send `shutdown_tx` to stop the server.
+///
+/// Waits until the server is accepting TCP connections before returning, so
+/// callers do not need a fixed sleep to avoid startup races.
 async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>) {
     let server = build_proxy_server();
     server.configure(make_tls_config(certs));
@@ -150,8 +154,19 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
             .await;
     });
 
-    // Give tonic time to bind and start serving.
-    sleep(Duration::from_millis(150)).await;
+    // Wait until the server is accepting TCP connections instead of sleeping a
+    // fixed amount. This eliminates the flaky startup race while keeping the
+    // helper fast on capable hardware.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if Instant::now() >= deadline {
+            panic!("timeout waiting for test gRPC server to start on {addr}");
+        }
+        if TcpStream::connect(addr).await.is_ok() {
+            break;
+        }
+        sleep(Duration::from_millis(20)).await;
+    }
 
     (addr, shutdown_tx)
 }
@@ -247,19 +262,21 @@ async fn no_client_cert_rejected() {
     let certs = TestCerts::generate();
     let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
 
-    // connect() is lazy in tonic - it doesn't perform the TLS handshake until the first RPC.
-    // We must make an RPC call to actually trigger the handshake and observe the rejection.
-    let Ok(mut client) = connect(addr, &certs.ca_cert_pem, None).await else {
-        // If connect() fails eagerly, that also counts as rejection.
-        let _ = shutdown_tx.send(());
-        return;
+    // spawn_test_proxy guarantees the server is ready, so a connect() failure
+    // here is a genuine TLS rejection rather than a startup race.
+    let rejected = match connect(addr, &certs.ca_cert_pem, None).await {
+        Err(_) => true, // eager TLS rejection at connect time
+        Ok(mut client) => {
+            // Lazy path: TLS handshake occurs on the first RPC.
+            client
+                .bidi(Request::new(stream::iter(Vec::new())))
+                .await
+                .is_err()
+        }
     };
 
-    let empty = Vec::new();
-    let result = client.bidi(Request::new(stream::iter(empty))).await;
-
     assert!(
-        result.is_err(),
+        rejected,
         "connecting without a client cert should be rejected",
     );
 
@@ -296,42 +313,51 @@ async fn wrong_serial_rejected() {
 
 /// A client presenting a cert signed by a different (rogue) CA must be rejected at the TLS
 /// layer because the server does not trust that CA.
+///
+/// tonic may reject the connection eagerly (at `connect()` time) or lazily
+/// (on the first RPC). Both outcomes are treated as the expected rejection,
+/// but the rejection must not be `FailedPrecondition`, which would indicate
+/// the cert bypassed CA verification and reached the gRPC handler.
 #[tokio::test]
 async fn rogue_ca_client_rejected() {
     init_crypto();
     let certs = TestCerts::generate();
     let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
 
-    // connect() is lazy in tonic - the TLS handshake happens on the first RPC.
-    let Ok(mut client) = connect(
+    // spawn_test_proxy guarantees the server is ready, so a connect() failure
+    // here is a genuine TLS rejection rather than a startup race.
+    let rpc_status = match connect(
         addr,
         &certs.ca_cert_pem,
         Some((&certs.rogue_client_cert_pem, &certs.rogue_client_key_pem)),
     )
     .await
-    else {
-        // Eager rejection also counts.
-        let _ = shutdown_tx.send(());
-        return;
+    {
+        Err(_) => {
+            // Eager TLS rejection at connect time - correct behavior.
+            let _ = shutdown_tx.send(());
+            return;
+        }
+        Ok(mut client) => {
+            // Lazy path: TLS handshake occurs on the first RPC.
+            match client.bidi(Request::new(stream::iter(Vec::new()))).await {
+                Ok(_) => {
+                    let _ = shutdown_tx.send(());
+                    panic!("rogue-CA client cert must be rejected; got Ok");
+                }
+                Err(status) => status,
+            }
+        }
     };
 
-    let empty = Vec::new();
-    let result = client.bidi(Request::new(stream::iter(empty))).await;
-
-    assert!(
-        result.is_err(),
-        "rogue-CA client cert must be rejected; got Ok",
+    // Must NOT be FailedPrecondition - that would mean the cert was accepted by the
+    // TLS layer and reached the gRPC handler.
+    assert_ne!(
+        rpc_status.code(),
+        Code::FailedPrecondition,
+        "rogue-CA cert reached the gRPC handler - server-side CA verification is missing; \
+         got: {rpc_status}",
     );
-    // Must NOT be a successful gRPC-level response - the error must be transport-level or
-    // Unauthenticated, not FailedPrecondition (which would indicate the cert was accepted).
-    if let Err(ref status) = result {
-        assert_ne!(
-            status.code(),
-            Code::FailedPrecondition,
-            "rogue-CA cert reached the gRPC handler - server-side CA verification is missing; \
-             got: {status}",
-        );
-    }
 
     let _ = shutdown_tx.send(());
 }
