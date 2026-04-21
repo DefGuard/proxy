@@ -1,6 +1,6 @@
 use std::{
     env::temp_dir,
-    net::{SocketAddr, TcpListener},
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -140,7 +140,7 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
 
     // Find a free port, drop the listener, pass the addr to run().
     // The small race window is acceptable in test context.
-    let addr = TcpListener::bind("127.0.0.1:0")
+    let addr = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
         .unwrap()
         .local_addr()
         .unwrap();
