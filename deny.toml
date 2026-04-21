@@ -69,7 +69,9 @@ feature-depth = 1
 #db-urls = ["https://github.com/rustsec/advisory-db"]
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
-ignore = []
+ignore = [
+    { id = "RUSTSEC-2023-0071", reason = "https://github.com/RustCrypto/RSA/issues/19" },
+]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
 # Setting this to true can be helpful if you have special authentication requirements that cargo-deny does not support.
@@ -115,6 +117,18 @@ exceptions = [
         "AGPL-3.0-only",
         "AGPL-3.0-or-later",
     ], crate = "defguard_certs" },
+    { allow = [
+        "AGPL-3.0-only",
+        "AGPL-3.0-or-later",
+    ], crate = "defguard_grpc_tls" },
+    { allow = [
+        "AGPL-3.0-only",
+        "AGPL-3.0-or-later",
+    ], crate = "defguard_common" },
+    { allow = [
+        "AGPL-3.0-only",
+        "AGPL-3.0-or-later",
+    ], crate = "model_derive" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,

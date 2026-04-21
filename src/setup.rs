@@ -1,41 +1,99 @@
 use std::{
     net::SocketAddr,
     sync::{
-        Arc, LazyLock, Mutex,
+        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
     },
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use defguard_version::{
     DefguardComponent, Version,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
+use rustls_pki_types::{CertificateDer, UnixTime};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{Request, Response, Status, transport::Server};
+use tonic::{Request, Response, Status, service::InterceptorLayer, transport::Server};
+use webpki::{KeyUsage, anchor_from_trusted_cert};
 
 use crate::{
-    CommsChannel, LogsReceiver, MIN_CORE_VERSION, VERSION,
+    LogsReceiver, MIN_CORE_VERSION, VERSION,
     config::EnvConfig,
     error::ApiError,
-    grpc::Configuration,
-    proto::{CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
+    grpc::TlsConfig,
+    proto::{CertBundle, CertificateInfo, DerPayload, LogEntry, proxy_setup_server},
 };
 
-static SETUP_CHANNEL: LazyLock<CommsChannel<Option<Configuration>>> = LazyLock::new(|| {
-    let (tx, rx) = mpsc::channel(10);
-    (
-        Arc::new(tokio::sync::Mutex::new(tx)),
-        Arc::new(tokio::sync::Mutex::new(rx)),
-    )
-});
-
 const AUTH_HEADER: &str = "authorization";
+
+/// Verify that both `component_der` and `core_client_der` are signed by `ca_der`.
+///
+/// Uses ECDSA P-256 via `aws-lc-rs` (Linux-only deployment; FIPS-capable).
+/// The gateway counterpart uses `ring` for FreeBSD/OPNsense compatibility.
+/// Both verify the same algorithm set: `ECDSA_P256_SHA256` and `ECDSA_P256_SHA384`.
+/// Returns an error message string on any failure so the caller can forward it as a gRPC status.
+fn validate_cert_bundle(
+    ca_der: &[u8],
+    component_der: &[u8],
+    core_client_der: &[u8],
+) -> Result<(), String> {
+    let sig_algs: &[&dyn rustls_pki_types::SignatureVerificationAlgorithm] = &[
+        webpki::aws_lc_rs::ECDSA_P256_SHA256,
+        webpki::aws_lc_rs::ECDSA_P256_SHA384,
+    ];
+
+    let ca_cert_der = CertificateDer::from(ca_der);
+    let trust_anchor = anchor_from_trusted_cert(&ca_cert_der)
+        .map_err(|e| format!("Failed to parse CA certificate as trust anchor: {e}"))?;
+    let trust_anchors = [trust_anchor];
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO);
+    let time = UnixTime::since_unix_epoch(now);
+
+    // Verify component (server) certificate.
+    let component_cert_der = CertificateDer::from(component_der);
+    let component_ee = webpki::EndEntityCert::try_from(&component_cert_der)
+        .map_err(|e| format!("Failed to parse component certificate: {e}"))?;
+    component_ee
+        .verify_for_usage(
+            sig_algs,
+            &trust_anchors,
+            &[],
+            time,
+            KeyUsage::server_auth(),
+            None,
+            None,
+        )
+        .map_err(|e| format!("Component certificate failed chain validation: {e}"))?;
+
+    // Verify Core client certificate.
+    let core_client_cert_der = CertificateDer::from(core_client_der);
+    let core_client_ee = webpki::EndEntityCert::try_from(&core_client_cert_der)
+        .map_err(|e| format!("Failed to parse Core client certificate: {e}"))?;
+    core_client_ee
+        .verify_for_usage(
+            sig_algs,
+            &trust_anchors,
+            &[],
+            time,
+            KeyUsage::client_auth(),
+            None,
+            None,
+        )
+        .map_err(|e| format!("Core client certificate failed chain validation: {e}"))?;
+
+    Ok(())
+}
 
 pub(crate) struct ProxySetupServer {
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
     logs_rx: LogsReceiver,
     current_session_token: Arc<Mutex<Option<String>>>,
+    setup_tx: Arc<tokio::sync::Mutex<Option<oneshot::Sender<TlsConfig>>>>,
+    setup_rx: Arc<tokio::sync::Mutex<oneshot::Receiver<TlsConfig>>>,
     adoption_expired: Arc<AtomicBool>,
 }
 
@@ -45,6 +103,8 @@ impl Clone for ProxySetupServer {
             key_pair: Arc::clone(&self.key_pair),
             logs_rx: Arc::clone(&self.logs_rx),
             current_session_token: Arc::clone(&self.current_session_token),
+            setup_tx: Arc::clone(&self.setup_tx),
+            setup_rx: Arc::clone(&self.setup_rx),
             adoption_expired: Arc::clone(&self.adoption_expired),
         }
     }
@@ -52,10 +112,13 @@ impl Clone for ProxySetupServer {
 
 impl ProxySetupServer {
     pub fn new(logs_rx: LogsReceiver) -> Self {
+        let (setup_tx, setup_rx) = oneshot::channel();
         Self {
             key_pair: Arc::new(Mutex::new(None)),
             logs_rx,
             current_session_token: Arc::new(Mutex::new(None)),
+            setup_tx: Arc::new(tokio::sync::Mutex::new(Some(setup_tx))),
+            setup_rx: Arc::new(tokio::sync::Mutex::new(setup_rx)),
             adoption_expired: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -63,8 +126,8 @@ impl ProxySetupServer {
     /// Await setup connection from Defguard Core and process it.
     ///
     /// Spins up a plain HTTP gRPC server on `addr` to handle the initial handshake: `Start`,
-    /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` deposits a
-    /// `Configuration` into `SETUP_CHANNEL`, after which this function returns the received
+    /// `GetCsr`, `SendCert`.  The server shuts down as soon as `SendCert` delivers a
+    /// `TlsConfig` through the oneshot channel, after which this function returns the received
     /// gRPC configuration (locally generated key pair and remotely signed certificate).
     ///
     /// A timeout is started in the background using `config.adoption_timeout()`. If the timeout
@@ -75,7 +138,7 @@ impl ProxySetupServer {
         &self,
         addr: SocketAddr,
         config: &EnvConfig,
-    ) -> Result<Configuration, anyhow::Error> {
+    ) -> Result<TlsConfig, anyhow::Error> {
         let adoption_timeout = config.adoption_timeout();
         info!(
             "gRPC waiting for setup connection from Core on {addr} for {} min",
@@ -98,30 +161,29 @@ impl ProxySetupServer {
         let own_version = Version::parse(VERSION)?;
         debug!("Edge version: {}", VERSION);
 
-        let config_slot: Arc<tokio::sync::Mutex<Option<Configuration>>> =
-            Arc::new(tokio::sync::Mutex::new(None));
-        let config_slot_writer = Arc::clone(&config_slot);
+        let setup_rx = Arc::clone(&self.setup_rx);
+        let mut server_config = None;
 
         Server::builder()
-            .layer(tonic::service::InterceptorLayer::new(
-                DefguardVersionInterceptor::new(
-                    own_version.clone(),
-                    DefguardComponent::Core,
-                    MIN_CORE_VERSION,
-                    false,
-                ),
-            ))
+            .layer(InterceptorLayer::new(DefguardVersionInterceptor::new(
+                own_version.clone(),
+                DefguardComponent::Core,
+                MIN_CORE_VERSION,
+                false,
+            )))
             .layer(DefguardVersionLayer::new(own_version.clone()))
             .add_service(proxy_setup_server::ProxySetupServer::new(self.clone()))
-            .serve_with_shutdown(addr, async move {
+            .serve_with_shutdown(addr, async {
                 debug!("Waiting for SendCert to deliver configuration");
-                // SETUP_CHANNEL is CommsChannel<Option<Configuration>>, so recv() returns
-                // Option<Option<Configuration>>.  send_cert always sends Some(cfg).
-                if let Some(Some(cfg)) = SETUP_CHANNEL.1.lock().await.recv().await {
-                    debug!("Configuration received from SendCert");
-                    *config_slot_writer.lock().await = Some(cfg);
-                } else {
-                    error!("SETUP_CHANNEL closed unexpectedly without configuration");
+                let mut rx_guard = setup_rx.lock().await;
+                match (&mut *rx_guard).await {
+                    Ok(cfg) => {
+                        debug!("Configuration received from SendCert");
+                        server_config = Some(cfg);
+                    }
+                    Err(err) => {
+                        error!("Setup communication channel closed unexpectedly: {err}");
+                    }
                 }
                 debug!("Plain-HTTP server will now shut down");
             })
@@ -132,7 +194,7 @@ impl ProxySetupServer {
             })?;
         debug!("Plain-HTTP setup server shut down on {addr}");
 
-        let configuration = config_slot.lock().await.take().ok_or_else(|| {
+        let tls_config = server_config.ok_or_else(|| {
             error!("No configuration received after setup");
             ApiError::Unexpected("No configuration received after setup".into())
         })?;
@@ -140,7 +202,7 @@ impl ProxySetupServer {
         // Skip blocking Edge adoption if adoption was already done
         let _ = cancel_tx.send(());
 
-        Ok(configuration)
+        Ok(tls_config)
     }
 
     fn is_setup_in_progress(&self) -> bool {
@@ -330,8 +392,8 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
     }
 
     #[instrument(skip(self, request))]
-    async fn send_cert(&self, request: Request<DerPayload>) -> Result<Response<()>, Status> {
-        debug!("Core sending back signed certificate for installation");
+    async fn send_cert(&self, request: Request<CertBundle>) -> Result<Response<()>, Status> {
+        debug!("Core sending back signed certificate bundle for installation");
         let token = request
             .metadata()
             .get(AUTH_HEADER)
@@ -345,26 +407,62 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             return Err(Status::unauthenticated("Invalid session token"));
         }
 
-        let der_payload = request.into_inner();
-        let cert_der = der_payload.der_data;
-        debug!(
-            "Received signed certificate from Core ({} bytes)",
-            cert_der.len()
-        );
+        let bundle = request.into_inner();
 
-        debug!("Parsing received certificate DER data");
-        let grpc_cert_pem =
-            match defguard_certs::der_to_pem(&cert_der, defguard_certs::PemLabel::Certificate) {
-                Ok(pem) => pem,
-                Err(err) => {
-                    error!("Failed to convert certificate DER to PEM: {err}");
-                    self.clear_setup_session();
-                    return Err(Status::internal(format!(
-                        "Failed to convert certificate DER to PEM: {err}"
-                    )));
-                }
-            };
-        debug!("Certificate processed successfully");
+        debug!("Validating certificate bundle received from Core");
+        if let Err(reason) = validate_cert_bundle(
+            &bundle.ca_cert_der,
+            &bundle.component_cert_der,
+            &bundle.core_client_cert_der,
+        ) {
+            error!("Certificate bundle validation failed: {reason}");
+            self.clear_setup_session();
+            return Err(Status::invalid_argument(reason));
+        }
+        debug!("Certificate bundle validated successfully against CA");
+
+        debug!(
+            "Received component certificate from Core ({} bytes)",
+            bundle.component_cert_der.len()
+        );
+        debug!("Parsing component certificate DER data");
+        let grpc_cert_pem = match defguard_certs::der_to_pem(
+            &bundle.component_cert_der,
+            defguard_certs::PemLabel::Certificate,
+        ) {
+            Ok(pem) => pem,
+            Err(err) => {
+                error!("Failed to convert component certificate DER to PEM: {err}");
+                self.clear_setup_session();
+                return Err(Status::internal(format!(
+                    "Failed to convert component certificate DER to PEM: {err}"
+                )));
+            }
+        };
+
+        debug!(
+            "Received CA certificate from Core ({} bytes)",
+            bundle.ca_cert_der.len()
+        );
+        debug!("Parsing CA certificate DER data");
+        let grpc_ca_cert_pem = match defguard_certs::der_to_pem(
+            &bundle.ca_cert_der,
+            defguard_certs::PemLabel::Certificate,
+        ) {
+            Ok(pem) => pem,
+            Err(err) => {
+                error!("Failed to convert CA certificate DER to PEM: {err}");
+                self.clear_setup_session();
+                return Err(Status::internal(format!(
+                    "Failed to convert CA certificate DER to PEM: {err}"
+                )));
+            }
+        };
+
+        debug!(
+            "Received Core client certificate ({} bytes); will pin serial for mTLS",
+            bundle.core_client_cert_der.len()
+        );
 
         let key_pair = {
             let key_pair = self
@@ -385,22 +483,26 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             }
         };
 
-        let configuration = Configuration {
+        let configuration = TlsConfig {
             grpc_key_pem: key_pair.serialize_pem(),
             grpc_cert_pem,
+            grpc_ca_cert_pem,
+            core_client_cert_der: bundle.core_client_cert_der,
         };
 
         debug!("Passing configuration to gRPC server for finalization");
-        match SETUP_CHANNEL.0.lock().await.send(Some(configuration)).await {
-            Ok(()) => info!("Edge configuration passed to gRPC server successfully"),
-            Err(err) => {
-                error!("Failed to send configuration to gRPC server: {err}");
-                self.clear_setup_session();
-                return Err(Status::internal(
-                    "Failed to send configuration to gRPC server",
-                ));
-            }
-        }
+        let Some(sender) = self.setup_tx.lock().await.take() else {
+            error!("Setup channel sender already consumed");
+            self.clear_setup_session();
+            return Err(Status::internal("Setup already completed"));
+        };
+        sender.send(configuration).map_err(|_| {
+            let msg = "Failed to send setup configuration through channel";
+            error!(msg);
+            self.clear_setup_session();
+            Status::internal(msg)
+        })?;
+        info!("Edge configuration passed to gRPC server successfully");
 
         self.clear_setup_session();
         debug!("SendCert completed; setup session cleared");

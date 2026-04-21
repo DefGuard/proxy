@@ -16,6 +16,9 @@ pub mod http;
 pub mod logging;
 mod setup;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) mod generated {
     pub(crate) mod defguard {
         pub(crate) mod proxy {
@@ -47,10 +50,5 @@ extern crate tracing;
 
 pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+", env!("VERGEN_GIT_SHA"));
 pub const MIN_CORE_VERSION: Version = Version::new(2, 0, 0);
-
-type CommsChannel<T> = (
-    Arc<tokio::sync::Mutex<mpsc::Sender<T>>>,
-    Arc<tokio::sync::Mutex<mpsc::Receiver<T>>>,
-);
 
 type LogsReceiver = Arc<tokio::sync::Mutex<mpsc::Receiver<LogEntry>>>;

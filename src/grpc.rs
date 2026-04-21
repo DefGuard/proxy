@@ -11,16 +11,18 @@ use std::{
 };
 
 use axum_extra::extract::cookie::Key;
+use defguard_certs::{CertificateError, CertificateInfo};
+use defguard_grpc_tls::{certs::server_tls_config, server::certificate_serial_interceptor};
 use defguard_version::{
     ComponentInfo, DefguardComponent, Version, get_tracing_variables,
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
-use tokio::sync::{broadcast, mpsc, oneshot};
-use tokio_stream::wrappers::UnboundedReceiverStream;
-use tonic::{
-    Request, Response, Status, Streaming,
-    transport::{Identity, Server, ServerTlsConfig},
+use tokio::{
+    fs::remove_file,
+    sync::{broadcast, mpsc, oneshot},
 };
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use tonic::{Request, Response, Status, Streaming, service::InterceptorLayer, transport::Server};
 use tower::ServiceBuilder;
 use tracing::Instrument;
 
@@ -28,7 +30,7 @@ use crate::{
     LogsReceiver, MIN_CORE_VERSION, VERSION, acme,
     acme::Port80Permit,
     error::ApiError,
-    http::{GRPC_CERT_NAME, GRPC_KEY_NAME},
+    http::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{
         AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
         CoreRequest, CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response,
@@ -40,9 +42,13 @@ use crate::{
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
 #[derive(Debug, Clone, Default)]
-pub struct Configuration {
+pub struct TlsConfig {
     pub grpc_key_pem: String,
     pub grpc_cert_pem: String,
+    /// PEM-encoded CA certificate used to verify Core's mTLS client certificate chain.
+    pub grpc_ca_cert_pem: String,
+    /// DER-encoded Core client certificate; used to extract and pin the expected serial.
+    pub core_client_cert_der: Vec<u8>,
 }
 
 pub(crate) struct ProxyServer {
@@ -51,7 +57,7 @@ pub(crate) struct ProxyServer {
     results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
-    config: Arc<Mutex<Option<Configuration>>>,
+    tls_config: Arc<Mutex<Option<TlsConfig>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
     reset_tx: broadcast::Sender<()>,
@@ -87,7 +93,7 @@ impl ProxyServer {
             results: Arc::new(RwLock::new(HashMap::new())),
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
-            config: Arc::new(Mutex::new(None)),
+            tls_config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
             https_cert_tx,
@@ -98,17 +104,17 @@ impl ProxyServer {
         }
     }
 
-    pub(crate) fn configure(&self, config: Configuration) {
+    pub(crate) fn configure(&self, config: TlsConfig) {
         let mut lock = self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to acquire lock on config mutex when applying proxy configuration");
         *lock = Some(config);
     }
 
-    pub(crate) fn get_configuration(&self) -> Option<Configuration> {
+    pub(crate) fn get_tls_config(&self) -> Option<TlsConfig> {
         let lock = self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to acquire lock on config mutex when retrieving proxy configuration");
         lock.clone()
@@ -119,19 +125,27 @@ impl ProxyServer {
         F: Future<Output = ()> + Send + 'static,
     {
         info!("Starting gRPC server on {addr}");
-        let config = self.get_configuration();
-        let (grpc_cert, grpc_key) = if let Some(cfg) = config {
-            (cfg.grpc_cert_pem, cfg.grpc_key_pem)
-        } else {
-            return Err(anyhow::anyhow!("gRPC server configuration is missing"));
-        };
+        let tls_config = self
+            .get_tls_config()
+            .ok_or_else(|| anyhow::anyhow!("gRPC server TLS configuration is missing"))?;
 
-        let identity = Identity::from_pem(grpc_cert, grpc_key);
-        let mut builder =
-            Server::builder().tls_config(ServerTlsConfig::new().identity(identity))?;
+        // Extract Core client cert serial for pinning (None in no-TLS mode).
+        let expected_serial = CertificateInfo::from_der(&tls_config.core_client_cert_der)
+            .map_err(|e: CertificateError| anyhow::anyhow!("invalid core client cert DER: {e}"))?
+            .serial;
+
+        let tls_config = server_tls_config(
+            &tls_config.grpc_cert_pem,
+            &tls_config.grpc_key_pem,
+            &tls_config.grpc_ca_cert_pem,
+        )?;
+        let mut builder = Server::builder().tls_config(tls_config)?;
 
         let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
+            .layer(InterceptorLayer::new(certificate_serial_interceptor(
+                expected_serial,
+            )))
             .layer(tonic::service::InterceptorLayer::new(
                 DefguardVersionInterceptor::new(
                     own_version.clone(),
@@ -197,7 +211,7 @@ impl ProxyServer {
 
     pub(crate) fn setup_completed(&self) -> bool {
         let lock = self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to acquire lock on config mutex when checking setup status");
         lock.is_some()
@@ -213,7 +227,7 @@ impl Clone for ProxyServer {
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
             cookie_key: Arc::clone(&self.cookie_key),
-            config: Arc::clone(&self.config),
+            tls_config: Arc::clone(&self.tls_config),
             cert_dir: self.cert_dir.clone(),
             reset_tx: self.reset_tx.clone(),
             https_cert_tx: self.https_cert_tx.clone(),
@@ -343,26 +357,33 @@ impl proxy_server::Proxy for ProxyServer {
         debug!("Received purge request, removing gRPC certificate files");
         let cert_path = self.cert_dir.join(GRPC_CERT_NAME);
         let key_path = self.cert_dir.join(GRPC_KEY_NAME);
+        let ca_cert_path = self.cert_dir.join(GRPC_CA_CERT_NAME);
+        let core_client_cert_path = self.cert_dir.join(CORE_CLIENT_CERT_NAME);
 
-        if let Err(err) = tokio::fs::remove_file(&cert_path).await
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            error!(
-                "Failed to remove gRPC certificate at {:?}: {err}",
-                cert_path
-            );
-            return Err(Status::internal("Failed to remove gRPC certificate"));
-        }
+        let remove_cert_file = async |path: &std::path::Path, label: &str| -> Result<(), Status> {
+            match remove_file(path).await {
+                Ok(()) => {
+                    info!("Removed {label} at {}", path.display());
+                    Ok(())
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    debug!("{label} not found at {}, skipping removal", path.display());
+                    Ok(())
+                }
+                Err(err) => {
+                    error!("Failed to remove {label} at {}: {err}", path.display());
+                    Err(Status::internal(format!("Failed to remove {label}")))
+                }
+            }
+        };
 
-        if let Err(err) = tokio::fs::remove_file(&key_path).await
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            error!("Failed to remove gRPC key at {:?}: {err}", key_path);
-            return Err(Status::internal("Failed to remove gRPC key"));
-        }
+        remove_cert_file(&cert_path, "gRPC certificate").await?;
+        remove_cert_file(&key_path, "gRPC key").await?;
+        remove_cert_file(&ca_cert_path, "CA certificate").await?;
+        remove_cert_file(&core_client_cert_path, "Core client certificate").await?;
 
         *self
-            .config
+            .tls_config
             .lock()
             .expect("Failed to lock config mutex during purge") = None;
         *self

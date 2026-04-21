@@ -41,7 +41,7 @@ use crate::{
     config::EnvConfig,
     enterprise::handlers::openid_login,
     error::ApiError,
-    grpc::{Configuration, ProxyServer},
+    grpc::{ProxyServer, TlsConfig},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
     setup::ProxySetupServer,
 };
@@ -55,6 +55,8 @@ const X_FORWARDED_FOR: &str = "x-forwarded-for";
 const X_POWERED_BY: &str = "x-powered-by";
 pub const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
 pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
+pub const GRPC_CA_CERT_NAME: &str = "grpc_ca_cert.pem";
+pub const CORE_CLIENT_CERT_NAME: &str = "core_client_cert.pem";
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -178,10 +180,7 @@ async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
     response
 }
 
-pub async fn run_setup(
-    env_config: &EnvConfig,
-    logs_rx: LogsReceiver,
-) -> anyhow::Result<Configuration> {
+pub async fn run_setup(env_config: &EnvConfig, logs_rx: LogsReceiver) -> anyhow::Result<TlsConfig> {
     let setup_server = ProxySetupServer::new(logs_rx);
     let cert_dir = Path::new(&env_config.cert_dir);
     if !cert_dir.exists() {
@@ -204,7 +203,7 @@ pub async fn run_setup(
         "No gRPC TLS certificates found at {}, new certificates will be obtained during setup",
         cert_dir.display()
     );
-    let configuration = setup_server
+    let tls_config = setup_server
         .await_initial_setup(
             SocketAddr::new(
                 env_config
@@ -217,11 +216,12 @@ pub async fn run_setup(
         .await?;
     info!("Generated new gRPC TLS certificates and signed by Defguard Core");
 
-    let Configuration {
+    let TlsConfig {
         grpc_cert_pem,
         grpc_key_pem,
-        ..
-    } = &configuration;
+        grpc_ca_cert_pem,
+        core_client_cert_der,
+    } = &tls_config;
 
     let cert_path = cert_dir.join(GRPC_CERT_NAME);
     let key_path = cert_dir.join(GRPC_KEY_NAME);
@@ -250,6 +250,7 @@ pub async fn run_setup(
         })?;
     // Write key to a file.
     options
+        .clone()
         .open(&key_path)
         .await?
         .write_all(grpc_key_pem.as_bytes())
@@ -265,8 +266,26 @@ pub async fn run_setup(
                 err.into()
             }
         })?;
+    // Write CA certificate to a file.
+    options
+        .clone()
+        .open(cert_dir.join(GRPC_CA_CERT_NAME))
+        .await?
+        .write_all(grpc_ca_cert_pem.as_bytes())
+        .await?;
+    // Write Core client certificate (PEM-encoded) to a file for serial pinning on restart.
+    let core_client_cert_pem =
+        defguard_certs::der_to_pem(core_client_cert_der, defguard_certs::PemLabel::Certificate)
+            .map_err(|err| {
+                anyhow::anyhow!("Failed to PEM-encode Core client certificate: {err}")
+            })?;
+    options
+        .open(cert_dir.join(CORE_CLIENT_CERT_NAME))
+        .await?
+        .write_all(core_client_cert_pem.as_bytes())
+        .await?;
 
-    Ok(configuration)
+    Ok(tls_config)
 }
 
 /// Middleware that gates all HTTP endpoints except health checks until the proxy
@@ -309,7 +328,7 @@ async fn build_tls_config(cert_pem: &str, key_pem: &str) -> anyhow::Result<Rustl
 
 pub async fn run_server(
     env_config: EnvConfig,
-    config: Option<Configuration>,
+    tls_config: Option<TlsConfig>,
     logs_rx: Option<LogsReceiver>,
 ) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
@@ -349,8 +368,8 @@ pub async fn run_server(
 
     // Preload existing TLS configuration so /api/v1/info can report "disconnected"
     // immediately on startup
-    if let Some(existing_configuration) = config.clone() {
-        grpc_server.configure(existing_configuration);
+    if let Some(existing_tls_config) = tls_config.clone() {
+        grpc_server.configure(existing_tls_config);
     }
 
     let server_clone = grpc_server.clone();
@@ -359,17 +378,17 @@ pub async fn run_server(
     // Start gRPC server.
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
-        let mut proxy_configuration = config;
+        let mut proxy_tls_config = tls_config;
 
         loop {
-            let configuration = if let Some(conf) = proxy_configuration.clone() {
+            let configuration = if let Some(conf) = proxy_tls_config.clone() {
                 debug!("Using existing gRPC certificates, skipping setup process");
                 conf
             } else {
                 info!("gRPC certificates not found, running setup process");
                 let conf = run_setup(&env_config_clone, Arc::clone(&logs_rx)).await?;
                 info!("Setup process completed successfully");
-                proxy_configuration = Some(conf.clone());
+                proxy_tls_config = Some(conf.clone());
                 conf
             };
 
@@ -402,7 +421,7 @@ pub async fn run_server(
                 result = reset_rx.recv() => {
                     if result.is_ok() {
                         info!("Reset requested, restarting setup process");
-                        proxy_configuration = None;
+                        proxy_tls_config = None;
                     } else {
                         error!("Reset channel closed; gRPC server will keep running");
                     }
