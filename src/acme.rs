@@ -243,49 +243,55 @@ pub async fn run_acme_http01(
         }
     });
 
-    // Now populate the challenge map and notify LE - server is already up.
-    let mut authorizations = order.authorizations();
+    let validation_result = async {
+        // Now populate the challenge map and notify LE - server is already up.
+        let mut authorizations = order.authorizations();
 
-    while let Some(result) = authorizations.next().await {
-        let mut authz = result.context("Failed to retrieve ACME authorization")?;
-        let mut challenge = authz
-            .challenge(ChallengeType::Http01)
-            .ok_or_else(|| anyhow!("ACME server did not offer HTTP-01 challenge"))?;
+        while let Some(result) = authorizations.next().await {
+            let mut authz = result.context("Failed to retrieve ACME authorization")?;
+            let mut challenge = authz
+                .challenge(ChallengeType::Http01)
+                .ok_or_else(|| anyhow!("ACME server did not offer HTTP-01 challenge"))?;
 
-        let token = challenge.token.clone();
-        let key_auth = challenge.key_authorization().as_str().to_owned();
+            let token = challenge.token.clone();
+            let key_auth = challenge.key_authorization().as_str().to_owned();
 
-        info!("Preparing HTTP-01 challenge for domain: {domain} (token: {token})");
+            info!("Preparing HTTP-01 challenge for domain: {domain} (token: {token})");
 
-        {
-            let mut map = challenge_map.lock().unwrap();
-            map.insert(token, key_auth);
+            {
+                let mut map = challenge_map.lock().unwrap();
+                map.insert(token, key_auth);
+            }
+
+            challenge
+                .set_ready()
+                .await
+                .context("Failed to signal ACME challenge as ready")?;
+            info!("HTTP-01 challenge signalled as ready; waiting for Let's Encrypt to validate");
         }
 
-        challenge
-            .set_ready()
+        // LE will now attempt HTTP-01 validation against our challenge server.
+        let _ = progress_tx.send(AcmeStep::ValidatingDomain);
+        info!("Polling Let's Encrypt for domain validation result...");
+
+        // Wait for the order to become ready for finalization.
+        order
+            .poll_ready(&RetryPolicy::default())
             .await
-            .context("Failed to signal ACME challenge as ready")?;
-        info!("HTTP-01 challenge signalled as ready; waiting for Let's Encrypt to validate");
+            .context("ACME order did not become ready")
     }
-
-    // LE will now attempt HTTP-01 validation against our challenge server.
-    let _ = progress_tx.send(AcmeStep::ValidatingDomain);
-    info!("Polling Let's Encrypt for domain validation result...");
-
-    // Wait for the order to become ready for finalization.
-    let status = order
-        .poll_ready(&RetryPolicy::default())
-        .await
-        .context("ACME order did not become ready")?;
-    info!("Domain validation complete, order status: {status:?}");
+    .await;
 
     server_handle.abort();
+    let _ = server_handle.await;
     info!("ACME challenge server shut down; port 80 released");
 
     if let Some(done_tx) = port80_permit {
         let _ = done_tx.send(());
     }
+
+    let status = validation_result?;
+    info!("Domain validation complete, order status: {status:?}");
 
     // Domain validated; finalizing order and retrieving the certificate.
     let _ = progress_tx.send(AcmeStep::IssuingCertificate);
