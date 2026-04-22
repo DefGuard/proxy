@@ -99,12 +99,10 @@ jobs:
           cache: true
           version: 10
 
-      # Change to '--frozen-lockfile' once this gets fixed:
-      # https://github.com/pnpm/action-setup/issues/40
       - name: Build frontend
         working-directory: web
         run: |
-          pnpm install --ignore-scripts --no-frozen-lockfile
+          pnpm install --ignore-scripts --frozen-lockfile
           pnpm build
 
       - name: Install Rust stable
@@ -223,7 +221,7 @@ jobs:
             --freebsd-osversion '*'
             --depends openssl
             --before-install freebsd/preinst
-            --after-remove freebsd/postinst"
+            --after-remove freebsd/postrm"
 
       - name: Upload Linux x86_64 archive
         uses: shogo82148/actions-upload-release-asset@v1
