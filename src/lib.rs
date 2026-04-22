@@ -40,9 +40,7 @@ pub(crate) mod generated {
 }
 
 pub(crate) mod proto {
-    pub(crate) use crate::generated::defguard::client_types::*;
-    pub(crate) use crate::generated::defguard::common::v2::*;
-    pub(crate) use crate::generated::defguard::proxy::v2::*;
+    pub(crate) use crate::generated::defguard::{client_types::*, common::v2::*, proxy::v2::*};
 }
 
 #[macro_use]
