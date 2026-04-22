@@ -4,7 +4,10 @@ use std::{
     io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
-    sync::{Arc, RwLock, atomic::Ordering},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -68,6 +71,8 @@ pub const CORE_CLIENT_CERT_NAME: &str = "core_client_cert.pem";
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
     cookie_key: Arc<RwLock<Option<Key>>>,
+    /// Reflects whether the HTTP server is currently running with TLS
+    pub(crate) tls_active: Arc<AtomicBool>,
 }
 
 impl FromRef<AppState> for Key {
@@ -180,42 +185,64 @@ async fn core_version_middleware(
 }
 
 /// Injects baseline security response headers on every response.
-async fn security_headers_middleware<B>(mut response: Response<B>) -> Response<B> {
+async fn security_headers_middleware(
+    State(state): State<AppState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response<Body> {
+    let mut response = next.run(request).await;
     let headers = response.headers_mut();
+
     // `X-Powered-By: Defguard` - server identification header
     headers.insert(X_POWERED_BY, HeaderValue::from_static("Defguard"));
+
     // `X-Content-Type-Options: nosniff` - prevents MIME-type sniffing/confusion attacks
     headers.insert(
         header::X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static("nosniff"),
     );
+
     // `Referrer-Policy: strict-origin-when-cross-origin` - avoids leaking internal URLs via Referer to external sites
     headers.insert(
         header::REFERRER_POLICY,
         HeaderValue::from_static("strict-origin-when-cross-origin"),
     );
+
     // `Permissions-Policy: geolocation=(), camera=(), microphone=()` - disables unused browser APIs
     headers.insert(
         PERMISSIONS_POLICY,
         HeaderValue::from_static("geolocation=(), camera=(), microphone=()"),
     );
+
     // `Cross-Origin-Opener-Policy: same-origin` - severs window.opener references, preventing reverse tabnapping
     headers.insert(
         CROSS_ORIGIN_OPENER_POLICY,
         HeaderValue::from_static("same-origin"),
     );
+
     // `Cross-Origin-Resource-Policy: same-origin` - blocks cross-origin embedding of application resources
     headers.insert(
         CROSS_ORIGIN_RESOURCE_POLICY,
         HeaderValue::from_static("same-origin"),
     );
+
     // `X-Frame-Options: DENY` - clickjacking defense for browsers without CSP frame-ancestors support
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
+
     // `Content-Security-Policy: frame-ancestors 'none'` - prevents framing/clickjacking
     // Use entry/or_insert so individual handlers can override CSP (e.g. per-request nonces)
     headers
         .entry(header::CONTENT_SECURITY_POLICY)
         .or_insert(HeaderValue::from_static("frame-ancestors 'none';"));
+
+    // `Strict-Transport-Security` - only sent over TLS; ignored and potentially harmful over plain HTTP (RFC 6797 §7.2)
+    let tls = state.tls_active.load(Ordering::Relaxed);
+    if tls {
+        headers.insert(
+            header::STRICT_TRANSPORT_SECURITY,
+            HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+        );
+    }
     response
 }
 
@@ -472,9 +499,11 @@ pub async fn run_server(
 
     // build application
     debug!("Setting up API server");
+    let tls_active = Arc::new(AtomicBool::new(false));
     let shared_state = AppState {
         grpc_server,
         cookie_key,
+        tls_active: Arc::clone(&tls_active),
     };
 
     // Setup tower_governor rate-limiter
@@ -535,7 +564,10 @@ pub async fn run_server(
             shared_state.clone(),
             ensure_configured,
         ))
-        .layer(middleware::map_response(security_headers_middleware))
+        .layer(middleware::from_fn_with_state(
+            shared_state.clone(),
+            security_headers_middleware,
+        ))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             core_version_middleware,
@@ -585,6 +617,7 @@ pub async fn run_server(
         loop {
             let handle = axum_server::Handle::new();
             let handle_clone = handle.clone();
+            tls_active.store(current_tls.is_some(), Ordering::Relaxed);
             let app_service = app.clone().into_make_service_with_connect_info::<SocketAddr>();
             let tls_certs = current_tls.clone();
 
