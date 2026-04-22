@@ -13,7 +13,7 @@ use axum::{
     Json, Router,
     body::Body,
     extract::{ConnectInfo, FromRef, State},
-    http::{Request, Response, StatusCode, header::HeaderValue},
+    http::{HeaderName, HeaderValue, Request, Response, StatusCode, header},
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
@@ -52,7 +52,13 @@ const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
-const X_POWERED_BY: &str = "x-powered-by";
+// Header name constants not yet present in the `http` crate v1.x standard set.
+const X_POWERED_BY: HeaderName = HeaderName::from_static("x-powered-by");
+const PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
+const CROSS_ORIGIN_OPENER_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-opener-policy");
+const CROSS_ORIGIN_RESOURCE_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-resource-policy");
 pub const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
 pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
 pub const GRPC_CA_CERT_NAME: &str = "grpc_ca_cert.pem";
@@ -173,10 +179,43 @@ async fn core_version_middleware(
     response
 }
 
-async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
-    response
-        .headers_mut()
-        .insert(X_POWERED_BY, HeaderValue::from_static("Defguard"));
+/// Injects baseline security response headers on every response.
+async fn security_headers_middleware<B>(mut response: Response<B>) -> Response<B> {
+    let headers = response.headers_mut();
+    // `X-Powered-By: Defguard` - server identification header
+    headers.insert(X_POWERED_BY, HeaderValue::from_static("Defguard"));
+    // `X-Content-Type-Options: nosniff` - prevents MIME-type sniffing/confusion attacks
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    // `Referrer-Policy: strict-origin-when-cross-origin` - avoids leaking internal URLs via Referer to external sites
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    // `Permissions-Policy: geolocation=(), camera=(), microphone=()` - disables unused browser APIs
+    headers.insert(
+        PERMISSIONS_POLICY,
+        HeaderValue::from_static("geolocation=(), camera=(), microphone=()"),
+    );
+    // `Cross-Origin-Opener-Policy: same-origin` - severs window.opener references, preventing reverse tabnapping
+    headers.insert(
+        CROSS_ORIGIN_OPENER_POLICY,
+        HeaderValue::from_static("same-origin"),
+    );
+    // `Cross-Origin-Resource-Policy: same-origin` - blocks cross-origin embedding of application resources
+    headers.insert(
+        CROSS_ORIGIN_RESOURCE_POLICY,
+        HeaderValue::from_static("same-origin"),
+    );
+    // `X-Frame-Options: DENY` - clickjacking defense for browsers without CSP frame-ancestors support
+    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
+    // `Content-Security-Policy: frame-ancestors 'none'` - prevents framing/clickjacking
+    // Use entry/or_insert so individual handlers can override CSP (e.g. per-request nonces)
+    headers
+        .entry(header::CONTENT_SECURITY_POLICY)
+        .or_insert(HeaderValue::from_static("frame-ancestors 'none';"));
     response
 }
 
@@ -496,7 +535,7 @@ pub async fn run_server(
             shared_state.clone(),
             ensure_configured,
         ))
-        .layer(middleware::map_response(powered_by_header))
+        .layer(middleware::map_response(security_headers_middleware))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             core_version_middleware,
