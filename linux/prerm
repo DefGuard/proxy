@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+SERVICE_NAME='defguard-proxy'
+
+if [ -x /usr/bin/systemctl ]; then
+	/usr/bin/systemctl --no-block stop ${SERVICE_NAME} >/dev/null 2>&1 || true
+fi

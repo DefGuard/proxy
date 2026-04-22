@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+USERNAME=defguard
+
+if ! id -u ${USERNAME} >/dev/null 2>&1
+then
+	pw -q user add -n ${USERNAME} -g nogroup -c "Defguard" -d /nonexistent -s /usr/sbin/nologin
+fi
