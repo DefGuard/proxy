@@ -6,3 +6,7 @@ USERNAME=defguard
 if ! id -u ${USERNAME} >/dev/null 2>&1; then
 	useradd --system --user-group --no-create-home ${USERNAME}
 fi
+
+mkdir -p /etc/defguard
+chown ${USERNAME}:${USERNAME} /etc/defguard
+chmod 750 /etc/defguard
