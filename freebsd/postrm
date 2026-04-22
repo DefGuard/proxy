@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+USERNAME=defguard
+
+if id -u ${USERNAME} >/dev/null 2>&1
+then
+	echo "If no longer needed, remove ${USERNAME} manually: pw user del -n ${USERNAME}"
+fi

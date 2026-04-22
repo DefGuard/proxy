@@ -95,12 +95,10 @@ jobs:
           cache: true
           version: 10
 
-      # Change to '--frozen-lockfile' once this gets fixed:
-      # https://github.com/pnpm/action-setup/issues/40
       - name: Build frontend
         working-directory: web
         run: |
-          pnpm install --ignore-scripts --no-frozen-lockfile
+          pnpm install --ignore-scripts --frozen-lockfile
           pnpm build
 
       - name: Install Rust stable
@@ -141,45 +139,85 @@ jobs:
         with:
           fpm_args:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
-            defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
+            linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb"
+          fpm_opts:
+            "--architecture amd64
+            --output-type deb
+            --version ${{ env.VERSION }}
+            --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb
+            --before-install linux/preinst
+            --after-install linux/postinst
+            --before-remove linux/prerm
+            --after-remove linux/postrm"
 
       - name: Build aarch64 DEB package
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
-            defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
+            linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture arm64 --output-type deb --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb"
+          fpm_opts:
+            "--architecture arm64
+            --output-type deb
+            --version ${{ env.VERSION }}
+            --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb
+            --before-install linux/preinst
+            --after-install linux/postinst
+            --before-remove linux/prerm
+            --after-remove linux/postrm"
 
       - name: Build x86_64 RPM package
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
-            defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
+            linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm"
+          fpm_opts:
+            "--architecture amd64
+            --output-type rpm
+            --version ${{ env.VERSION }}
+            --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm
+            --before-install linux/preinst
+            --after-install linux/postinst
+            --before-remove linux/prerm
+            --after-remove linux/postrm"
 
       - name: Build aarch64 RPM package
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
-            defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
+            linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture arm64 --output-type rpm --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm"
+          fpm_opts:
+            "--architecture arm64
+            --output-type rpm
+            --version ${{ env.VERSION }}
+            --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm
+            --before-install linux/preinst
+            --after-install linux/postinst
+            --before-remove linux/prerm
+            --after-remove linux/postrm"
 
       - name: Build FreeBSD package
         uses: defGuard/fpm-action@main
         with:
           fpm_args:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
-            defguard-proxy.service.freebsd=/usr/local/etc/rc.d/defguard-proxy
+            freebsd/defguard-proxy=/usr/local/etc/rc.d/defguard-proxy
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts: "--architecture amd64 --output-type freebsd --version ${{ env.VERSION }} --package defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg --freebsd-osversion '*' --depends openssl"
+          fpm_opts:
+            "--architecture amd64
+            --output-type freebsd
+            --version ${{ env.VERSION }}
+            --package defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg
+            --freebsd-osversion '*'
+            --depends openssl
+            --before-install freebsd/preinst
+            --after-remove freebsd/postrm"
 
       - name: Upload Linux x86_64 archive
         uses: shogo82148/actions-upload-release-asset@v1

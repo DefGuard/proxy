@@ -28,20 +28,30 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: recursive
-      - uses: actions/setup-node@v6
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
         with:
           node-version: 25
-      - name: install deps
-        working-directory: ./web
-        run: |
-          npm i -g pnpm
-          pnpm i --frozen-lockfile
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+          version: 10
+
+      - name: Install deps
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
       - name: Build translations
-        working-directory: ./web
+        working-directory: web
         run: pnpm dlx @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/paraglide
+
       - name: Lint
-        working-directory: ./web
+        working-directory: web
         run: pnpm lint
+
       - name: Audit
-        working-directory: ./web
+        working-directory: web
         run: pnpm audit --prod --ignore-unfixable
