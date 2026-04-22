@@ -35,7 +35,10 @@ use tokio::{
 use tower_governor::{
     GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
 };
-use tower_http::trace::{self, TraceLayer};
+use tower_http::{
+    timeout::TimeoutLayer,
+    trace::{self, TraceLayer},
+};
 use tracing::{Level, info_span};
 
 use crate::{
@@ -57,6 +60,9 @@ const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
 /// Default request body size limit applied globally to every route.
 const REQUEST_BODY_LIMIT: usize = 256 * 1024; // 256 KB
+
+/// Maximum time a single request may take before the server returns 408.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 // Header name constants not yet present in the `http` crate v1.x standard set.
 const X_POWERED_BY: HeaderName = HeaderName::from_static("x-powered-by");
 const PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
@@ -575,6 +581,10 @@ pub async fn run_server(
             core_version_middleware,
         ))
         .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
