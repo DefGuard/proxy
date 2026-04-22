@@ -3,15 +3,8 @@ set -e
 
 USERNAME=defguard
 
-case $1 in
-0)
-	if [ "${1}" = 'purge' ]; then
-		userdel ${USERNAME} >/dev/null || true
-	fi
-	;;
-1)
-	if [ -x /usr/bin/systemctl ]; then
-		/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || true
-	fi
-	;;
-esac
+if [ -x /usr/bin/systemctl ]; then
+	/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+
+echo "If no longer needed, remove ${USERNAME} manually: userdel ${USERNAME}"
