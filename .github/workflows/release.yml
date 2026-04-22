@@ -1,6 +1,8 @@
 name: Make a new release
 on:
   push:
+    branches:
+      - pkg
     tags:
       - v*.*.*
 
@@ -55,6 +57,8 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
+          package_name: pkg
+          tag_name: pkg
 
   create-sbom:
     needs:
@@ -75,7 +79,8 @@ jobs:
       # Store the version, stripping any v-prefix
       - name: Write release version
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          # VERSION=${GITHUB_REF_NAME#v}
+          VERSION=2.0.0
           echo Version: $VERSION
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -215,9 +220,7 @@ jobs:
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg
             --freebsd-osversion '*'
-            --depends openssl
-            --before-install freebsd/preinst
-            --after-remove freebsd/postrm"
+            --depends openssl"
 
       - name: Upload Linux x86_64 archive
         uses: shogo82148/actions-upload-release-asset@v1

@@ -7,6 +7,8 @@ After=network-online.target
 [Service]
 User=defguard
 Group=defguard
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStart=/usr/bin/defguard-proxy --config /etc/defguard/proxy.toml
 KillMode=process

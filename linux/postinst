@@ -14,8 +14,8 @@ case "${1}" in
 abort-upgrade | abort-remove | abort-deconfigure)
 	if [ -x /usr/bin/systemctl ]; then
 		/usr/bin/systemctl daemon-reload
-		if /usr/bin/systemctl is-enabled ${SERVICE_NAME} >/dev/null 2>&1; then
-			/usr/bin/systemctl start ${SERVICE_NAME} || true
+		if /usr/bin/systemctl is-enabled --quiet ${SERVICE_NAME}; then
+			/usr/bin/systemctl --no-block restart ${SERVICE_NAME}
 		fi
 	fi
 	;;
