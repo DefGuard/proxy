@@ -1,5 +1,6 @@
 use std::{
     net::SocketAddr,
+    path::{Path, PathBuf},
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -12,7 +13,11 @@ use defguard_version::{
     server::{DefguardVersionLayer, grpc::DefguardVersionInterceptor},
 };
 use rustls_pki_types::{CertificateDer, UnixTime};
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::{mpsc, oneshot},
+};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, service::InterceptorLayer, transport::Server};
 use webpki::{KeyUsage, anchor_from_trusted_cert};
@@ -26,6 +31,11 @@ use crate::{
 };
 
 const AUTH_HEADER: &str = "authorization";
+
+pub const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
+pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
+pub const GRPC_CA_CERT_NAME: &str = "grpc_ca_cert.pem";
+pub const CORE_CLIENT_CERT_NAME: &str = "core_client_cert.pem";
 
 /// Verify that both `component_der` and `core_client_der` are signed by `ca_der`.
 ///
@@ -88,6 +98,96 @@ fn validate_cert_bundle(
     Ok(())
 }
 
+async fn save_tls_certs(tls_config: &TlsConfig, cert_dir: &Path) -> Result<(), String> {
+    let cert_path = cert_dir.join(GRPC_CERT_NAME);
+    let key_path = cert_dir.join(GRPC_KEY_NAME);
+    let ca_cert_path = cert_dir.join(GRPC_CA_CERT_NAME);
+    let client_cert_path = cert_dir.join(CORE_CLIENT_CERT_NAME);
+
+    let mut options = OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    options.mode(0o600); // rw-------
+
+    // PEM-encode the Core client certificate DER for serial pinning on restart.
+    let core_client_cert_pem = defguard_certs::der_to_pem(
+        &tls_config.core_client_cert_der,
+        defguard_certs::PemLabel::Certificate,
+    )
+    .map_err(|err| format!("Failed to PEM-encode Core client certificate: {err}"))?;
+
+    // Write component (server) certificate.
+    options
+        .clone()
+        .open(&cert_path)
+        .await
+        .map_err(|err| {
+            format!(
+                "Cannot open certificate file {}: {err}",
+                cert_path.display()
+            )
+        })?
+        .write_all(tls_config.grpc_cert_pem.as_bytes())
+        .await
+        .map_err(|err| {
+            format!(
+                "Cannot write certificate file {}: {err}",
+                cert_path.display()
+            )
+        })?;
+
+    // Write private key.
+    options
+        .clone()
+        .open(&key_path)
+        .await
+        .map_err(|err| format!("Cannot open key file {}: {err}", key_path.display()))?
+        .write_all(tls_config.grpc_key_pem.as_bytes())
+        .await
+        .map_err(|err| format!("Cannot write key file {}: {err}", key_path.display()))?;
+
+    // Write CA certificate.
+    options
+        .clone()
+        .open(&ca_cert_path)
+        .await
+        .map_err(|err| {
+            format!(
+                "Cannot open CA certificate file {}: {err}",
+                ca_cert_path.display()
+            )
+        })?
+        .write_all(tls_config.grpc_ca_cert_pem.as_bytes())
+        .await
+        .map_err(|err| {
+            format!(
+                "Cannot write CA certificate file {}: {err}",
+                ca_cert_path.display()
+            )
+        })?;
+
+    // Write Core client certificate (PEM) for serial pinning on restart.
+    options
+        .open(&client_cert_path)
+        .await
+        .map_err(|err| {
+            format!(
+                "Cannot open Core client certificate file {}: {err}",
+                client_cert_path.display()
+            )
+        })?
+        .write_all(core_client_cert_pem.as_bytes())
+        .await
+        .map_err(|err| {
+            format!(
+                "Cannot write Core client certificate file {}: {err}",
+                client_cert_path.display()
+            )
+        })?;
+
+    Ok(())
+}
+
 pub(crate) struct ProxySetupServer {
     key_pair: Arc<Mutex<Option<defguard_certs::RcGenKeyPair>>>,
     logs_rx: LogsReceiver,
@@ -95,6 +195,7 @@ pub(crate) struct ProxySetupServer {
     setup_tx: Arc<tokio::sync::Mutex<Option<oneshot::Sender<TlsConfig>>>>,
     setup_rx: Arc<tokio::sync::Mutex<oneshot::Receiver<TlsConfig>>>,
     adoption_expired: Arc<AtomicBool>,
+    cert_dir: Arc<PathBuf>,
 }
 
 impl Clone for ProxySetupServer {
@@ -106,12 +207,13 @@ impl Clone for ProxySetupServer {
             setup_tx: Arc::clone(&self.setup_tx),
             setup_rx: Arc::clone(&self.setup_rx),
             adoption_expired: Arc::clone(&self.adoption_expired),
+            cert_dir: Arc::clone(&self.cert_dir),
         }
     }
 }
 
 impl ProxySetupServer {
-    pub fn new(logs_rx: LogsReceiver) -> Self {
+    pub fn new(logs_rx: LogsReceiver, cert_dir: PathBuf) -> Self {
         let (setup_tx, setup_rx) = oneshot::channel();
         Self {
             key_pair: Arc::new(Mutex::new(None)),
@@ -120,6 +222,7 @@ impl ProxySetupServer {
             setup_tx: Arc::new(tokio::sync::Mutex::new(Some(setup_tx))),
             setup_rx: Arc::new(tokio::sync::Mutex::new(setup_rx)),
             adoption_expired: Arc::new(AtomicBool::new(false)),
+            cert_dir: Arc::new(cert_dir),
         }
     }
 
@@ -489,6 +592,16 @@ impl proxy_setup_server::ProxySetup for ProxySetupServer {
             grpc_ca_cert_pem,
             core_client_cert_der: bundle.core_client_cert_der,
         };
+
+        debug!("Saving TLS certificate files to disk");
+        if let Err(err) = save_tls_certs(&configuration, &self.cert_dir).await {
+            error!("Failed to save TLS certificates: {err}");
+            self.clear_setup_session();
+            return Err(Status::internal(format!(
+                "Failed to save TLS certificates: {err}"
+            )));
+        }
+        debug!("TLS certificate files saved successfully");
 
         debug!("Passing configuration to gRPC server for finalization");
         let Some(sender) = self.setup_tx.lock().await.take() else {
