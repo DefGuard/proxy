@@ -15,7 +15,7 @@ use anyhow::Context;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{ConnectInfo, FromRef, State},
+    extract::{ConnectInfo, DefaultBodyLimit, FromRef, State},
     http::{HeaderName, HeaderValue, Request, Response, StatusCode, header},
     middleware::{self, Next},
     response::IntoResponse,
@@ -55,6 +55,8 @@ const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
+/// Default request body size limit applied globally to every route.
+const REQUEST_BODY_LIMIT: usize = 256 * 1024; // 256 KB
 // Header name constants not yet present in the `http` crate v1.x standard set.
 const X_POWERED_BY: HeaderName = HeaderName::from_static("x-powered-by");
 const PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
@@ -592,6 +594,8 @@ pub async fn run_server(
     if let Some(conf) = governor_conf {
         app = app.layer(GovernorLayer::new(conf));
     }
+    // Global request body size limit; all proxy endpoints have small payloads.
+    app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
