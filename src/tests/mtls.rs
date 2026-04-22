@@ -22,8 +22,10 @@ use tonic::{
     transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity},
 };
 
-use crate::grpc::{ProxyServer, TlsConfig};
-use crate::proto::proxy_client::ProxyClient;
+use crate::{
+    grpc::{ProxyServer, TlsConfig},
+    proto::proxy_client::ProxyClient,
+};
 
 struct TestCerts {
     /// PEM-encoded CA certificate (used as the trust root for both server and client validation).
