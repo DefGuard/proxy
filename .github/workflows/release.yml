@@ -1,8 +1,6 @@
 name: Make a new release
 on:
   push:
-    branches:
-      - pkg
     tags:
       - v*.*.*
 
@@ -57,8 +55,6 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
-          release_name: pkg
-          tag_name: pkg
 
   create-sbom:
     needs:
@@ -81,7 +77,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF_NAME#v}
           echo Version: $VERSION
-          echo "VERSION=2.0.0" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v6
