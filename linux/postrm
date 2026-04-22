@@ -7,4 +7,7 @@ if [ -x /usr/bin/systemctl ]; then
 	/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || true
 fi
 
-echo "If no longer needed, remove ${USERNAME} manually: userdel ${USERNAME}"
+if id -u ${USERNAME} >/dev/null 2>&1
+then
+    echo "If no longer needed, remove ${USERNAME} manually: userdel ${USERNAME}"
+fi
