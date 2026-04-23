@@ -27,8 +27,6 @@ use clap::crate_version;
 use defguard_version::{Version, server::DefguardVersionLayer};
 use serde::Serialize;
 use tokio::{
-    fs::OpenOptions,
-    io::AsyncWriteExt,
     sync::{broadcast, mpsc, oneshot},
     task::JoinSet,
 };
@@ -70,10 +68,7 @@ const CROSS_ORIGIN_OPENER_POLICY: HeaderName =
     HeaderName::from_static("cross-origin-opener-policy");
 const CROSS_ORIGIN_RESOURCE_POLICY: HeaderName =
     HeaderName::from_static("cross-origin-resource-policy");
-pub const GRPC_CERT_NAME: &str = "proxy_grpc_cert.pem";
-pub const GRPC_KEY_NAME: &str = "proxy_grpc_key.pem";
-pub const GRPC_CA_CERT_NAME: &str = "grpc_ca_cert.pem";
-pub const CORE_CLIENT_CERT_NAME: &str = "core_client_cert.pem";
+pub use crate::setup::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME};
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -260,7 +255,6 @@ async fn security_headers_middleware(
 }
 
 pub async fn run_setup(env_config: &EnvConfig, logs_rx: LogsReceiver) -> anyhow::Result<TlsConfig> {
-    let setup_server = ProxySetupServer::new(logs_rx);
     let cert_dir = Path::new(&env_config.cert_dir);
     if !cert_dir.exists() {
         tokio::fs::create_dir_all(cert_dir).await.map_err(|err| {
@@ -275,13 +269,34 @@ pub async fn run_setup(env_config: &EnvConfig, logs_rx: LogsReceiver) -> anyhow:
         })?;
         #[cfg(unix)]
         tokio::fs::set_permissions(cert_dir, Permissions::from_mode(0o700)).await?;
+    } else {
+        // verify write access before starting the setup server
+        let test_path = cert_dir.join(".write_test");
+        match tokio::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&test_path)
+            .await
+        {
+            Ok(_) => {
+                let _ = tokio::fs::remove_file(&test_path).await;
+            }
+            Err(err) if err.kind() == ErrorKind::PermissionDenied => {
+                anyhow::bail!(
+                    "Certificate directory {} is not writable. Permission denied.",
+                    cert_dir.display()
+                );
+            }
+            Err(err) => return Err(err.into()),
+        }
     }
 
-    // Only attempt setup if not already configured
     info!(
         "No gRPC TLS certificates found at {}, new certificates will be obtained during setup",
         cert_dir.display()
     );
+    let setup_server = ProxySetupServer::new(logs_rx, cert_dir.to_path_buf());
     let tls_config = setup_server
         .await_initial_setup(
             SocketAddr::new(
@@ -294,75 +309,6 @@ pub async fn run_setup(env_config: &EnvConfig, logs_rx: LogsReceiver) -> anyhow:
         )
         .await?;
     info!("Generated new gRPC TLS certificates and signed by Defguard Core");
-
-    let TlsConfig {
-        grpc_cert_pem,
-        grpc_key_pem,
-        grpc_ca_cert_pem,
-        core_client_cert_der,
-    } = &tls_config;
-
-    let cert_path = cert_dir.join(GRPC_CERT_NAME);
-    let key_path = cert_dir.join(GRPC_KEY_NAME);
-    // Certificate and its key will be accessed only to this process's user.
-    let mut options = OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    options.mode(0o600); // rw-------
-
-    // Write certificate to a file.
-    options
-        .clone()
-        .open(&cert_path)
-        .await?
-        .write_all(grpc_cert_pem.as_bytes())
-        .await.map_err(|err| {
-            if err.kind() == ErrorKind::PermissionDenied {
-                anyhow::anyhow!(
-                    "Cannot write certificate file {}. Permission denied for certificate directory {}.",
-                    cert_path.display(),
-                    cert_dir.display()
-                )
-            } else {
-                err.into()
-            }
-        })?;
-    // Write key to a file.
-    options
-        .clone()
-        .open(&key_path)
-        .await?
-        .write_all(grpc_key_pem.as_bytes())
-        .await
-        .map_err(|err| {
-            if err.kind() == ErrorKind::PermissionDenied {
-                anyhow::anyhow!(
-                    "Cannot write key file {}. Permission denied for certificate directory {}.",
-                    key_path.display(),
-                    cert_dir.display()
-                )
-            } else {
-                err.into()
-            }
-        })?;
-    // Write CA certificate to a file.
-    options
-        .clone()
-        .open(cert_dir.join(GRPC_CA_CERT_NAME))
-        .await?
-        .write_all(grpc_ca_cert_pem.as_bytes())
-        .await?;
-    // Write Core client certificate (PEM-encoded) to a file for serial pinning on restart.
-    let core_client_cert_pem =
-        defguard_certs::der_to_pem(core_client_cert_der, defguard_certs::PemLabel::Certificate)
-            .map_err(|err| {
-                anyhow::anyhow!("Failed to PEM-encode Core client certificate: {err}")
-            })?;
-    options
-        .open(cert_dir.join(CORE_CLIENT_CERT_NAME))
-        .await?
-        .write_all(core_client_cert_pem.as_bytes())
-        .await?;
 
     Ok(tls_config)
 }

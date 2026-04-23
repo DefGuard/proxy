@@ -15,7 +15,7 @@ rustls-pki-types = "1"
 # base `axum` deps
 axum = { version = "0.8", features = ["ws"] }
 axum-client-ip = "0.7"
-axum-extra = { version = "0.10", features = [
+axum-extra = { version = "0.12", features = [
     "cookie",
     "cookie-private",
     "typed-header",
