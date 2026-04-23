@@ -591,13 +591,6 @@ pub async fn run_server(
             REQUEST_TIMEOUT,
         ))
         .with_state(shared_state)
-        // security_headers_middleware and DefguardVersionLayer are applied outside
-        // TimeoutLayer so that 408 responses also receive security headers.
-        .layer(middleware::from_fn_with_state(
-            security_headers_state,
-            security_headers_middleware,
-        ))
-        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
@@ -618,6 +611,15 @@ pub async fn run_server(
     }
     // Global request body size limit; all proxy endpoints have small payloads.
     app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
+    // Security headers and version are the outermost layers so that ALL short-circuit
+    // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
+    // baseline security headers and the server version header.
+    app = app
+        .layer(middleware::from_fn_with_state(
+            security_headers_state,
+            security_headers_middleware,
+        ))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
