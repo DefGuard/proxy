@@ -79,8 +79,6 @@ pub const CORE_CLIENT_CERT_NAME: &str = "core_client_cert.pem";
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
     cookie_key: Arc<RwLock<Option<Key>>>,
-    /// Reflects whether the HTTP server is currently running with TLS
-    pub(crate) tls_active: Arc<AtomicBool>,
 }
 
 impl FromRef<AppState> for Key {
@@ -194,7 +192,7 @@ async fn core_version_middleware(
 
 /// Injects baseline security response headers on every response.
 async fn security_headers_middleware(
-    State(state): State<AppState>,
+    tls_active: Arc<AtomicBool>,
     request: Request<Body>,
     next: Next,
 ) -> Response<Body> {
@@ -245,7 +243,7 @@ async fn security_headers_middleware(
         .or_insert(HeaderValue::from_static("frame-ancestors 'none';"));
 
     // `Strict-Transport-Security` - only sent over TLS; ignored and potentially harmful over plain HTTP (RFC 6797 §7.2)
-    let tls = state.tls_active.load(Ordering::Relaxed);
+    let tls = tls_active.load(Ordering::Relaxed);
     if tls {
         headers.insert(
             header::STRICT_TRANSPORT_SECURITY,
@@ -518,7 +516,6 @@ pub async fn run_server(
     let shared_state = AppState {
         grpc_server,
         cookie_key,
-        tls_active: Arc::clone(&tls_active),
     };
 
     // Setup tower_governor rate-limiter
@@ -557,9 +554,6 @@ pub async fn run_server(
     };
 
     // Build axum app
-    // Capture a clone for security_headers_middleware which must be applied *outside*
-    // TimeoutLayer so that 408 timeout responses also carry the security headers.
-    let security_headers_state = shared_state.clone();
     let mut app = Router::new()
         .route("/", get(index))
         .route("/{*path}", get(index))
@@ -614,11 +608,11 @@ pub async fn run_server(
     // Security headers and version are the outermost layers so that ALL short-circuit
     // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
     // baseline security headers and the server version header.
+    let tls_for_headers = Arc::clone(&tls_active);
     app = app
-        .layer(middleware::from_fn_with_state(
-            security_headers_state,
-            security_headers_middleware,
-        ))
+        .layer(middleware::from_fn(move |req, next| {
+            security_headers_middleware(Arc::clone(&tls_for_headers), req, next)
+        }))
         .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
     debug!("Configured API server routing: {app:?}");
 
