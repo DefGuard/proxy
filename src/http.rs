@@ -4,7 +4,10 @@ use std::{
     io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
-    sync::{Arc, RwLock, atomic::Ordering},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -12,8 +15,8 @@ use anyhow::Context;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{ConnectInfo, FromRef, State},
-    http::{Request, Response, StatusCode, header::HeaderValue},
+    extract::{ConnectInfo, DefaultBodyLimit, FromRef, State},
+    http::{HeaderName, HeaderValue, Request, Response, StatusCode, header},
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
@@ -30,7 +33,10 @@ use tokio::{
 use tower_governor::{
     GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
 };
-use tower_http::trace::{self, TraceLayer};
+use tower_http::{
+    timeout::TimeoutLayer,
+    trace::{self, TraceLayer},
+};
 use tracing::{Level, info_span};
 
 use crate::{
@@ -50,7 +56,18 @@ const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
-const X_POWERED_BY: &str = "x-powered-by";
+/// Default request body size limit applied globally to every route.
+const REQUEST_BODY_LIMIT: usize = 256 * 1024; // 256 KB
+
+/// Maximum time a single request may take before the server returns 408.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+// Header name constants not yet present in the `http` crate v1.x standard set.
+const X_POWERED_BY: HeaderName = HeaderName::from_static("x-powered-by");
+const PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
+const CROSS_ORIGIN_OPENER_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-opener-policy");
+const CROSS_ORIGIN_RESOURCE_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-resource-policy");
 pub use crate::setup::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME};
 
 #[derive(Clone)]
@@ -168,10 +185,72 @@ async fn core_version_middleware(
     response
 }
 
-async fn powered_by_header<B>(mut response: Response<B>) -> Response<B> {
-    response
-        .headers_mut()
-        .insert(X_POWERED_BY, HeaderValue::from_static("Defguard"));
+/// Injects baseline security response headers on every response.
+async fn security_headers_middleware(
+    tls_active: Arc<AtomicBool>,
+    request: Request<Body>,
+    next: Next,
+) -> Response<Body> {
+    let is_api = request.uri().path().starts_with("/api/");
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+
+    // `X-Powered-By: Defguard` - server identification header
+    headers.insert(X_POWERED_BY, HeaderValue::from_static("Defguard"));
+
+    // `X-Content-Type-Options: nosniff` - prevents MIME-type sniffing/confusion attacks
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+
+    // `Referrer-Policy: strict-origin-when-cross-origin` - avoids leaking internal URLs via Referer to external sites
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+
+    // `Permissions-Policy: geolocation=(), camera=(), microphone=()` - disables unused browser APIs
+    headers.insert(
+        PERMISSIONS_POLICY,
+        HeaderValue::from_static("geolocation=(), camera=(), microphone=()"),
+    );
+
+    // `Cross-Origin-Opener-Policy: same-origin` - severs window.opener references, preventing reverse tabnapping
+    headers.insert(
+        CROSS_ORIGIN_OPENER_POLICY,
+        HeaderValue::from_static("same-origin"),
+    );
+
+    // `Cross-Origin-Resource-Policy: same-origin` - blocks cross-origin embedding of application resources
+    headers.insert(
+        CROSS_ORIGIN_RESOURCE_POLICY,
+        HeaderValue::from_static("same-origin"),
+    );
+
+    // `X-Frame-Options: DENY` - clickjacking defense for browsers without CSP frame-ancestors support
+    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
+
+    // `Content-Security-Policy: frame-ancestors 'none'` - prevents framing/clickjacking
+    // Use entry/or_insert so individual handlers can override CSP (e.g. per-request nonces)
+    headers
+        .entry(header::CONTENT_SECURITY_POLICY)
+        .or_insert(HeaderValue::from_static("frame-ancestors 'none';"));
+
+    // `Strict-Transport-Security` - only sent over TLS; ignored and potentially harmful over plain HTTP (RFC 6797 §7.2)
+    let tls = tls_active.load(Ordering::Relaxed);
+    if tls {
+        headers.insert(
+            header::STRICT_TRANSPORT_SECURITY,
+            HeaderValue::from_static("max-age=31536000"),
+        );
+    }
+
+    // `Cache-Control: no-store` - prevents browsers and caches from storing sensitive API responses
+    if is_api {
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    }
+
     response
 }
 
@@ -379,6 +458,7 @@ pub async fn run_server(
 
     // build application
     debug!("Setting up API server");
+    let tls_active = Arc::new(AtomicBool::new(false));
     let shared_state = AppState {
         grpc_server,
         cookie_key,
@@ -442,12 +522,14 @@ pub async fn run_server(
             shared_state.clone(),
             ensure_configured,
         ))
-        .layer(middleware::map_response(powered_by_header))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             core_version_middleware,
         ))
-        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
         .with_state(shared_state)
         .layer(
             TraceLayer::new_for_http()
@@ -467,6 +549,17 @@ pub async fn run_server(
     if let Some(conf) = governor_conf {
         app = app.layer(GovernorLayer::new(conf));
     }
+    // Global request body size limit; all proxy endpoints have small payloads.
+    app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
+    // Security headers and version are the outermost layers so that ALL short-circuit
+    // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
+    // baseline security headers and the server version header.
+    let tls_for_headers = Arc::clone(&tls_active);
+    app = app
+        .layer(middleware::from_fn(move |req, next| {
+            security_headers_middleware(Arc::clone(&tls_for_headers), req, next)
+        }))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
     debug!("Configured API server routing: {app:?}");
 
     // Start web server.
@@ -492,6 +585,7 @@ pub async fn run_server(
         loop {
             let handle = axum_server::Handle::new();
             let handle_clone = handle.clone();
+            tls_active.store(current_tls.is_some(), Ordering::Relaxed);
             let app_service = app.clone().into_make_service_with_connect_info::<SocketAddr>();
             let tls_certs = current_tls.clone();
 

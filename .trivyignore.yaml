@@ -1,4 +1,4 @@
 vulnerabilities:
   - id: GHSA-w5hq-g745-h8pq
-    expired_at: 2026-04-30
-    statement: 'Not yet fixed in dependencies'
+    expired_at: 2026-05-23
+    statement: "Waiting for upstream patch in paraglide"

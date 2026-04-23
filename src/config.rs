@@ -28,6 +28,14 @@ fn default_adoption_timeout() -> u64 {
     10
 }
 
+fn default_rate_limit_per_second() -> u64 {
+    10
+}
+
+fn default_rate_limit_burst() -> u32 {
+    100
+}
+
 #[derive(Parser, Debug, Deserialize, Clone)]
 #[command(version)]
 pub struct EnvConfig {
@@ -50,12 +58,12 @@ pub struct EnvConfig {
     #[serde(default = "default_log_level")]
     pub log_level: LevelFilter,
 
-    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_PERSECOND", default_value_t = 0)]
-    #[serde(default)]
+    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_PERSECOND", default_value_t = 10)]
+    #[serde(default = "default_rate_limit_per_second")]
     pub rate_limit_per_second: u64,
 
-    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_BURST", default_value_t = 0)]
-    #[serde(default)]
+    #[arg(long, env = "DEFGUARD_PROXY_RATELIMIT_BURST", default_value_t = 100)]
+    #[serde(default = "default_rate_limit_burst")]
     pub rate_limit_burst: u32,
 
     /// Configuration file path

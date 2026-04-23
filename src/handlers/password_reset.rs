@@ -1,5 +1,8 @@
 use axum::{Json, Router, extract::State, routing::post};
-use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
+use axum_extra::extract::{
+    PrivateCookieJar,
+    cookie::{Cookie, SameSite},
+};
 use time::OffsetDateTime;
 
 use crate::{
@@ -65,7 +68,14 @@ async fn start_password_reset(
     if let core_response::Payload::PasswordResetStart(response) = payload {
         // set session cookie
         let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
-            .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
+            .expires(
+                OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).map_err(|_| {
+                    ApiError::Unexpected("Invalid password reset deadline timestamp".into())
+                })?,
+            )
+            .http_only(true)
+            .same_site(SameSite::Strict)
+            .path("/api/v1/password-reset");
 
         info!("Started password reset process");
         Ok((private_cookies.add(cookie), Json(response)))
