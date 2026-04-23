@@ -40,6 +40,7 @@
           buf
           # image signarute verification
           cosign
+          trivy
         ];
 
         # Specify the rust-src path (many editors rely on this)
