@@ -64,8 +64,7 @@
   "pnpm": {
     "overrides": {
       "seroval": "^1.4.1",
-      "kysely": "^0.28.12",
-      "uuid": "^14.0.0"
+      "kysely": "^0.28.12"
     }
   }
 }
