@@ -1,5 +1,8 @@
 use axum::{Json, Router, extract::State, routing::post};
-use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
+use axum_extra::extract::{
+    PrivateCookieJar,
+    cookie::{Cookie, SameSite},
+};
 use time::OffsetDateTime;
 
 use super::register_mfa::router as register_mfa_router;
@@ -56,7 +59,14 @@ async fn start_enrollment_process(
         );
         // set session cookie
         let cookie = Cookie::build((ENROLLMENT_COOKIE_NAME, token))
-            .expires(OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).unwrap());
+            .expires(
+                OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).map_err(|_| {
+                    ApiError::Unexpected("Invalid enrollment deadline timestamp".into())
+                })?,
+            )
+            .http_only(true)
+            .same_site(SameSite::Strict)
+            .path("/api/v1/enrollment");
 
         Ok((private_cookies.add(cookie), Json(response)))
     } else {
