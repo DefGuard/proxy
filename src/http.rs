@@ -499,24 +499,30 @@ pub async fn run_server(
         None
     };
 
+    // Collect all API routes into a separate router to scope the rate-limiter middleware
+    let mut api_router = Router::new().nest(
+        "/api/v1",
+        Router::new()
+            .nest("/enrollment", enrollment::router())
+            .nest("/password-reset", password_reset::router())
+            .nest("/client-mfa", desktop_client_mfa::router())
+            .nest("/openid", openid_login::router())
+            .route("/poll", post(polling::info))
+            .route("/health", get(healthcheck))
+            .route("/health-grpc", get(healthcheckgrpc))
+            .route("/info", get(app_info)),
+    );
+    if let Some(conf) = governor_conf {
+        api_router = api_router.layer(GovernorLayer::new(conf));
+    }
+
     // Build axum app
     let mut app = Router::new()
         .route("/", get(index))
         .route("/{*path}", get(index))
         .route("/fonts/{*path}", get(web_asset))
         .route("/assets/{*path}", get(web_asset))
-        .nest(
-            "/api/v1",
-            Router::new()
-                .nest("/enrollment", enrollment::router())
-                .nest("/password-reset", password_reset::router())
-                .nest("/client-mfa", desktop_client_mfa::router())
-                .nest("/openid", openid_login::router())
-                .route("/poll", post(polling::info))
-                .route("/health", get(healthcheck))
-                .route("/health-grpc", get(healthcheckgrpc))
-                .route("/info", get(app_info)),
-        )
+        .merge(api_router)
         .fallback_service(get(handle_404))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
@@ -546,9 +552,7 @@ pub async fn run_server(
                 })
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
-    if let Some(conf) = governor_conf {
-        app = app.layer(GovernorLayer::new(conf));
-    }
+
     // Global request body size limit; all proxy endpoints have small payloads.
     app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
     // Security headers and version are the outermost layers so that ALL short-circuit
