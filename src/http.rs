@@ -249,7 +249,7 @@ async fn security_headers_middleware(
     if tls {
         headers.insert(
             header::STRICT_TRANSPORT_SECURITY,
-            HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+            HeaderValue::from_static("max-age=31536000"),
         );
     }
 
@@ -557,6 +557,9 @@ pub async fn run_server(
     };
 
     // Build axum app
+    // Capture a clone for security_headers_middleware which must be applied *outside*
+    // TimeoutLayer so that 408 timeout responses also carry the security headers.
+    let security_headers_state = shared_state.clone();
     let mut app = Router::new()
         .route("/", get(index))
         .route("/{*path}", get(index))
@@ -581,18 +584,20 @@ pub async fn run_server(
         ))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
-            security_headers_middleware,
-        ))
-        .layer(middleware::from_fn_with_state(
-            shared_state.clone(),
             core_version_middleware,
         ))
-        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
         .layer(TimeoutLayer::with_status_code(
             StatusCode::REQUEST_TIMEOUT,
             REQUEST_TIMEOUT,
         ))
         .with_state(shared_state)
+        // security_headers_middleware and DefguardVersionLayer are applied outside
+        // TimeoutLayer so that 408 responses also receive security headers.
+        .layer(middleware::from_fn_with_state(
+            security_headers_state,
+            security_headers_middleware,
+        ))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<Body>| {
