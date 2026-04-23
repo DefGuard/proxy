@@ -3,3 +3,4 @@
 --description "Defguard Edge service"
 --url "https://defguard.net/"
 --maintainer "Defguard"
+--config-files /etc/defguard/proxy.toml

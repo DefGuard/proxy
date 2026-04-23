@@ -6,15 +6,14 @@
 
 . /etc/rc.subr
 
-name="defguard"
-rcvar=defguard_enable
+name="defguard_proxy"
+rcvar=defguard_proxy_enable
 command="/usr/local/bin/defguard-proxy"
 config="/etc/defguard/proxy.toml"
-start_cmd="${name}_start"
+start_cmd="${name}_proxy_start"
 
-defguard_start()
-{
-  ${command} --config ${config} &
+defguard_proxy_start() {
+	${command} --config ${config} &
 }
 
 load_rc_config $name
