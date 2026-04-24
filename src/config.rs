@@ -29,11 +29,11 @@ fn default_adoption_timeout() -> u64 {
 }
 
 fn default_rate_limit_per_second() -> u64 {
-    100
+    0
 }
 
 fn default_rate_limit_burst() -> u32 {
-    1000
+    0
 }
 
 #[derive(Parser, Debug, Deserialize, Clone)]
