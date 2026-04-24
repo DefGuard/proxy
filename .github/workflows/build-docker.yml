@@ -57,6 +57,9 @@ jobs:
             [registry."docker.io"]
               mirrors = ["dockerhub-proxy.teonite.net"]
 
+      - name: Sanitize branch name
+        run: echo "SAFE_REF=${GITHUB_REF_NAME//\//-}" >> $GITHUB_ENV
+
       - name: Build container
         uses: docker/build-push-action@v7
         with:
@@ -65,8 +68,10 @@ jobs:
           provenance: false
           push: true
           tags: "${{ env.GHCR_REPO }}:${{ github.sha }}-${{ matrix.tag }}"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=registry,ref=${{ env.GHCR_REPO }}:cache-${{ matrix.tag }}
+            type=registry,ref=${{ env.GHCR_REPO }}:cache-${{ matrix.tag }}-${{ env.SAFE_REF }}
+          cache-to: type=registry,mode=max,ref=${{ env.GHCR_REPO }}:cache-${{ matrix.tag }}-${{ env.SAFE_REF }}
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
