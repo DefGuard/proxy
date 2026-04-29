@@ -7,7 +7,7 @@ use anyhow::{Context, anyhow};
 use axum::{Router, extract::Path, routing::get};
 use instant_acme::{
     Account, AccountCredentials, ChallengeType, Identifier, LetsEncrypt, NewAccount, NewOrder,
-    RetryPolicy,
+    OrderStatus, RetryPolicy,
 };
 use serde::Deserialize;
 use tokio::{
@@ -291,6 +291,13 @@ pub async fn run_acme_http01(
     }
 
     let status = validation_result?;
+    if status == OrderStatus::Invalid {
+        return Err(anyhow!(
+            "Domain validation failed. The ACME server could not verify ownership of '{domain}'. \
+             Common causes: DNS not pointing to this server, a firewall blocking port 80, \
+             or the wrong domain name was used. Please fix the issue and try again."
+        ));
+    }
     info!("Domain validation complete, order status: {status:?}");
 
     // Domain validated; finalizing order and retrieving the certificate.
