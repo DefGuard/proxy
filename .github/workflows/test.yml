@@ -39,7 +39,7 @@ jobs:
       - name: Scan code with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         env:
-          TRIVY_IGNOREFILE: ".trivyignore.yaml"
+          TRIVY_IGNOREFILE: "./.trivyignore.yaml"
           TRIVY_SHOW_SUPPRESSED: 1
         with:
           scan-type: 'fs'
