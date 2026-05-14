@@ -43,7 +43,7 @@ use crate::{
     LogsReceiver, VERSION,
     assets::{index, web_asset},
     config::EnvConfig,
-    enterprise::handlers::openid_login,
+    enterprise::handlers::{desktop_client_posture, openid_login},
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
     handlers::{desktop_client_mfa, enrollment, password_reset, polling},
@@ -507,6 +507,7 @@ pub async fn run_server(
             .nest("/password-reset", password_reset::router())
             .nest("/client-mfa", desktop_client_mfa::router())
             .nest("/openid", openid_login::router())
+            .nest("/posture", desktop_client_posture::router())
             .route("/poll", post(polling::info))
             .route("/health", get(healthcheck))
             .route("/health-grpc", get(healthcheckgrpc))

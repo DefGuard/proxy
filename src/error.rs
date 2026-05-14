@@ -30,6 +30,8 @@ pub enum ApiError {
     PreconditionRequired(String),
     #[error("Bad request: {0}")]
     NotFound(String),
+    #[error("PostureRejected: {0:?}")]
+    PostureRejected(Vec<String>),
 }
 
 impl IntoResponse for ApiError {
@@ -45,6 +47,8 @@ impl IntoResponse for ApiError {
             ),
             Self::PreconditionRequired(msg) => (StatusCode::PRECONDITION_REQUIRED, msg),
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            // TODO(jck): return reasons as array
+            Self::PostureRejected(reasons) => (StatusCode::FORBIDDEN, reasons.join(" | ")),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
