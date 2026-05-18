@@ -11,8 +11,7 @@ use crate::{
 };
 
 pub(crate) fn router() -> Router<AppState> {
-    Router::new()
-        .route("/connect", post(connect_with_posture_check))
+    Router::new().route("/connect", post(connect_with_posture_check))
 }
 
 #[instrument(level = "debug", skip(state, req))]

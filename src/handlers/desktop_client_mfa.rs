@@ -163,7 +163,7 @@ async fn start_client_mfa(
         core_response::Payload::ClientMfaStart(response) => {
             info!("Started desktop client authorization {req:?}");
             Ok(Json(response))
-        },
+        }
         core_response::Payload::DevicePostureRejected(response) => {
             info!("Desktop client failed posture check {response:?}");
             Err(ApiError::PostureRejected(response.failed_posture_checks))
