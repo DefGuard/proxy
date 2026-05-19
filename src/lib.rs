@@ -33,6 +33,14 @@ pub(crate) mod generated {
             }
         }
 
+        pub(crate) mod enterprise {
+            pub(crate) mod posture {
+                pub mod v2 {
+                    tonic::include_proto!("defguard.enterprise.posture.v2");
+                }
+            }
+        }
+
         pub mod client_types {
             tonic::include_proto!("defguard.client_types");
         }
@@ -40,7 +48,9 @@ pub(crate) mod generated {
 }
 
 pub(crate) mod proto {
-    pub(crate) use crate::generated::defguard::{client_types::*, common::v2::*, proxy::v2::*};
+    pub(crate) use crate::generated::defguard::{
+        client_types::*, common::v2::*, enterprise::posture::v2::*, proxy::v2::*,
+    };
 }
 
 #[macro_use]
