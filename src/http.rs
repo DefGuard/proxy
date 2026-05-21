@@ -338,7 +338,12 @@ async fn ensure_configured(
     }
 
     // Block all other requests until cookie key is configured.
-    if state.cookie_key.read().unwrap().is_none() {
+    if state
+        .cookie_key
+        .read()
+        .expect("cookie_key lock poisoned")
+        .is_none()
+    {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
 
@@ -499,7 +504,7 @@ pub async fn run_server(
         None
     };
 
-    // Collect all API routes into a separate router to scope the rate-limiter middleware
+    // Collect all API routes into a separate router to scope API-only middleware.
     let mut api_router = Router::new().nest(
         "/api/v1",
         Router::new()
@@ -515,6 +520,10 @@ pub async fn run_server(
     if let Some(conf) = governor_conf {
         api_router = api_router.layer(GovernorLayer::new(conf));
     }
+    api_router = api_router.layer(middleware::from_fn_with_state(
+        shared_state.clone(),
+        ensure_configured,
+    ));
 
     // Build axum app
     let mut app = Router::new()
@@ -524,10 +533,6 @@ pub async fn run_server(
         .route("/assets/{*path}", get(web_asset))
         .merge(api_router)
         .fallback_service(get(handle_404))
-        .layer(middleware::from_fn_with_state(
-            shared_state.clone(),
-            ensure_configured,
-        ))
         .layer(middleware::from_fn_with_state(
             shared_state.clone(),
             core_version_middleware,
