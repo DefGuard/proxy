@@ -962,7 +962,7 @@ dependencies = [
 [[package]]
 name = "defguard_certs"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=dc0b70e69335c4be98d5b17615003922c9464994#dc0b70e69335c4be98d5b17615003922c9464994"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -975,8 +975,8 @@ dependencies = [
 
 [[package]]
 name = "defguard_common"
-version = "2.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=dc0b70e69335c4be98d5b17615003922c9464994#dc0b70e69335c4be98d5b17615003922c9464994"
+version = "2.0.1"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1017,7 +1017,7 @@ dependencies = [
 [[package]]
 name = "defguard_grpc_tls"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=dc0b70e69335c4be98d5b17615003922c9464994#dc0b70e69335c4be98d5b17615003922c9464994"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
 dependencies = [
  "defguard_common",
  "http",
@@ -1034,7 +1034,7 @@ dependencies = [
 [[package]]
 name = "defguard_version"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=dc0b70e69335c4be98d5b17615003922c9464994#dc0b70e69335c4be98d5b17615003922c9464994"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
 dependencies = [
  "axum",
  "http",
@@ -2514,7 +2514,7 @@ dependencies = [
 [[package]]
 name = "model_derive"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=dc0b70e69335c4be98d5b17615003922c9464994#dc0b70e69335c4be98d5b17615003922c9464994"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
 dependencies = [
  "quote",
  "syn",
