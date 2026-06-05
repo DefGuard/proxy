@@ -40,7 +40,7 @@ export type EnrollmentSettings = {
 };
 
 export type EnrollmentStartResponse = {
-  admin: AdminInfo;
+  admin: AdminInfo | null;
   user: UserInfo;
   instance: InstanceInfo;
   deadline_timestamp: number;
