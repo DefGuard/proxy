@@ -21,6 +21,7 @@ import { IconButtonMenu } from '../../../shared/defguard-ui/components/IconButto
 import type { MenuItemsGroup } from '../../../shared/defguard-ui/components/Menu/types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
+import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
 import { getClientArtifactsQueryOptions } from '../../../shared/query/queryOptions';
 import { openClientLink } from '../../../shared/utils/openVirtualLink';
 
@@ -252,7 +253,10 @@ export const ConfigureClientPage = () => {
       )}
       <footer>
         <p className="finish">{m.client_setup_footer_extra()}</p>
-        <ContactFooter email={pageData.enrollmentData.admin.email} />
+        {isPresent(pageData.enrollmentData.admin) &&
+          pageData.enrollmentData.admin.email !== pageData.enrollmentData.user.email && (
+            <ContactFooter email={pageData.enrollmentData.admin.email} />
+          )}
       </footer>
       <Suspense fallback={null}>
         <AppleHelpModal
