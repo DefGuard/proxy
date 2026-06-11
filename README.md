@@ -4,7 +4,7 @@
 
 # Defguard Edge (formerly Proxy)
 
-**Defguard Edge** serves as a proxy for a subset of functionalities provided by [Defguard](https://github.com/DefGuard/defguard) Cthat require public access. It exposes a public REST API and communicates with Defguard over [gRPC](https://github.com/DefGuard/proto).
+**Defguard Edge** serves as a proxy for a subset of functionalities provided by [Defguard](https://github.com/DefGuard/defguard) which require public access. It exposes a public REST API and communicates with Defguard over [gRPC](https://github.com/DefGuard/proto).
 
 Defguard is a self-hosted secure remote access platform that combines WireGuard VPN, identity and access management, multi-factor authentication, and network access control in a single solution.
 
