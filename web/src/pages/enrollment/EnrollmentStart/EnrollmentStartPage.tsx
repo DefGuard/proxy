@@ -37,7 +37,7 @@ export const EnrollmentStartPage = () => {
   const setEnrollment = useEnrollmentStore((s) => s.setState);
   const { data: appInfo } = useQuery(getAppInfoQueryOptions);
 
-  const showDownloadStep = appInfo?.display_download_step ?? true;
+  const showDownloadStep = appInfo?.data.display_download_step ?? true;
   const stepMax = showDownloadStep ? 2 : 1;
 
   const form = useAppForm({

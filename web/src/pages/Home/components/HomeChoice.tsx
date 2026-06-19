@@ -16,7 +16,7 @@ import passwordHoverImage from './assets/password-hover.png';
 
 export const HomeChoice = () => {
   const { data: appInfo } = useQuery(getAppInfoQueryOptions);
-  const showPasswordReset = appInfo?.display_password_reset ?? true;
+  const showPasswordReset = appInfo?.data.display_password_reset ?? true;
 
   return (
     <div id="home-choice" className={showPasswordReset ? undefined : 'single'}>
