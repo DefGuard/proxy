@@ -1,7 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
+import { m } from '../../paraglide/messages';
 import { api } from '../../shared/api/api';
 import { useEnrollmentStore } from '../../shared/hooks/useEnrollmentStore';
+import { useOpenidStore } from '../../shared/hooks/useOpenIdStore';
 
 const schema = z.object({
   state: z.string().trim().min(1),
@@ -26,8 +28,10 @@ export const Route = createFileRoute('/openid/callback')({
         },
       })
       .catch((e) => {
-        console.error(e);
-        throw redirect({ to: '/enrollment-start', replace: true });
+        useOpenidStore.setState({
+          error: e.response?.data?.error ?? m.openid_generic_error(),
+        });
+        throw redirect({ to: '/openid/error', replace: true });
       });
     const enrollmentStartResponse = await api.enrollment.start
       .callbackFn({
