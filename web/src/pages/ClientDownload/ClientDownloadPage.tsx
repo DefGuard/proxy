@@ -288,7 +288,7 @@ const Platform = ({
         <p>{subtitle}</p>
       </div>
       {isPresent(directLink) && (
-        <a href={directLink} target="_blank">
+        <a href={directLink} target="_blank" rel="noopener">
           <Button variant="outlined" iconLeft={buttonIconKind} text={buttonText} />
         </a>
       )}
