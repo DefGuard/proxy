@@ -31,6 +31,8 @@ export type UserInfo = {
 export type AppInfo = {
   version: string;
   server_state: 'setup' | 'disconnected' | 'connected';
+  display_password_reset: boolean;
+  display_download_step: boolean;
 };
 
 export type EnrollmentSettings = {

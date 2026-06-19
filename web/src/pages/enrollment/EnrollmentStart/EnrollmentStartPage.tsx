@@ -7,6 +7,7 @@ import { EnrollmentStep } from '../../../shared/components/Step/Step';
 import { Divider } from '../../../shared/defguard-ui/components/Divider/Divider';
 import './style.scss';
 import { revalidateLogic } from '@tanstack/react-form';
+import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import z from 'zod';
 import { api } from '../../../shared/api/api';
@@ -16,6 +17,7 @@ import { useAppForm } from '../../../shared/defguard-ui/form';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
 import { useEnrollmentStore } from '../../../shared/hooks/useEnrollmentStore';
+import { getAppInfoQueryOptions } from '../../../shared/query/queryOptions';
 
 const formSchema = z.object({
   token: z.string().trim().min(1, m.form_error_required()),
@@ -33,6 +35,10 @@ export const EnrollmentStartPage = () => {
     from: '/enrollment-start',
   });
   const setEnrollment = useEnrollmentStore((s) => s.setState);
+  const { data: appInfo } = useQuery(getAppInfoQueryOptions);
+
+  const showDownloadStep = appInfo?.display_download_step ?? true;
+  const stepMax = showDownloadStep ? 2 : 1;
 
   const form = useAppForm({
     defaultValues,
@@ -73,7 +79,7 @@ export const EnrollmentStartPage = () => {
       });
 
       navigate({
-        to: '/download',
+        to: showDownloadStep ? '/download' : '/client-setup',
         replace: true,
       });
     },
@@ -81,7 +87,7 @@ export const EnrollmentStartPage = () => {
 
   return (
     <Page id="enrollment-start-page" nav>
-      <EnrollmentStep current={0} max={2} />
+      <EnrollmentStep current={0} max={stepMax} />
       <header>
         <h1>{m.enrollment_start_title()}</h1>
         <p>{m.enrollment_start_subtitle()}</p>
