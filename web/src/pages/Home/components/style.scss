@@ -9,6 +9,17 @@
     grid-template-rows: 1fr;
   }
 
+  &.single {
+    @include break-up(md) {
+      grid-template-columns: 1fr;
+      place-items: center;
+
+      & > .choice {
+        max-width: 390px;
+      }
+    }
+  }
+
   & > .choice {
     --border-color: var(--border-default);
 
