@@ -1,4 +1,4 @@
-FROM node:26-alpine AS web
+FROM public.ecr.aws/docker/library/node:26-alpine AS web
 
 WORKDIR /app
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
