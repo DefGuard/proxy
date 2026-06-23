@@ -71,6 +71,11 @@ tokio = { version = "1", features = ["net"] }
 tonic-prost-build = "0.14"
 vergen-git2 = { version = "9.1", features = ["build"] }
 
+[lints.clippy]
+uninlined_format_args = "deny"
+manual_let_else = "warn"
+redundant_closure = "warn"
+
 [profile.release]
 lto = "thin"
 strip = "symbols"

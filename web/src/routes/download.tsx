@@ -2,7 +2,10 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { queryClient } from '../app/query';
 import { ClientDownloadPage } from '../pages/ClientDownload/ClientDownloadPage';
 import { useEnrollmentStore } from '../shared/hooks/useEnrollmentStore';
-import { getClientArtifactsQueryOptions } from '../shared/query/queryOptions';
+import {
+  getAppInfoQueryOptions,
+  getClientArtifactsQueryOptions,
+} from '../shared/query/queryOptions';
 
 export const Route = createFileRoute('/download')({
   component: ClientDownloadPage,
@@ -21,8 +24,16 @@ export const Route = createFileRoute('/download')({
       },
     };
   },
-  loader: ({ deps }) => {
+  loader: async ({ deps }) => {
     void queryClient.ensureQueryData(getClientArtifactsQueryOptions);
+    // Redirect to client-setup if the download step is hidden.
+    const appInfo = await queryClient.ensureQueryData(getAppInfoQueryOptions);
+    if (!appInfo.data.display_download_step) {
+      throw redirect({
+        to: '/client-setup',
+        replace: true,
+      });
+    }
     return deps;
   },
 });

@@ -138,6 +138,7 @@ export const ConfigureClientPage = () => {
 
   return (
     <Page id="configure-client-page">
+      {/* Always the final wizard step. */}
       <EnrollmentStep current={2} max={2} />
       <header>
         <h1>{m.client_setup_title()}</h1>

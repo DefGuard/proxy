@@ -113,6 +113,8 @@ impl From<&AppState> for ServerState {
 struct AppInfo {
     version: &'static str,
     server_state: ServerState,
+    display_password_reset: bool,
+    display_download_step: bool,
 }
 
 async fn app_info(State(state): State<AppState>) -> Result<Json<AppInfo>, ApiError> {
@@ -122,6 +124,14 @@ async fn app_info(State(state): State<AppState>) -> Result<Json<AppInfo>, ApiErr
     Ok(Json(AppInfo {
         version,
         server_state,
+        display_password_reset: state
+            .grpc_server
+            .display_password_reset
+            .load(Ordering::Relaxed),
+        display_download_step: state
+            .grpc_server
+            .display_download_step
+            .load(Ordering::Relaxed),
     }))
 }
 

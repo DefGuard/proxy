@@ -57,6 +57,10 @@ pub(crate) struct ProxyServer {
     results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
+    /// Whether the password reset option is displayed on the Edge home page.
+    pub(crate) display_password_reset: Arc<AtomicBool>,
+    /// Whether the client download page is shown during enrollment.
+    pub(crate) display_download_step: Arc<AtomicBool>,
     tls_config: Arc<Mutex<Option<TlsConfig>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
@@ -93,6 +97,8 @@ impl ProxyServer {
             results: Arc::new(RwLock::new(HashMap::new())),
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
+            display_password_reset: Arc::new(AtomicBool::new(true)),
+            display_download_step: Arc::new(AtomicBool::new(true)),
             tls_config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
@@ -226,6 +232,8 @@ impl Clone for ProxyServer {
             results: Arc::clone(&self.results),
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
+            display_password_reset: Arc::clone(&self.display_password_reset),
+            display_download_step: Arc::clone(&self.display_download_step),
             cookie_key: Arc::clone(&self.cookie_key),
             tls_config: Arc::clone(&self.tls_config),
             cert_dir: self.cert_dir.clone(),
@@ -285,6 +293,8 @@ impl proxy_server::Proxy for ProxyServer {
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
+        let display_password_reset = Arc::clone(&self.display_password_reset);
+        let display_download_step = Arc::clone(&self.display_download_step);
         let https_cert_tx = self.https_cert_tx.clone();
         let clear_https_tx = self.clear_https_tx.clone();
         tokio::spawn(
@@ -317,6 +327,17 @@ impl proxy_server::Proxy for ProxyServer {
                                         if let Err(err) = clear_https_tx.send(()) {
                                             error!("Failed to broadcast ClearHttpsCerts: {err}");
                                         }
+                                    }
+                                    core_response::Payload::PublicSettings(settings) => {
+                                        debug!("Received PublicSettings from Core");
+                                        display_password_reset.store(
+                                            settings.display_password_reset,
+                                            Ordering::Relaxed,
+                                        );
+                                        display_download_step.store(
+                                            settings.display_download_step,
+                                            Ordering::Relaxed,
+                                        );
                                     }
                                     other => {
                                         let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);

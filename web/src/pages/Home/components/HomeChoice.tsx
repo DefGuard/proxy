@@ -1,5 +1,6 @@
 import './style.scss';
 
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import clsx from 'clsx';
 import { m } from '../../../paraglide/messages';
@@ -7,14 +8,18 @@ import { Button } from '../../../shared/defguard-ui/components/Button/Button';
 import type { IconKindValue } from '../../../shared/defguard-ui/components/Icon/icon-types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
+import { getAppInfoQueryOptions } from '../../../shared/query/queryOptions';
 import enrollDefaultImage from './assets/enroll-default.png';
 import enrollHoverImage from './assets/enroll-hover.png';
 import passwordDefaultImage from './assets/password-default.png';
 import passwordHoverImage from './assets/password-hover.png';
 
 export const HomeChoice = () => {
+  const { data: appInfo } = useQuery(getAppInfoQueryOptions);
+  const showPasswordReset = appInfo?.data.display_password_reset ?? true;
+
   return (
-    <div id="home-choice">
+    <div id="home-choice" className={showPasswordReset ? undefined : 'single'}>
       <Card
         img="enroll"
         testId="start-enrollment"
@@ -25,16 +30,18 @@ export const HomeChoice = () => {
         link="/enrollment-start"
         onClick={() => {}}
       />
-      <Card
-        img="password"
-        testId="start-password-reset"
-        title={m.start_multi_password_title()}
-        subtitle={m.start_multi_password_subtitle()}
-        buttonText={m.start_multi_password_button()}
-        buttonIcon="lock-open"
-        link="/password"
-        onClick={() => {}}
-      />
+      {showPasswordReset && (
+        <Card
+          img="password"
+          testId="start-password-reset"
+          title={m.start_multi_password_title()}
+          subtitle={m.start_multi_password_subtitle()}
+          buttonText={m.start_multi_password_button()}
+          buttonIcon="lock-open"
+          link="/password"
+          onClick={() => {}}
+        />
+      )}
     </div>
   );
 };
