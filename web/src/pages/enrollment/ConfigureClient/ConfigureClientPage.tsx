@@ -155,7 +155,7 @@ export const ConfigureClientPage = () => {
           </p>
         </header>
         <div className="buttons">
-          <a href={deepLink()} target="_blank">
+          <a href={deepLink()} target="_blank" rel="noopener">
             <Button
               text={m.client_setup_desktop_auto_button_one_click()}
               variant="primary"

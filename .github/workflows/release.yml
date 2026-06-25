@@ -210,14 +210,15 @@ jobs:
           fpm_args:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
             freebsd/defguard-proxy=/usr/local/etc/rc.d/defguard-proxy
-            example-config.toml=/etc/defguard/proxy.toml"
+            example-config.toml=/etc/defguard/proxy.toml.sample"
           fpm_opts:
             "--architecture amd64
             --output-type freebsd
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg
             --freebsd-osversion '*'
-            --depends openssl"
+            --depends openssl
+            --after-install freebsd/post-install.sh"
 
       - name: Upload Linux x86_64 archive
         uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
