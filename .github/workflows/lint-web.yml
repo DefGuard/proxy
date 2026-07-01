@@ -3,17 +3,17 @@ name: Lint frontend
 on:
   push:
     branches:
-      - main
       - dev
       - 'release/**'
+      - 'stable/**'
     paths-ignore:
       - "*.md"
       - "LICENSE"
   pull_request:
     branches:
-      - main
       - dev
       - 'release/**'
+      - 'stable/**'
     paths-ignore:
       - "*.md"
       - "LICENSE"
