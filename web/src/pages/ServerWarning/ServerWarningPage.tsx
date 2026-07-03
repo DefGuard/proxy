@@ -16,7 +16,7 @@ export const ServerWarningPage = () => {
 
   return (
     <PageInfo
-      icon="warning"
+      icon="warning-outlined"
       title={title}
       subtitle={subtitle}
       link="/"

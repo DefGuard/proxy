@@ -207,7 +207,7 @@ export const ClientDownloadPage = () => {
       {!enrollmentState.enrollmentData.user.enrolled && (
         <InfoBanner
           variant="warning"
-          icon="warning"
+          icon="warning-outlined"
           text={m.client_download_mobile_warning()}
         />
       )}

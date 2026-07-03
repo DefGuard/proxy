@@ -1,11 +1,11 @@
 import './style.scss';
 
 import { Link } from '@tanstack/react-router';
+import { AppText } from '../../defguard-ui/components/AppText/AppText';
 import { Button } from '../../defguard-ui/components/Button/Button';
 import { Icon } from '../../defguard-ui/components/Icon';
 import type { IconKindValue } from '../../defguard-ui/components/Icon/icon-types';
 import { SizedBox } from '../../defguard-ui/components/SizedBox/SizedBox';
-import { AppText } from '../../defguard-ui/components/Text/Text';
 import { TextStyle, ThemeSpacing } from '../../defguard-ui/types';
 import { isPresent } from '../../defguard-ui/utils/isPresent';
 import { Page } from '../Page/Page';
