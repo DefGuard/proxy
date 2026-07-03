@@ -13,8 +13,8 @@ import { Button } from '../../shared/defguard-ui/components/Button/Button';
 import { Icon } from '../../shared/defguard-ui/components/Icon';
 import type { IconKindValue } from '../../shared/defguard-ui/components/Icon/icon-types';
 import { SizedBox } from '../../shared/defguard-ui/components/SizedBox/SizedBox';
-import { useAppForm, withForm } from '../../shared/defguard-ui/form';
 import { ThemeSpacing } from '../../shared/defguard-ui/types';
+import { useAppForm, withForm } from '../../shared/form';
 
 const PasswordErrorCode = {
   Number: 'password_form_check_number',

@@ -32,5 +32,13 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/test_components",
+    "src/shared/defguard-ui/components/table",
+    "src/shared/defguard-ui/components/SuggestedIPInput",
+    "src/shared/defguard-ui/components/form/FormSuggestedIPInput",
+    "src/shared/defguard-ui/hooks/useApiToTableState.tsx",
+    "src/shared/defguard-ui/hooks/useSize.tsx"
   ]
 }

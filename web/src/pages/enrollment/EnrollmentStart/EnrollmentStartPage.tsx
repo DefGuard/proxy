@@ -12,9 +12,9 @@ import z from 'zod';
 import { api } from '../../../shared/api/api';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { OIDCButton } from '../../../shared/defguard-ui/components/SSOButton/OIDCButton';
-import { useAppForm } from '../../../shared/defguard-ui/form';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
+import { useAppForm } from '../../../shared/form';
 import { useEnrollmentStore } from '../../../shared/hooks/useEnrollmentStore';
 
 const formSchema = z.object({

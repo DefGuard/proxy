@@ -10,7 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { api } from '../../shared/api/api';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
-import { useAppForm } from '../../shared/defguard-ui/form';
+import { useAppForm } from '../../shared/form';
 
 const {
   password: { sendEmail },
