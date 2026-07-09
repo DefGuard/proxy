@@ -94,9 +94,9 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
+          package_json_file: web/package.json
           cache: true
           run_install: false
-          version: 11
 
       - name: Build frontend
         working-directory: web
@@ -353,16 +353,14 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
         with:
+          package_json_file: web/package.json
           cache: true
           run_install: false
-          version: 11
 
-      # Change to '--frozen-lockfile' once this gets fixed:
-      # https://github.com/pnpm/action-setup/issues/40
       - name: Build frontend
         working-directory: web
         run: |
-          pnpm install --ignore-scripts --no-frozen-lockfile
+          pnpm install --ignore-scripts --frozen-lockfile
           pnpm build
 
       - name: Install Rust stable
