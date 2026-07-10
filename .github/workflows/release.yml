@@ -92,7 +92,7 @@ jobs:
           node-version: 26
 
       - name: Install pnpm
-        uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           cache: true
           version: 11
@@ -104,12 +104,12 @@ jobs:
           pnpm build
 
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
           targets: "aarch64-unknown-linux-gnu"
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@1583d6b38d7be47f593cb472781bbb21cab4321e # v0.0.10
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
       - name: Build Linux x86_64 binary
         run: |
@@ -319,7 +319,7 @@ jobs:
             deb_arch: amd64
             rust_target: x86_64-unknown-linux-gnu
     container:
-      image: ubuntu:22.04
+      image: ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982
       env:
         DEBIAN_FRONTEND: noninteractive
         HOME: /root
@@ -350,7 +350,7 @@ jobs:
           node-version: 26
 
       - name: Install pnpm
-        uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: 11
 
@@ -363,7 +363,7 @@ jobs:
           pnpm build
 
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
 
       - name: Install build dependencies
         run: |

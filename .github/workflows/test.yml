@@ -28,7 +28,7 @@ jobs:
   test:
     runs-on:
       - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
-    container: public.ecr.aws/docker/library/rust:1
+    container: public.ecr.aws/docker/library/rust:1@sha256:44637ff22d0a6571a221bfaf137849711ad02ff4723dbb4736e297538f6a3e60
 
     steps:
       - name: Checkout
@@ -37,7 +37,7 @@ jobs:
           submodules: recursive
 
       - name: Scan code with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_IGNOREFILE: "./.trivyignore.yaml"
           TRIVY_SHOW_SUPPRESSED: 1
@@ -50,7 +50,7 @@ jobs:
           scanners: "vuln"
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@1583d6b38d7be47f593cb472781bbb21cab4321e # v0.0.10
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
       - name: Install protoc
         run: apt-get update && apt-get -y install protobuf-compiler
@@ -66,7 +66,7 @@ jobs:
           cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Install cargo extensions
-        uses: taiki-e/install-action@9e1e5806d4a4822de933115878265be9aaa786d9 # v2.82.2
+        uses: taiki-e/install-action@c93ccc03e00cd0e08e494f5fd058a6c55a6a1907 # v2.82.8
         with:
           tool: cargo-deny
 
