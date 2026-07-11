@@ -1,5 +1,5 @@
 {
 	"devDependencies": {
-		"@tanstack/devtools-vite": "^0.3.12"
+		"@tanstack/devtools-vite": "0.3.12"
 	}
 }
