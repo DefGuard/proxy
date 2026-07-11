@@ -319,7 +319,7 @@ jobs:
             deb_arch: amd64
             rust_target: x86_64-unknown-linux-gnu
     container:
-      image: ubuntu:22.04
+      image: ubuntu:26.04@sha256:b7f48194d4d8b763a478a621cdc81c27be222ba2206ca3ca6bc42b49685f3d9e
       env:
         DEBIAN_FRONTEND: noninteractive
         HOME: /root
