@@ -8,8 +8,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-
-
 jobs:
   build-docker-release:
     # Ignore tags with -, like v1.0.0-alpha
@@ -103,6 +101,19 @@ jobs:
         run: |
           pnpm install --ignore-scripts --frozen-lockfile
           pnpm build
+
+      - name: Build source code archive
+        run: tar --exclude='.github' --exclude-vcs --exclude-vcs-ignores --xform='s|^\./|proxy-${{ env.VERSION }}/|' --xz -cf ${{ runner.temp }}/defguard-proxy-${{ env.VERSION }}.tar.xz .
+
+      - name: Upload source code archive
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ runner.temp }}/defguard-proxy-${{ env.VERSION }}.tar.xz
+          asset_content_type: application/x-xz
+          overwrite: true
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
@@ -222,7 +233,7 @@ jobs:
             --after-install freebsd/post-install.sh"
 
       - name: Upload Linux x86_64 archive
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -232,7 +243,7 @@ jobs:
           overwrite: true
 
       - name: Upload Linux aarch64 archive
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -242,7 +253,7 @@ jobs:
           overwrite: true
 
       - name: Upload FreeBSD x86_64 archive
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -252,7 +263,7 @@ jobs:
           overwrite: true
 
       - name: Upload Linux x86_64 DEB
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -262,7 +273,7 @@ jobs:
           overwrite: true
 
       - name: Upload Linux aarch64 DEB
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -272,7 +283,7 @@ jobs:
           overwrite: true
 
       - name: Upload Linux x86_64 RPM
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -282,7 +293,7 @@ jobs:
           overwrite: true
 
       - name: Upload Linux aarch64 RPM
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -292,7 +303,7 @@ jobs:
           overwrite: true
 
       - name: Upload FreeBSD package
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -395,7 +406,7 @@ jobs:
             "example-config.toml=/etc/defguard/proxy.toml"
 
       - name: Upload ubuntu-22-04-lts DEB
-        uses: shogo82148/actions-upload-release-asset@ee2ae851dc5d938b90075b3ef12c540abfd1ee72 # v1
+        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
