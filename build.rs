@@ -18,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "CoreRequest",
             "CoreResponse",
             "DeviceConfigResponse",
+            "DevicePostureCheckRequest",
             "InstanceInfoResponse",
             "NewDevice",
             "PasswordResetRequest",
