@@ -37,8 +37,9 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
         with:
+          package_json_file: web/package.json
           cache: true
-          version: 11
+          run_install: false
 
       - name: Install deps
         working-directory: web
