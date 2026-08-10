@@ -476,6 +476,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "bon"
+version = "3.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a602c73c7b0148ec6d12af6fd5cc7a46e2eacc8878271a999abac56eed12f561"
+dependencies = [
+ "bon-macros",
+ "rustversion",
+]
+
+[[package]]
+name = "bon-macros"
+version = "3.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dee98b0db6a962de883bf5d20362dee4d7ca0d12fe39a7c6c73c844e1cd7c1f"
+dependencies = [
+ "darling 0.20.11",
+ "ident_case",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn",
+]
+
+[[package]]
 name = "bs58"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -963,13 +988,13 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
- "vergen-git2",
+ "vergen-git2 9.1.0",
 ]
 
 [[package]]
 name = "defguard_certs"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
+source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -982,8 +1007,8 @@ dependencies = [
 
 [[package]]
 name = "defguard_common"
-version = "2.0.1"
-source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
+version = "2.1.0"
+source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1006,6 +1031,7 @@ dependencies = [
  "serde",
  "serde_cbor_2",
  "serde_json",
+ "sha2",
  "sqlx",
  "struct-patch",
  "thiserror 2.0.18",
@@ -1016,7 +1042,7 @@ dependencies = [
  "url",
  "utoipa",
  "uuid",
- "vergen-git2",
+ "vergen-git2 10.0.0",
  "webauthn-rs",
  "x25519-dalek",
 ]
@@ -1024,7 +1050,7 @@ dependencies = [
 [[package]]
 name = "defguard_grpc_tls"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
+source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
 dependencies = [
  "defguard_common",
  "http",
@@ -1041,7 +1067,7 @@ dependencies = [
 [[package]]
 name = "defguard_version"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
+source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
 dependencies = [
  "axum",
  "http",
@@ -1601,6 +1627,18 @@ dependencies = [
  "libgit2-sys",
  "log",
  "url",
+]
+
+[[package]]
+name = "git2"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddddbf932745a6be37109b6112d3ee09696106f848449069d3a57bba937ab82e"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libgit2-sys",
+ "log",
 ]
 
 [[package]]
@@ -2480,7 +2518,7 @@ dependencies = [
 [[package]]
 name = "model_derive"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=b6e69565394662eb0b81199eb9efba3aea43b414#b6e69565394662eb0b81199eb9efba3aea43b414"
+source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
 dependencies = [
  "quote",
  "syn",
@@ -4452,18 +4490,18 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "struct-patch"
-version = "0.10.5"
+version = "0.12.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16d4caaaccd69c9b56c5f5b33d4dca462464d3275230e4d2d3739ba6d4bf5bcb"
+checksum = "9c33b1be720fec2481ed6f1d2b95fefa464500cc55ce0ba5938aba77718da5f2"
 dependencies = [
  "struct-patch-derive",
 ]
 
 [[package]]
 name = "struct-patch-derive"
-version = "0.10.5"
+version = "0.12.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1671c6f0992b1b4cb4f5f8ea4a58f9a5f7f895a7638ef9690633dcec0aa67944"
+checksum = "d4bfb88f9c30c62693f33814de38c84fd833c7a5b92238655d158deb3ac62d9f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5159,7 +5197,19 @@ dependencies = [
  "derive_builder",
  "rustversion",
  "time",
- "vergen-lib",
+ "vergen-lib 9.1.0",
+]
+
+[[package]]
+name = "vergen"
+version = "10.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5574dd2f922b1a46a06a4b1dc11193a4012108fd54cf725e1816cb8183d8778"
+dependencies = [
+ "anyhow",
+ "bon",
+ "rustversion",
+ "vergen-lib 10.0.1",
 ]
 
 [[package]]
@@ -5170,11 +5220,26 @@ checksum = "d51ab55ddf1188c8d679f349775362b0fa9e90bd7a4ac69838b2a087623f0d57"
 dependencies = [
  "anyhow",
  "derive_builder",
- "git2",
+ "git2 0.20.4",
  "rustversion",
  "time",
- "vergen",
- "vergen-lib",
+ "vergen 9.1.0",
+ "vergen-lib 9.1.0",
+]
+
+[[package]]
+name = "vergen-git2"
+version = "10.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6e1ddb3075d894c0796fa8e592b778b1a6c034cb95d254372e5c2270adbfbfe"
+dependencies = [
+ "anyhow",
+ "bon",
+ "git2 0.21.0",
+ "rustversion",
+ "time",
+ "vergen 10.0.1",
+ "vergen-lib 10.0.1",
 ]
 
 [[package]]
@@ -5185,6 +5250,17 @@ checksum = "b34a29ba7e9c59e62f229ae1932fb1b8fb8a6fdcc99215a641913f5f5a59a569"
 dependencies = [
  "anyhow",
  "derive_builder",
+ "rustversion",
+]
+
+[[package]]
+name = "vergen-lib"
+version = "10.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cd42fd155c2c2971f6d00face12ec245fbb604fce011ccaf2306d014c2e97ca"
+dependencies = [
+ "anyhow",
+ "bon",
  "rustversion",
 ]
 
