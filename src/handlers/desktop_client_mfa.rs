@@ -100,9 +100,11 @@ async fn handle_remote_auth_socket(
     set.spawn(async move {
         match rx.await {
             Ok(Payload::AwaitRemoteMfaFinish(response)) => {
+                #[allow(deprecated)]
+                let preshared_key = &response.preshared_key;
                 let ws_response = json!({
                     "type": "mfa_success",
-                    "preshared_key": &response.preshared_key,
+                    "preshared_key": preshared_key,
                 });
                 if let Ok(serialized) = serde_json::to_string(&ws_response) {
                     let message = Message::Text(serialized.into());
