@@ -28,7 +28,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Make all messages serde-serializable.
         .type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]")
         // Legacy (pre-2.2) clients omit `selected_methods`; default it to an empty list.
-        .field_attribute("ClientMfaStartRequest.selected_methods", "#[serde(default)]")
+        .field_attribute(
+            "ClientMfaStartRequest.selected_methods",
+            "#[serde(default)]",
+        )
         // Protobuf enum values carry the enum name prefix to avoid package-scope
         // collisions, so the generated Rust variants all share a prefix that clippy
         // flags. Suppress it on the generated type.
