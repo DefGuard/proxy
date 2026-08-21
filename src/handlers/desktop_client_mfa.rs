@@ -20,7 +20,8 @@ use crate::{
     http::AppState,
     proto::{
         AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse,
-        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo, core_request,
+        ClientMfaStartRequest, ClientMfaStartResponse, ClientMfaStepStartRequest,
+        ClientMfaStepStartResponse, DeviceInfo, core_request,
         core_response::{self, Payload},
     },
 };
@@ -31,6 +32,7 @@ const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(60);
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
+        .route("/step-start", post(step_start_client_mfa))
         .route("/finish", post(finish_client_mfa))
         .route("/remote", any(await_remote_auth))
         .route("/finish-remote", post(finish_remote_mfa))
@@ -174,6 +176,25 @@ async fn start_client_mfa(
             error!("Received invalid gRPC response type");
             Err(ApiError::InvalidResponseType)
         }
+    }
+}
+
+#[instrument(level = "debug", skip(state, req))]
+async fn step_start_client_mfa(
+    State(state): State<AppState>,
+    device_info: DeviceInfo,
+    Json(req): Json<ClientMfaStepStartRequest>,
+) -> Result<Json<ClientMfaStepStartResponse>, ApiError> {
+    info!("Starting MFA step for desktop client authorization");
+    let rx = state
+        .grpc_server
+        .send(core_request::Payload::ClientMfaStepStart(req), device_info)?;
+    let payload = get_core_response(rx, None).await?;
+    if let core_response::Payload::ClientMfaStepStart(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type, expected ClientMfaStepStart");
+        Err(ApiError::InvalidResponseType)
     }
 }
 
