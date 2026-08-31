@@ -322,7 +322,7 @@ impl proxy_server::Proxy for ProxyServer {
                                             );
                                         }
                                     }
-                                    core_response::Payload::ClearHttpsCerts(_) => {
+                                    core_response::Payload::ClearHttpsCerts(()) => {
                                         info!("Received ClearHttpsCerts from Core");
                                         if let Err(err) = clear_https_tx.send(()) {
                                             error!("Failed to broadcast ClearHttpsCerts: {err}");
