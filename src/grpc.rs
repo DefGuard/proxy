@@ -25,6 +25,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming, service::InterceptorLayer, transport::Server};
 use tower::ServiceBuilder;
 use tracing::Instrument;
+use url::Url;
 
 use crate::{
     LogsReceiver, MIN_CORE_VERSION, VERSION, acme,
@@ -33,13 +34,35 @@ use crate::{
     http::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{
         AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
-        CoreRequest, CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response,
-        proxy_server,
+        CoreRequest, CoreResponse, DeviceInfo, PublicSettings, acme_issue_event, core_request,
+        core_response, proxy_server,
     },
 };
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
+
+fn apply_public_settings(
+    display_password_reset: &AtomicBool,
+    display_download_step: &AtomicBool,
+    cookie_secure: &AtomicBool,
+    settings: PublicSettings,
+) {
+    display_password_reset.store(settings.display_password_reset, Ordering::Relaxed);
+    display_download_step.store(settings.display_download_step, Ordering::Relaxed);
+
+    let secure = match settings.public_url.as_deref() {
+        None | Some("") => true,
+        Some(public_url) => match Url::parse(public_url) {
+            Ok(url) => url.scheme() == "https",
+            Err(err) => {
+                warn!("Failed to parse public proxy URL from Core ({public_url:?}): {err}");
+                true
+            }
+        },
+    };
+    cookie_secure.store(secure, Ordering::Relaxed);
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct TlsConfig {
@@ -61,6 +84,8 @@ pub(crate) struct ProxyServer {
     pub(crate) display_password_reset: Arc<AtomicBool>,
     /// Whether the client download page is shown during enrollment.
     pub(crate) display_download_step: Arc<AtomicBool>,
+    /// Whether cookies should be sent only over HTTPS.
+    pub(crate) cookie_secure: Arc<AtomicBool>,
     tls_config: Arc<Mutex<Option<TlsConfig>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
@@ -99,6 +124,7 @@ impl ProxyServer {
             core_version: Arc::new(Mutex::new(None)),
             display_password_reset: Arc::new(AtomicBool::new(true)),
             display_download_step: Arc::new(AtomicBool::new(true)),
+            cookie_secure: Arc::new(AtomicBool::new(true)),
             tls_config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
@@ -234,6 +260,7 @@ impl Clone for ProxyServer {
             core_version: Arc::clone(&self.core_version),
             display_password_reset: Arc::clone(&self.display_password_reset),
             display_download_step: Arc::clone(&self.display_download_step),
+            cookie_secure: Arc::clone(&self.cookie_secure),
             cookie_key: Arc::clone(&self.cookie_key),
             tls_config: Arc::clone(&self.tls_config),
             cert_dir: self.cert_dir.clone(),
@@ -295,6 +322,7 @@ impl proxy_server::Proxy for ProxyServer {
         let cookie_key = Arc::clone(&self.cookie_key);
         let display_password_reset = Arc::clone(&self.display_password_reset);
         let display_download_step = Arc::clone(&self.display_download_step);
+        let cookie_secure = Arc::clone(&self.cookie_secure);
         let https_cert_tx = self.https_cert_tx.clone();
         let clear_https_tx = self.clear_https_tx.clone();
         tokio::spawn(
@@ -330,13 +358,11 @@ impl proxy_server::Proxy for ProxyServer {
                                     }
                                     core_response::Payload::PublicSettings(settings) => {
                                         debug!("Received PublicSettings from Core");
-                                        display_password_reset.store(
-                                            settings.display_password_reset,
-                                            Ordering::Relaxed,
-                                        );
-                                        display_download_step.store(
-                                            settings.display_download_step,
-                                            Ordering::Relaxed,
+                                        apply_public_settings(
+                                            &display_password_reset,
+                                            &display_download_step,
+                                            &cookie_secure,
+                                            settings,
                                         );
                                     }
                                     other => {
@@ -555,5 +581,93 @@ impl proxy_server::Proxy for ProxyServer {
         });
 
         Ok(Response::new(UnboundedReceiverStream::new(rx)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use super::*;
+
+    fn apply(
+        public_url: Option<&str>,
+        display_password_reset: bool,
+        display_download_step: bool,
+        initial_cookie_secure: bool,
+    ) -> (bool, bool, bool) {
+        let display_password_reset_state = AtomicBool::new(false);
+        let display_download_step_state = AtomicBool::new(false);
+        let cookie_secure = AtomicBool::new(initial_cookie_secure);
+        apply_public_settings(
+            &display_password_reset_state,
+            &display_download_step_state,
+            &cookie_secure,
+            PublicSettings {
+                display_password_reset,
+                display_download_step,
+                public_url: public_url.map(str::to_owned),
+            },
+        );
+        (
+            display_password_reset_state.load(Ordering::Relaxed),
+            display_download_step_state.load(Ordering::Relaxed),
+            cookie_secure.load(Ordering::Relaxed),
+        )
+    }
+
+    #[test]
+    fn public_settings_set_https_secure_and_update_display_flags() {
+        assert_eq!(
+            apply(Some("https://edge.example.com"), true, false, false),
+            (true, false, true)
+        );
+    }
+
+    #[test]
+    fn public_settings_set_http_insecure() {
+        assert_eq!(
+            apply(Some("http://edge.example.com"), false, true, true),
+            (false, true, false)
+        );
+    }
+
+    #[test]
+    fn public_settings_default_to_secure_without_url() {
+        assert_eq!(apply(None, true, true, false), (true, true, true));
+        assert_eq!(apply(Some(""), true, true, false), (true, true, true));
+    }
+
+    #[test]
+    fn invalid_public_settings_url_resets_secure_default() {
+        let display_password_reset = AtomicBool::new(false);
+        let display_download_step = AtomicBool::new(false);
+        let cookie_secure = AtomicBool::new(true);
+
+        apply_public_settings(
+            &display_password_reset,
+            &display_download_step,
+            &cookie_secure,
+            PublicSettings {
+                display_password_reset: true,
+                display_download_step: true,
+                public_url: Some("http://edge.example.com".to_owned()),
+            },
+        );
+        assert!(!cookie_secure.load(Ordering::Relaxed));
+
+        apply_public_settings(
+            &display_password_reset,
+            &display_download_step,
+            &cookie_secure,
+            PublicSettings {
+                display_password_reset: false,
+                display_download_step: false,
+                public_url: Some("not a URL".to_owned()),
+            },
+        );
+        assert!(cookie_secure.load(Ordering::Relaxed));
+        assert!(!display_password_reset.load(Ordering::Relaxed));
+        assert!(!display_download_step.load(Ordering::Relaxed));
     }
 }

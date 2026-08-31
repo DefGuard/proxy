@@ -73,6 +73,7 @@ pub use crate::setup::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME,
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
+    pub(crate) cookie_secure: Arc<AtomicBool>,
     cookie_key: Arc<RwLock<Option<Key>>>,
 }
 
@@ -474,8 +475,10 @@ pub async fn run_server(
     // build application
     debug!("Setting up API server");
     let tls_active = Arc::new(AtomicBool::new(false));
+    let cookie_secure = Arc::clone(&grpc_server.cookie_secure);
     let shared_state = AppState {
         grpc_server,
+        cookie_secure,
         cookie_key,
     };
 
@@ -706,4 +709,24 @@ pub async fn run_server(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use axum_extra::extract::cookie::SameSite;
+
+    use super::*;
+
+    #[test]
+    fn session_cookie_sets_security_attributes_in_both_modes() {
+        for secure in [true, false] {
+            let cookie =
+                session_cookie("session", "value".to_owned(), "/api/v1/session", secure).build();
+
+            assert_eq!(cookie.http_only(), Some(true));
+            assert_eq!(cookie.same_site(), Some(SameSite::Strict));
+            assert_eq!(cookie.secure(), Some(secure));
+            assert_eq!(cookie.path(), Some("/api/v1/session"));
+        }
+    }
 }
