@@ -383,6 +383,80 @@ async fn build_tls_config(cert_pem: &str, key_pem: &str) -> anyhow::Result<Rustl
         .context("Failed to build HTTPS TLS configuration from PEM")
 }
 
+pub(crate) fn build_router(
+    state: AppState,
+    apply_rate_limit: impl FnOnce(Router<AppState>) -> Router<AppState>,
+    tls_active: Arc<AtomicBool>,
+) -> anyhow::Result<Router> {
+    // Collect all API routes into a separate router to scope API-only middleware.
+    let api_router = Router::new().nest(
+        "/api/v1",
+        Router::new()
+            .nest("/enrollment", enrollment::router())
+            .nest("/password-reset", password_reset::router())
+            .nest("/client-mfa", desktop_client_mfa::router())
+            .nest("/openid", openid_login::router())
+            .nest("/posture", desktop_client_posture::router())
+            .route("/poll", post(polling::info))
+            .route("/health", get(healthcheck))
+            .route("/health-grpc", get(healthcheckgrpc))
+            .route("/info", get(app_info)),
+    );
+    let mut api_router = apply_rate_limit(api_router);
+    api_router = api_router.layer(middleware::from_fn_with_state(
+        state.clone(),
+        ensure_configured,
+    ));
+
+    // Build axum app
+    let mut app = Router::new()
+        .route("/", get(index))
+        .route("/{*path}", get(index))
+        .route("/fonts/{*path}", get(web_asset))
+        .route("/assets/{*path}", get(web_asset))
+        .merge(api_router)
+        .fallback_service(get(handle_404))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            core_version_middleware,
+        ))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
+        .with_state(state)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<Body>| {
+                    let addr = get_client_addr(request);
+                    info_span!(
+                        "http_request",
+                        method = ?request.method(),
+                        path = ?request.uri(),
+                        // TODO: headers only in debug logs
+                        // headers = ?request.headers(),
+                        client_addr = addr,
+                    )
+                })
+                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
+        );
+
+    // Global request body size limit; all proxy endpoints have small payloads.
+    app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
+    // Security headers and version are the outermost layers so that ALL short-circuit
+    // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
+    // baseline security headers and the server version header.
+    let tls_for_headers = Arc::clone(&tls_active);
+    app = app
+        .layer(middleware::from_fn(move |req, next| {
+            security_headers_middleware(Arc::clone(&tls_for_headers), req, next)
+        }))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
+    debug!("Configured API server routing: {app:?}");
+
+    Ok(app)
+}
+
 pub async fn run_server(
     env_config: EnvConfig,
     tls_config: Option<TlsConfig>,
@@ -533,73 +607,14 @@ pub async fn run_server(
         None
     };
 
-    // Collect all API routes into a separate router to scope API-only middleware.
-    let mut api_router = Router::new().nest(
-        "/api/v1",
-        Router::new()
-            .nest("/enrollment", enrollment::router())
-            .nest("/password-reset", password_reset::router())
-            .nest("/client-mfa", desktop_client_mfa::router())
-            .nest("/openid", openid_login::router())
-            .nest("/posture", desktop_client_posture::router())
-            .route("/poll", post(polling::info))
-            .route("/health", get(healthcheck))
-            .route("/health-grpc", get(healthcheckgrpc))
-            .route("/info", get(app_info)),
-    );
-    if let Some(conf) = governor_conf {
-        api_router = api_router.layer(GovernorLayer::new(conf));
-    }
-    api_router = api_router.layer(middleware::from_fn_with_state(
-        shared_state.clone(),
-        ensure_configured,
-    ));
-
-    // Build axum app
-    let mut app = Router::new()
-        .route("/", get(index))
-        .route("/{*path}", get(index))
-        .route("/fonts/{*path}", get(web_asset))
-        .route("/assets/{*path}", get(web_asset))
-        .merge(api_router)
-        .fallback_service(get(handle_404))
-        .layer(middleware::from_fn_with_state(
-            shared_state.clone(),
-            core_version_middleware,
-        ))
-        .layer(TimeoutLayer::with_status_code(
-            StatusCode::REQUEST_TIMEOUT,
-            REQUEST_TIMEOUT,
-        ))
-        .with_state(shared_state)
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<Body>| {
-                    let addr = get_client_addr(request);
-                    info_span!(
-                        "http_request",
-                        method = ?request.method(),
-                        path = ?request.uri(),
-                        // TODO: headers only in debug logs
-                        // headers = ?request.headers(),
-                        client_addr = addr,
-                    )
-                })
-                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
-        );
-
-    // Global request body size limit; all proxy endpoints have small payloads.
-    app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
-    // Security headers and version are the outermost layers so that ALL short-circuit
-    // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
-    // baseline security headers and the server version header.
-    let tls_for_headers = Arc::clone(&tls_active);
-    app = app
-        .layer(middleware::from_fn(move |req, next| {
-            security_headers_middleware(Arc::clone(&tls_for_headers), req, next)
-        }))
-        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
-    debug!("Configured API server routing: {app:?}");
+    let app = build_router(
+        shared_state,
+        move |router| match governor_conf {
+            Some(conf) => router.layer(GovernorLayer::new(conf)),
+            None => router,
+        },
+        Arc::clone(&tls_active),
+    )?;
 
     // Start web server.
     debug!("Spawning API web server");
