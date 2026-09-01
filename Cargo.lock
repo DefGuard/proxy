@@ -958,6 +958,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
+ "cookie",
  "defguard_certs",
  "defguard_grpc_tls",
  "defguard_version",

@@ -20,6 +20,7 @@ axum-extra = { version = "0.12", features = [
     "cookie-private",
     "typed-header",
 ] }
+cookie = "0.18.1"
 axum-server = { version = "0.8", features = ["tls-rustls"] }
 # match axum-extra -> cookies
 time = { version = "0.3", default-features = false }

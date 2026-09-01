@@ -21,9 +21,10 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use axum_extra::extract::cookie::Key;
+use axum_extra::extract::cookie::{Cookie, Key, SameSite};
 use axum_server::tls_rustls::RustlsConfig;
 use clap::crate_version;
+use cookie::CookieBuilder;
 use defguard_version::{Version, server::DefguardVersionLayer};
 use serde::Serialize;
 use tokio::{
@@ -52,6 +53,21 @@ use crate::{
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+
+#[must_use]
+pub(crate) fn session_cookie(
+    name: &'static str,
+    value: String,
+    path: &'static str,
+    secure: bool,
+) -> CookieBuilder<'static> {
+    Cookie::build((name, value))
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .secure(secure)
+        .path(path)
+}
+
 const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
