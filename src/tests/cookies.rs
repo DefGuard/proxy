@@ -1,14 +1,11 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, RwLock, atomic::AtomicBool},
-};
+use std::sync::{Arc, RwLock, atomic::AtomicBool};
 
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},
 };
 use axum_extra::extract::cookie::{Cookie, Key, SameSite};
-use tokio::sync::{Mutex, broadcast, mpsc};
+use tokio::sync::mpsc;
 use tonic::Status;
 use tower::ServiceExt;
 
@@ -17,32 +14,70 @@ use crate::{
     http::{AppState, ENROLLMENT_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME, build_router},
     proto::{
         AuthInfoResponse, CoreRequest, EnrollmentStartResponse, PasswordResetStartResponse,
-        PublicSettings, core_response,
+        core_response,
     },
+    tests::support::{test_proxy_server, test_public_settings},
 };
 
-fn test_proxy_server(cookie_key: Arc<RwLock<Option<Key>>>) -> ProxyServer {
-    let (reset_tx, _) = broadcast::channel(1);
-    let (https_cert_tx, _) = broadcast::channel(1);
-    let (clear_https_tx, _) = broadcast::channel(1);
-    let (_, logs_rx) = mpsc::channel(1);
-    ProxyServer::new(
-        cookie_key,
-        PathBuf::new(),
-        reset_tx,
-        https_cert_tx,
-        clear_https_tx,
-        None,
-        Arc::new(Mutex::new(logs_rx)),
-        false,
-    )
+/// A router wired to a `ProxyServer` whose Core responses the test drives by hand.
+struct TestApp {
+    app: axum::Router,
+    core_requests: mpsc::UnboundedReceiver<Result<CoreRequest, Status>>,
+    response_server: ProxyServer,
 }
 
-fn public_settings(public_url: &str) -> PublicSettings {
-    PublicSettings {
-        display_password_reset: true,
-        display_download_step: true,
-        public_url: Some(public_url.to_owned()),
+/// Build a router whose cookie `Secure` attribute reflects `public_url`. Passing `None` leaves
+/// the state at its default, standing in for a Core that never sent `PublicSettings`.
+fn test_app(public_url: Option<&str>) -> TestApp {
+    let cookie_key = Arc::new(RwLock::new(Some(Key::generate())));
+    let server = test_proxy_server(Arc::clone(&cookie_key));
+    if public_url.is_some() {
+        server
+            .public_settings
+            .apply(test_public_settings(public_url));
+    }
+
+    let core_requests = server.register_test_client();
+    let response_server = server.clone();
+    let state = AppState::new(server, cookie_key);
+    let app = build_router(state, |router| router, Arc::new(AtomicBool::new(false)))
+        .expect("Failed to build test router");
+
+    TestApp {
+        app,
+        core_requests,
+        response_server,
+    }
+}
+
+/// One request in a two-step cookie lifecycle: the call that sets it, or the one that clears it.
+struct Step {
+    path: &'static str,
+    body: &'static str,
+    payload: core_response::Payload,
+}
+
+impl Step {
+    fn new(path: &'static str, body: &'static str, payload: core_response::Payload) -> Self {
+        Self {
+            path,
+            body,
+            payload,
+        }
+    }
+
+    fn request(&self, cookies: Option<&[Cookie<'_>]>) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method("POST")
+            .uri(self.path)
+            .header(header::CONTENT_TYPE, "application/json")
+            .header("x-forwarded-for", "127.0.0.1");
+        if let Some(cookies) = cookies {
+            builder = builder.header(header::COOKIE, cookie_header(cookies));
+        }
+        builder
+            .body(Body::from(self.body))
+            .expect("Failed to build test request")
     }
 }
 
@@ -116,57 +151,38 @@ fn cookie_header(cookies: &[Cookie<'_>]) -> String {
         .join("; ")
 }
 
+/// Drive the two-step lifecycle of a session cookie and return the `Set-Cookie` headers from the
+/// step that clears it.
 async fn request_cookie_removal(
     public_url: &'static str,
-    start_path: &'static str,
-    start_body: &'static str,
-    start_payload: core_response::Payload,
-    finish_path: &'static str,
-    finish_body: &'static str,
-    finish_payload: core_response::Payload,
+    start: Step,
+    finish: Step,
 ) -> Vec<Cookie<'static>> {
-    let cookie_key = Arc::new(RwLock::new(Some(Key::generate())));
-    let server = test_proxy_server(Arc::clone(&cookie_key));
-    server.apply_test_public_settings(public_settings(public_url));
+    let TestApp {
+        app,
+        mut core_requests,
+        response_server,
+    } = test_app(Some(public_url));
 
-    let mut core_requests = server.register_test_client();
-    let response_server = server.clone();
-    let state = AppState::for_test(server, cookie_key);
-    let app = build_router(state, |router| router, Arc::new(AtomicBool::new(false)))
-        .expect("Failed to build test router");
-
-    let start_request = Request::builder()
-        .method("POST")
-        .uri(start_path)
-        .header(header::CONTENT_TYPE, "application/json")
-        .header("x-forwarded-for", "127.0.0.1")
-        .body(Body::from(start_body))
-        .expect("Failed to build start request");
+    let start_request = start.request(None);
     let start_response = request_with_core_response(
         &app,
         &mut core_requests,
         &response_server,
         start_request,
-        start_payload,
+        start.payload,
     )
     .await;
     let start_cookies = parse_set_cookies(&start_response);
     assert_eq!(start_cookies.len(), 1);
 
-    let finish_request = Request::builder()
-        .method("POST")
-        .uri(finish_path)
-        .header(header::CONTENT_TYPE, "application/json")
-        .header("x-forwarded-for", "127.0.0.1")
-        .header(header::COOKIE, cookie_header(&start_cookies))
-        .body(Body::from(finish_body))
-        .expect("Failed to build finish request");
+    let finish_request = finish.request(Some(&start_cookies));
     let finish_response = request_with_core_response(
         &app,
         &mut core_requests,
         &response_server,
         finish_request,
-        finish_payload,
+        finish.payload,
     )
     .await;
 
@@ -179,36 +195,22 @@ async fn request_cookies(
     request_body: &'static str,
     response_payload: core_response::Payload,
 ) -> Vec<Cookie<'static>> {
-    let cookie_key = Arc::new(RwLock::new(Some(Key::generate())));
-    let server = test_proxy_server(Arc::clone(&cookie_key));
-    if let Some(public_url) = public_url {
-        server.apply_test_public_settings(public_settings(public_url));
-    }
+    let TestApp {
+        app,
+        mut core_requests,
+        response_server,
+    } = test_app(public_url);
 
-    let mut core_requests = server.register_test_client();
-    let response_server = server.clone();
-    let state = AppState::for_test(server, cookie_key);
-    let app = build_router(state, |router| router, Arc::new(AtomicBool::new(false)))
-        .expect("Failed to build test router");
-    let request = Request::builder()
-        .method("POST")
-        .uri(request_path)
-        .header(header::CONTENT_TYPE, "application/json")
-        .header("x-forwarded-for", "127.0.0.1")
-        .body(Body::from(request_body))
-        .expect("Failed to build test request");
-
-    let (response, ()) = tokio::join!(app.oneshot(request), async move {
-        let Some(request) = core_requests.recv().await else {
-            panic!("Test client channel closed");
-        };
-        let Ok(request) = request else {
-            panic!("Test client received an error");
-        };
-        response_server.resolve_test_response(request.id, response_payload);
-    });
-    let response = response.expect("Test router request failed");
-    assert_eq!(response.status(), StatusCode::OK);
+    let step = Step::new(request_path, request_body, response_payload);
+    let request = step.request(None);
+    let response = request_with_core_response(
+        &app,
+        &mut core_requests,
+        &response_server,
+        request,
+        step.payload,
+    )
+    .await;
 
     parse_set_cookies(&response)
 }
@@ -331,12 +333,16 @@ async fn test_enrollment_cookie_removal_attributes_follow_core_public_url() {
     ] {
         let cookies = request_cookie_removal(
             public_url,
-            "/api/v1/enrollment/start",
-            r#"{"token":"test-token"}"#,
-            enrollment_response(),
-            "/api/v1/enrollment/activate_user",
-            r#"{"password":"test-password"}"#,
-            core_response::Payload::Empty(()),
+            Step::new(
+                "/api/v1/enrollment/start",
+                r#"{"token":"test-token"}"#,
+                enrollment_response(),
+            ),
+            Step::new(
+                "/api/v1/enrollment/activate_user",
+                r#"{"password":"test-password"}"#,
+                core_response::Payload::Empty(()),
+            ),
         )
         .await;
 
@@ -358,12 +364,16 @@ async fn test_password_reset_cookie_removal_attributes_follow_core_public_url() 
     ] {
         let cookies = request_cookie_removal(
             public_url,
-            "/api/v1/password-reset/start",
-            r#"{"token":"test-token"}"#,
-            password_reset_response(),
-            "/api/v1/password-reset/reset",
-            r#"{"password":"new-password"}"#,
-            core_response::Payload::Empty(()),
+            Step::new(
+                "/api/v1/password-reset/start",
+                r#"{"token":"test-token"}"#,
+                password_reset_response(),
+            ),
+            Step::new(
+                "/api/v1/password-reset/reset",
+                r#"{"password":"new-password"}"#,
+                core_response::Payload::Empty(()),
+            ),
         )
         .await;
 

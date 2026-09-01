@@ -59,29 +59,6 @@ pub(crate) const ENROLLMENT_COOKIE_PATH: &str = "/api/v1/enrollment";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
 pub(crate) const PASSWORD_RESET_COOKIE_PATH: &str = "/api/v1/password-reset";
 
-#[must_use]
-pub(crate) fn session_cookie(
-    name: &'static str,
-    value: String,
-    path: &'static str,
-    secure: bool,
-) -> CookieBuilder<'static> {
-    Cookie::build((name, value))
-        .http_only(true)
-        .same_site(SameSite::Strict)
-        .secure(secure)
-        .path(path)
-}
-
-pub(crate) fn remove_session_cookie(
-    cookies: PrivateCookieJar,
-    name: &'static str,
-    path: &'static str,
-    secure: bool,
-) -> PrivateCookieJar {
-    cookies.remove(session_cookie(name, String::new(), path, secure).build())
-}
-
 const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
@@ -103,8 +80,26 @@ pub use crate::setup::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME,
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    pub(crate) cookie_secure: Arc<AtomicBool>,
     cookie_key: Arc<RwLock<Option<Key>>>,
+}
+
+impl AppState {
+    pub(crate) fn new(grpc_server: ProxyServer, cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
+        Self {
+            grpc_server,
+            cookie_key,
+        }
+    }
+
+    /// Whether session cookies must carry the `Secure` attribute. Derived by
+    /// [`crate::grpc::PublicSettingsState`] from the public proxy URL Core sends, and defaulting
+    /// to `true` until Core says otherwise.
+    pub(crate) fn cookie_secure(&self) -> bool {
+        self.grpc_server
+            .public_settings
+            .cookie_secure
+            .load(Ordering::Relaxed)
+    }
 }
 
 impl FromRef<AppState> for Key {
@@ -116,16 +111,30 @@ impl FromRef<AppState> for Key {
     }
 }
 
-#[cfg(test)]
-impl AppState {
-    pub(crate) fn for_test(grpc_server: ProxyServer, cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
-        let cookie_secure = Arc::clone(&grpc_server.public_settings.cookie_secure);
-        Self {
-            grpc_server,
-            cookie_secure,
-            cookie_key,
-        }
-    }
+#[must_use]
+pub(crate) fn session_cookie(
+    name: &'static str,
+    value: String,
+    path: &'static str,
+    secure: bool,
+) -> CookieBuilder<'static> {
+    Cookie::build((name, value))
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .secure(secure)
+        .path(path)
+}
+
+/// Build the removal counterpart of [`session_cookie`]. The attributes must match those the
+/// cookie was set with, or the browser keeps the original.
+// `PrivateCookieJar` is itself `#[must_use]`, so the return value cannot be dropped silently.
+pub(crate) fn remove_session_cookie(
+    cookies: PrivateCookieJar,
+    name: &'static str,
+    path: &'static str,
+    secure: bool,
+) -> PrivateCookieJar {
+    cookies.remove(session_cookie(name, String::new(), path, secure).build())
 }
 
 async fn handle_404() -> (StatusCode, &'static str) {
@@ -593,12 +602,7 @@ pub async fn run_server(
     // build application
     debug!("Setting up API server");
     let tls_active = Arc::new(AtomicBool::new(false));
-    let cookie_secure = Arc::clone(&grpc_server.public_settings.cookie_secure);
-    let shared_state = AppState {
-        grpc_server,
-        cookie_secure,
-        cookie_key,
-    };
+    let shared_state = AppState::new(grpc_server, cookie_key);
 
     // Setup tower_governor rate-limiter
     debug!(
@@ -772,8 +776,6 @@ pub async fn run_server(
 
 #[cfg(test)]
 mod tests {
-    use axum_extra::extract::cookie::SameSite;
-
     use super::*;
 
     #[test]

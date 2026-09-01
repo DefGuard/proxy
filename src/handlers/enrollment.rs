@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use axum::{Json, Router, extract::State, routing::post};
 use axum_extra::extract::PrivateCookieJar;
 use time::OffsetDateTime;
@@ -45,7 +43,7 @@ async fn start_enrollment_process(
             private_cookies,
             ENROLLMENT_COOKIE_NAME,
             ENROLLMENT_COOKIE_PATH,
-            state.cookie_secure.load(Ordering::Relaxed),
+            state.cookie_secure(),
         );
     }
 
@@ -69,7 +67,7 @@ async fn start_enrollment_process(
             ENROLLMENT_COOKIE_NAME,
             token,
             ENROLLMENT_COOKIE_PATH,
-            state.cookie_secure.load(Ordering::Relaxed),
+            state.cookie_secure(),
         )
         .expires(
             OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).map_err(|_| {
@@ -114,7 +112,7 @@ async fn activate_user(
                 private_cookies,
                 ENROLLMENT_COOKIE_NAME,
                 ENROLLMENT_COOKIE_PATH,
-                state.cookie_secure.load(Ordering::Relaxed),
+                state.cookie_secure(),
             );
         }
         Ok(private_cookies)

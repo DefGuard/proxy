@@ -181,7 +181,6 @@ async fn auth_callback(
 #[cfg(test)]
 mod tests {
     use axum_extra::extract::cookie::SameSite;
-    use time::Duration;
 
     use super::*;
 

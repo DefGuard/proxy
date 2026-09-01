@@ -60,7 +60,7 @@ impl Default for PublicSettingsState {
 }
 
 impl PublicSettingsState {
-    fn apply(&self, settings: PublicSettings) {
+    pub(crate) fn apply(&self, settings: PublicSettings) {
         self.display_password_reset
             .store(settings.display_password_reset, Ordering::Relaxed);
         self.display_download_step
@@ -285,10 +285,6 @@ impl ProxyServer {
             .insert(SocketAddr::from(([127, 0, 0, 1], 0)), tx);
         self.connected.store(true, Ordering::Relaxed);
         rx
-    }
-
-    pub(crate) fn apply_test_public_settings(&self, settings: PublicSettings) {
-        self.public_settings.apply(settings);
     }
 
     pub(crate) fn resolve_test_response(&self, id: u64, payload: core_response::Payload) {
@@ -631,38 +627,19 @@ impl proxy_server::Proxy for ProxyServer {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        path::PathBuf,
-        sync::{
-            Arc,
-            atomic::{AtomicBool, Ordering},
-        },
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
     };
-
-    use tokio::sync::{broadcast, mpsc};
 
     use super::*;
-    use crate::proto::{
-        EnrollmentStartRequest, EnrollmentStartResponse, PasswordResetStartRequest,
-        PasswordResetStartResponse,
+    use crate::{
+        proto::{
+            EnrollmentStartRequest, EnrollmentStartResponse, PasswordResetStartRequest,
+            PasswordResetStartResponse,
+        },
+        tests::support::{test_proxy_server, test_public_settings},
     };
-
-    fn test_proxy_server() -> ProxyServer {
-        let (reset_tx, _) = broadcast::channel(1);
-        let (https_cert_tx, _) = broadcast::channel(1);
-        let (clear_https_tx, _) = broadcast::channel(1);
-        let logs_rx = Arc::new(tokio::sync::Mutex::new(mpsc::channel(1).1));
-        ProxyServer::new(
-            Arc::default(),
-            PathBuf::new(),
-            reset_tx,
-            https_cert_tx,
-            clear_https_tx,
-            None,
-            logs_rx,
-            false,
-        )
-    }
 
     fn test_device_info() -> DeviceInfo {
         DeviceInfo {
@@ -670,14 +647,6 @@ mod tests {
             user_agent: None,
             version: None,
             platform: None,
-        }
-    }
-
-    fn test_public_settings(public_url: Option<&str>) -> PublicSettings {
-        PublicSettings {
-            display_password_reset: true,
-            display_download_step: true,
-            public_url: public_url.map(str::to_owned),
         }
     }
 
@@ -695,9 +664,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_hooks_round_trip_enrollment_response() {
-        let server = test_proxy_server();
-        server.apply_test_public_settings(test_public_settings(Some("https://edge.example.com")));
+    async fn test_send_and_resolve_enrollment_response() {
+        let server = test_proxy_server(Arc::default());
+        server
+            .public_settings
+            .apply(test_public_settings(Some("https://edge.example.com")));
         assert!(server.public_settings.cookie_secure.load(Ordering::Relaxed));
 
         let mut client = server.register_test_client();
@@ -737,9 +708,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_hooks_round_trip_password_reset_response() {
-        let server = test_proxy_server();
-        server.apply_test_public_settings(test_public_settings(Some("http://edge.example.com")));
+    async fn test_send_and_resolve_password_reset_response() {
+        let server = test_proxy_server(Arc::default());
+        server
+            .public_settings
+            .apply(test_public_settings(Some("http://edge.example.com")));
         assert!(!server.public_settings.cookie_secure.load(Ordering::Relaxed));
 
         let mut client = server.register_test_client();
