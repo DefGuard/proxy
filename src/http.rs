@@ -105,7 +105,7 @@ impl FromRef<AppState> for Key {
 #[cfg(test)]
 impl AppState {
     pub(crate) fn for_test(grpc_server: ProxyServer, cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
-        let cookie_secure = Arc::clone(&grpc_server.cookie_secure);
+        let cookie_secure = Arc::clone(&grpc_server.public_settings.cookie_secure);
         Self {
             grpc_server,
             cookie_secure,
@@ -155,10 +155,12 @@ async fn app_info(State(state): State<AppState>) -> Result<Json<AppInfo>, ApiErr
         server_state,
         display_password_reset: state
             .grpc_server
+            .public_settings
             .display_password_reset
             .load(Ordering::Relaxed),
         display_download_step: state
             .grpc_server
+            .public_settings
             .display_download_step
             .load(Ordering::Relaxed),
     }))
@@ -577,7 +579,7 @@ pub async fn run_server(
     // build application
     debug!("Setting up API server");
     let tls_active = Arc::new(AtomicBool::new(false));
-    let cookie_secure = Arc::clone(&grpc_server.cookie_secure);
+    let cookie_secure = Arc::clone(&grpc_server.public_settings.cookie_secure);
     let shared_state = AppState {
         grpc_server,
         cookie_secure,
