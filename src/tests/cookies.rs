@@ -14,7 +14,10 @@ use tower::ServiceExt;
 use crate::{
     grpc::ProxyServer,
     http::{AppState, ENROLLMENT_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME, build_router},
-    proto::{EnrollmentStartResponse, PasswordResetStartResponse, PublicSettings, core_response},
+    proto::{
+        AuthInfoResponse, EnrollmentStartResponse, PasswordResetStartResponse, PublicSettings,
+        core_response,
+    },
 };
 
 fn test_proxy_server(cookie_key: Arc<RwLock<Option<Key>>>) -> ProxyServer {
@@ -59,11 +62,21 @@ fn password_reset_response() -> core_response::Payload {
     })
 }
 
-async fn request_cookie(
+fn auth_info_response() -> core_response::Payload {
+    core_response::Payload::AuthInfo(AuthInfoResponse {
+        url: "https://idp.example.com/authorize".to_owned(),
+        csrf_token: "csrf-token".to_owned(),
+        nonce: "nonce".to_owned(),
+        button_display_name: None,
+    })
+}
+
+async fn request_cookies(
     public_url: Option<&str>,
     request_path: &'static str,
+    request_body: &'static str,
     response_payload: core_response::Payload,
-) -> Cookie<'static> {
+) -> Vec<Cookie<'static>> {
     let cookie_key = Arc::new(RwLock::new(Some(Key::generate())));
     let server = test_proxy_server(Arc::clone(&cookie_key));
     if let Some(public_url) = public_url {
@@ -80,7 +93,7 @@ async fn request_cookie(
         .uri(request_path)
         .header(header::CONTENT_TYPE, "application/json")
         .header("x-forwarded-for", "127.0.0.1")
-        .body(Body::from(r#"{"token":"test-token"}"#))
+        .body(Body::from(request_body))
         .expect("Failed to build test request");
 
     let (response, ()) = tokio::join!(app.oneshot(request), async move {
@@ -95,13 +108,35 @@ async fn request_cookie(
     let response = response.expect("Test router request failed");
     assert_eq!(response.status(), StatusCode::OK);
 
-    let set_cookie = response
+    response
         .headers()
-        .get(header::SET_COOKIE)
-        .expect("Response did not contain Set-Cookie")
-        .to_str()
-        .expect("Set-Cookie was not valid ASCII");
-    Cookie::parse(set_cookie.to_owned()).expect("Set-Cookie was not a valid cookie")
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .map(|set_cookie| {
+            let set_cookie = set_cookie
+                .to_str()
+                .expect("Set-Cookie was not valid ASCII")
+                .to_owned();
+            Cookie::parse(set_cookie).expect("Set-Cookie was not a valid cookie")
+        })
+        .collect()
+}
+
+async fn request_cookie(
+    public_url: Option<&str>,
+    request_path: &'static str,
+    response_payload: core_response::Payload,
+) -> Cookie<'static> {
+    request_cookies(
+        public_url,
+        request_path,
+        r#"{"token":"test-token"}"#,
+        response_payload,
+    )
+    .await
+    .into_iter()
+    .next()
+    .expect("Response did not contain Set-Cookie")
 }
 
 fn assert_cookie(cookie: &Cookie<'_>, name: &str, path: &str, secure: bool) {
@@ -156,4 +191,29 @@ async fn test_password_reset_cookie_attributes_follow_core_public_url() {
             secure,
         );
     }
+}
+
+#[tokio::test]
+async fn test_oidc_cookies_remain_secure_over_http() {
+    let cookies = request_cookies(
+        Some("http://proxy.example.com"),
+        "/api/v1/openid/auth_info",
+        r#"{"type":"enrollment"}"#,
+        auth_info_response(),
+    )
+    .await;
+
+    assert_eq!(cookies.len(), 2);
+    let nonce_cookie = cookies
+        .iter()
+        .find(|cookie| cookie.name() == "nonce_proxy")
+        .expect("Nonce cookie was not set");
+    let csrf_cookie = cookies
+        .iter()
+        .find(|cookie| cookie.name() == "csrf_proxy")
+        .expect("CSRF cookie was not set");
+    assert_cookie(nonce_cookie, "nonce_proxy", "/api/v1/openid/callback", true);
+    assert_cookie(csrf_cookie, "csrf_proxy", "/api/v1/openid/callback", true);
+    assert_eq!(nonce_cookie.max_age(), Some(time::Duration::days(1)));
+    assert_eq!(csrf_cookie.max_age(), Some(time::Duration::days(1)));
 }
