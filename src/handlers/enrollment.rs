@@ -8,7 +8,10 @@ use super::register_mfa::router as register_mfa_router;
 use crate::{
     error::ApiError,
     handlers::{get_core_response, mobile_client::register_mobile_auth},
-    http::{AppState, ENROLLMENT_COOKIE_NAME, session_cookie},
+    http::{
+        AppState, ENROLLMENT_COOKIE_NAME, ENROLLMENT_COOKIE_PATH, remove_session_cookie,
+        session_cookie,
+    },
     proto::{
         ActivateUserRequest, DeviceConfigResponse, DeviceInfo, EnrollmentStartRequest,
         EnrollmentStartResponse, ExistingDevice, NewDevice, core_request, core_response,
@@ -36,9 +39,14 @@ async fn start_enrollment_process(
 
     // clear session cookies if already populated
     debug!("Trying to remove previous session cookie if it still exists.");
-    if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
+    if private_cookies.get(ENROLLMENT_COOKIE_NAME).is_some() {
         debug!("Removing previous session cookie");
-        private_cookies = private_cookies.remove(cookie);
+        private_cookies = remove_session_cookie(
+            private_cookies,
+            ENROLLMENT_COOKIE_NAME,
+            ENROLLMENT_COOKIE_PATH,
+            state.cookie_secure.load(Ordering::Relaxed),
+        );
     }
 
     let token = req.token.clone();
@@ -60,7 +68,7 @@ async fn start_enrollment_process(
         let cookie = session_cookie(
             ENROLLMENT_COOKIE_NAME,
             token,
-            "/api/v1/enrollment",
+            ENROLLMENT_COOKIE_PATH,
             state.cookie_secure.load(Ordering::Relaxed),
         )
         .expires(
@@ -100,9 +108,14 @@ async fn activate_user(
     debug!("Receiving payload from the core service. Trying to remove private cookie...");
     if let core_response::Payload::Empty(()) = payload {
         info!("Activated user - phone number {phone:?}");
-        if let Some(cookie) = private_cookies.get(ENROLLMENT_COOKIE_NAME) {
+        if private_cookies.get(ENROLLMENT_COOKIE_NAME).is_some() {
             debug!("Enrollment finished. Removing session cookie");
-            private_cookies = private_cookies.remove(cookie);
+            private_cookies = remove_session_cookie(
+                private_cookies,
+                ENROLLMENT_COOKIE_NAME,
+                ENROLLMENT_COOKIE_PATH,
+                state.cookie_secure.load(Ordering::Relaxed),
+            );
         }
         Ok(private_cookies)
     } else {

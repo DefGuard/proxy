@@ -21,7 +21,10 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use axum_extra::extract::cookie::{Cookie, Key, SameSite};
+use axum_extra::extract::{
+    PrivateCookieJar,
+    cookie::{Cookie, Key, SameSite},
+};
 use axum_server::tls_rustls::RustlsConfig;
 use clap::crate_version;
 use cookie::CookieBuilder;
@@ -52,7 +55,9 @@ use crate::{
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub(crate) const ENROLLMENT_COOKIE_PATH: &str = "/api/v1/enrollment";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+pub(crate) const PASSWORD_RESET_COOKIE_PATH: &str = "/api/v1/password-reset";
 
 #[must_use]
 pub(crate) fn session_cookie(
@@ -66,6 +71,15 @@ pub(crate) fn session_cookie(
         .same_site(SameSite::Strict)
         .secure(secure)
         .path(path)
+}
+
+pub(crate) fn remove_session_cookie(
+    cookies: PrivateCookieJar,
+    name: &'static str,
+    path: &'static str,
+    secure: bool,
+) -> PrivateCookieJar {
+    cookies.remove(session_cookie(name, String::new(), path, secure).build())
 }
 
 const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";

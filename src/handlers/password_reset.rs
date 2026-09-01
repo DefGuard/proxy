@@ -7,7 +7,10 @@ use time::OffsetDateTime;
 use crate::{
     error::ApiError,
     handlers::get_core_response,
-    http::{AppState, PASSWORD_RESET_COOKIE_NAME, session_cookie},
+    http::{
+        AppState, PASSWORD_RESET_COOKIE_NAME, PASSWORD_RESET_COOKIE_PATH, remove_session_cookie,
+        session_cookie,
+    },
     proto::{
         DeviceInfo, PasswordResetInitializeRequest, PasswordResetRequest,
         PasswordResetStartRequest, PasswordResetStartResponse, core_request, core_response,
@@ -53,9 +56,14 @@ async fn start_password_reset(
     info!("Starting password reset process");
 
     // clear session cookies if already populated
-    if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
+    if private_cookies.get(PASSWORD_RESET_COOKIE_NAME).is_some() {
         debug!("Removing previous session cookie");
-        private_cookies = private_cookies.remove(cookie);
+        private_cookies = remove_session_cookie(
+            private_cookies,
+            PASSWORD_RESET_COOKIE_NAME,
+            PASSWORD_RESET_COOKIE_PATH,
+            state.cookie_secure.load(Ordering::Relaxed),
+        );
     }
 
     let token = req.clone().token.clone();
@@ -69,7 +77,7 @@ async fn start_password_reset(
         let cookie = session_cookie(
             PASSWORD_RESET_COOKIE_NAME,
             token,
-            "/api/v1/password-reset",
+            PASSWORD_RESET_COOKIE_PATH,
             state.cookie_secure.load(Ordering::Relaxed),
         )
         .expires(
@@ -105,9 +113,14 @@ async fn reset_password(
         .send(core_request::Payload::PasswordReset(req), device_info)?;
     let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::Empty(()) = payload {
-        if let Some(cookie) = private_cookies.get(PASSWORD_RESET_COOKIE_NAME) {
+        if private_cookies.get(PASSWORD_RESET_COOKIE_NAME).is_some() {
             info!("Password reset finished. Removing session cookie");
-            private_cookies = private_cookies.remove(cookie);
+            private_cookies = remove_session_cookie(
+                private_cookies,
+                PASSWORD_RESET_COOKIE_NAME,
+                PASSWORD_RESET_COOKIE_PATH,
+                state.cookie_secure.load(Ordering::Relaxed),
+            );
         }
         Ok(private_cookies)
     } else {
