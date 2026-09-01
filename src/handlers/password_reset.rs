@@ -1,14 +1,13 @@
+use std::sync::atomic::Ordering;
+
 use axum::{Json, Router, extract::State, routing::post};
-use axum_extra::extract::{
-    PrivateCookieJar,
-    cookie::{Cookie, SameSite},
-};
+use axum_extra::extract::PrivateCookieJar;
 use time::OffsetDateTime;
 
 use crate::{
     error::ApiError,
     handlers::get_core_response,
-    http::{AppState, PASSWORD_RESET_COOKIE_NAME},
+    http::{AppState, PASSWORD_RESET_COOKIE_NAME, session_cookie},
     proto::{
         DeviceInfo, PasswordResetInitializeRequest, PasswordResetRequest,
         PasswordResetStartRequest, PasswordResetStartResponse, core_request, core_response,
@@ -67,15 +66,17 @@ async fn start_password_reset(
     let payload = get_core_response(rx, None).await?;
     if let core_response::Payload::PasswordResetStart(response) = payload {
         // set session cookie
-        let cookie = Cookie::build((PASSWORD_RESET_COOKIE_NAME, token))
-            .expires(
-                OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).map_err(|_| {
-                    ApiError::Unexpected("Invalid password reset deadline timestamp".into())
-                })?,
-            )
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .path("/api/v1/password-reset");
+        let cookie = session_cookie(
+            PASSWORD_RESET_COOKIE_NAME,
+            token,
+            "/api/v1/password-reset",
+            state.cookie_secure.load(Ordering::Relaxed),
+        )
+        .expires(
+            OffsetDateTime::from_unix_timestamp(response.deadline_timestamp).map_err(|_| {
+                ApiError::Unexpected("Invalid password reset deadline timestamp".into())
+            })?,
+        );
 
         info!("Started password reset process");
         Ok((private_cookies.add(cookie), Json(response)))

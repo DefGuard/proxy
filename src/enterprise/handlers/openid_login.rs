@@ -1,8 +1,7 @@
+use std::sync::atomic::Ordering;
+
 use axum::{Json, Router, extract::State, routing::post};
-use axum_extra::extract::{
-    PrivateCookieJar,
-    cookie::{Cookie, SameSite},
-};
+use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
 use serde::{Deserialize, Serialize};
 use time::Duration;
 
@@ -10,7 +9,7 @@ use crate::{
     enterprise::handlers::desktop_client_mfa::mfa_auth_callback,
     error::ApiError,
     handlers::get_core_response,
-    http::AppState,
+    http::{AppState, session_cookie},
     proto::{
         AuthCallbackRequest, AuthCallbackResponse, AuthFlowType, AuthInfoRequest, DeviceInfo,
         core_request, core_response,
@@ -86,22 +85,25 @@ async fn auth_info(
     if let core_response::Payload::AuthInfo(response) = payload {
         debug!("Received auth info response");
 
-        let nonce_cookie = Cookie::build((NONCE_COOKIE_NAME, response.nonce))
-            // .domain(cookie_domain)
-            .path("/api/v1/openid/callback")
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .secure(true)
-            .max_age(COOKIE_MAX_AGE)
-            .build();
-        let csrf_cookie = Cookie::build((CSRF_COOKIE_NAME, response.csrf_token))
-            // .domain(cookie_domain)
-            .path("/api/v1/openid/callback")
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .secure(true)
-            .max_age(COOKIE_MAX_AGE)
-            .build();
+        let secure = state.cookie_secure.load(Ordering::Relaxed);
+        let nonce_cookie = session_cookie(
+            NONCE_COOKIE_NAME,
+            response.nonce,
+            "/api/v1/openid/callback",
+            secure,
+        )
+        // .domain(cookie_domain)
+        .max_age(COOKIE_MAX_AGE)
+        .build();
+        let csrf_cookie = session_cookie(
+            CSRF_COOKIE_NAME,
+            response.csrf_token,
+            "/api/v1/openid/callback",
+            secure,
+        )
+        // .domain(cookie_domain)
+        .max_age(COOKIE_MAX_AGE)
+        .build();
         let private_cookies = private_cookies.add(nonce_cookie).add(csrf_cookie);
 
         let auth_info = AuthInfo::new(response.url, response.button_display_name);
