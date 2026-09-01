@@ -250,6 +250,42 @@ impl ProxyServer {
     }
 }
 
+#[cfg(test)]
+impl ProxyServer {
+    pub(crate) fn register_test_client(
+        &self,
+    ) -> mpsc::UnboundedReceiver<Result<CoreRequest, Status>> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.clients
+            .write()
+            .expect("Failed to acquire lock on clients hashmap when registering test client")
+            .insert(SocketAddr::from(([127, 0, 0, 1], 0)), tx);
+        self.connected.store(true, Ordering::Relaxed);
+        rx
+    }
+
+    pub(crate) fn apply_test_public_settings(&self, settings: PublicSettings) {
+        apply_public_settings(
+            &self.display_password_reset,
+            &self.display_download_step,
+            &self.cookie_secure,
+            settings,
+        );
+    }
+
+    pub(crate) fn resolve_test_response(&self, id: u64, payload: core_response::Payload) {
+        let sender = self
+            .results
+            .write()
+            .expect("Failed to acquire lock on results hashmap when resolving test response")
+            .remove(&id)
+            .unwrap_or_else(|| panic!("Missing test receiver for response #{id}"));
+        if sender.send(payload).is_err() {
+            panic!("Failed to send test response to request receiver");
+        }
+    }
+}
+
 impl Clone for ProxyServer {
     fn clone(&self) -> Self {
         Self {
@@ -586,9 +622,55 @@ impl proxy_server::Proxy for ProxyServer {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::{
+        path::PathBuf,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+    };
+
+    use tokio::sync::{broadcast, mpsc};
 
     use super::*;
+    use crate::proto::{
+        EnrollmentStartRequest, EnrollmentStartResponse, PasswordResetStartRequest,
+        PasswordResetStartResponse,
+    };
+
+    fn test_proxy_server() -> ProxyServer {
+        let (reset_tx, _) = broadcast::channel(1);
+        let (https_cert_tx, _) = broadcast::channel(1);
+        let (clear_https_tx, _) = broadcast::channel(1);
+        let logs_rx = Arc::new(tokio::sync::Mutex::new(mpsc::channel(1).1));
+        ProxyServer::new(
+            Arc::default(),
+            PathBuf::new(),
+            reset_tx,
+            https_cert_tx,
+            clear_https_tx,
+            None,
+            logs_rx,
+            false,
+        )
+    }
+
+    fn test_device_info() -> DeviceInfo {
+        DeviceInfo {
+            ip_address: "127.0.0.1".to_owned(),
+            user_agent: None,
+            version: None,
+            platform: None,
+        }
+    }
+
+    fn test_public_settings(public_url: Option<&str>) -> PublicSettings {
+        PublicSettings {
+            display_password_reset: true,
+            display_download_step: true,
+            public_url: public_url.map(str::to_owned),
+        }
+    }
 
     fn apply(
         public_url: Option<&str>,
@@ -614,6 +696,85 @@ mod tests {
             display_download_step_state.load(Ordering::Relaxed),
             cookie_secure.load(Ordering::Relaxed),
         )
+    }
+
+    #[tokio::test]
+    async fn test_hooks_round_trip_enrollment_response() {
+        let server = test_proxy_server();
+        server.apply_test_public_settings(test_public_settings(Some("https://edge.example.com")));
+        assert!(server.cookie_secure.load(Ordering::Relaxed));
+
+        let mut client = server.register_test_client();
+        let response_rx = server
+            .send(
+                core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
+                    token: "enrollment-token".to_owned(),
+                }),
+                test_device_info(),
+            )
+            .expect("Failed to send enrollment request");
+        let request = client
+            .recv()
+            .await
+            .expect("Test client channel closed")
+            .expect("Test client received an error");
+        let request_id = request.id;
+        assert!(matches!(
+            request.payload,
+            Some(core_request::Payload::EnrollmentStart(_))
+        ));
+
+        let expected = core_response::Payload::EnrollmentStart(EnrollmentStartResponse {
+            admin: None,
+            user: None,
+            deadline_timestamp: 1,
+            final_page_content: String::new(),
+            instance: None,
+            settings: None,
+        });
+        server.resolve_test_response(request_id, expected);
+        assert!(matches!(
+            response_rx.await.expect("Response receiver canceled"),
+            core_response::Payload::EnrollmentStart(response)
+                if response.deadline_timestamp == 1
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_hooks_round_trip_password_reset_response() {
+        let server = test_proxy_server();
+        server.apply_test_public_settings(test_public_settings(Some("http://edge.example.com")));
+        assert!(!server.cookie_secure.load(Ordering::Relaxed));
+
+        let mut client = server.register_test_client();
+        let response_rx = server
+            .send(
+                core_request::Payload::PasswordResetStart(PasswordResetStartRequest {
+                    token: "password-reset-token".to_owned(),
+                }),
+                test_device_info(),
+            )
+            .expect("Failed to send password reset request");
+        let request = client
+            .recv()
+            .await
+            .expect("Test client channel closed")
+            .expect("Test client received an error");
+        let request_id = request.id;
+        assert!(matches!(
+            request.payload,
+            Some(core_request::Payload::PasswordResetStart(_))
+        ));
+
+        let expected = core_response::Payload::PasswordResetStart(PasswordResetStartResponse {
+            deadline_timestamp: 2,
+        });
+        server.resolve_test_response(request_id, expected);
+        assert!(matches!(
+            response_rx.await.expect("Response receiver canceled"),
+            core_response::Payload::PasswordResetStart(response)
+                if response.deadline_timestamp == 2
+        ));
     }
 
     #[test]
