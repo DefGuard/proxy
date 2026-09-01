@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     collections::HashMap,
     future::Future,
     net::SocketAddr,
@@ -41,6 +40,31 @@ use crate::{
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
+
+// requests awaiting a `CoreResponse`, keyed by the id stamped into the outgoing `CoreRequest`
+type ResultMap = HashMap<u64, oneshot::Sender<core_response::Payload>>;
+
+/// Hand a `CoreResponse` payload to the request waiting on it.
+///
+/// [`ProxyServer::send`] registers a oneshot sender under the id it stamps into the outgoing
+/// `CoreRequest`; Core echoes that id back and this is the lookup that pairs the two. Returns
+/// whether the payload reached a waiting receiver: it does not when Core answers an id we never
+/// sent, or answers twice, or when the caller gave up before the reply arrived.
+fn resolve_response(results: &RwLock<ResultMap>, id: u64, payload: core_response::Payload) -> bool {
+    let Some(tx) = results
+        .write()
+        .expect("Failed to acquire lock on results hashmap when resolving response")
+        .remove(&id)
+    else {
+        error!("Missing receiver for response #{id}");
+        return false;
+    };
+    if tx.send(payload).is_err() {
+        error!("Receiver for response #{id} is gone; the request was likely canceled");
+        return false;
+    }
+    true
+}
 
 #[derive(Clone)]
 pub(crate) struct PublicSettingsState {
@@ -106,7 +130,7 @@ pub struct TlsConfig {
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<RwLock<ClientMap>>,
-    results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
+    results: Arc<RwLock<ResultMap>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     /// Public settings received from Core and shared with HTTP handlers.
@@ -287,16 +311,13 @@ impl ProxyServer {
         rx
     }
 
+    /// Resolve a pending request through the same dispatch the gRPC response loop uses, so tests
+    /// driving a full flow exercise that path rather than mirroring it.
     pub(crate) fn resolve_test_response(&self, id: u64, payload: core_response::Payload) {
-        let sender = self
-            .results
-            .write()
-            .expect("Failed to acquire lock on results hashmap when resolving test response")
-            .remove(&id)
-            .unwrap_or_else(|| panic!("Missing test receiver for response #{id}"));
-        if sender.send(payload).is_err() {
-            panic!("Failed to send test response to request receiver");
-        }
+        assert!(
+            resolve_response(&self.results, id, payload),
+            "Response #{id} did not reach a waiting receiver"
+        );
     }
 }
 
@@ -391,9 +412,7 @@ impl proxy_server::Proxy for ProxyServer {
                                         if let Err(err) =
                                             https_cert_tx.send((certs.cert_pem, certs.key_pem))
                                         {
-                                            error!(
-                                                "Failed to broadcast HTTPS certificates: {err}"
-                                            );
+                                            error!("Failed to broadcast HTTPS certificates: {err}");
                                         }
                                     }
                                     core_response::Payload::ClearHttpsCerts(_) => {
@@ -407,14 +426,7 @@ impl proxy_server::Proxy for ProxyServer {
                                         public_settings.apply(settings);
                                     }
                                     other => {
-                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                        if let Some(rx) = maybe_rx {
-                                            if let Err(err) = rx.send(other) {
-                                                error!("Failed to send message to rx {:?}", err.type_id());
-                                            }
-                                        } else {
-                                            error!("Missing receiver for response #{}", response.id);
-                                        }
+                                        resolve_response(&results, response.id, other);
                                     }
                                 }
                             }
@@ -431,8 +443,13 @@ impl proxy_server::Proxy for ProxyServer {
                 }
                 info!("Defguard core client disconnected: {address}");
                 connected.store(false, Ordering::Relaxed);
-                clients.write().expect("Failed to acquire lock on clients hashmap when removing \
-                    disconnected client").remove(&address);
+                clients
+                    .write()
+                    .expect(
+                        "Failed to acquire lock on clients hashmap when removing \
+                    disconnected client",
+                    )
+                    .remove(&address);
             }
             .instrument(tracing::Span::current()),
         );
@@ -632,12 +649,9 @@ mod tests {
         atomic::{AtomicBool, Ordering},
     };
 
-    use super::*;
+    use super::{core_response::Payload, *};
     use crate::{
-        proto::{
-            EnrollmentStartRequest, EnrollmentStartResponse, PasswordResetStartRequest,
-            PasswordResetStartResponse,
-        },
+        proto::{EnrollmentStartRequest, EnrollmentStartResponse},
         tests::support::{test_proxy_server, test_public_settings},
     };
 
@@ -663,16 +677,34 @@ mod tests {
         state
     }
 
-    #[tokio::test]
-    async fn test_send_and_resolve_enrollment_response() {
-        let server = test_proxy_server(Arc::default());
-        server
-            .public_settings
-            .apply(test_public_settings(Some("https://edge.example.com")));
-        assert!(server.public_settings.cookie_secure.load(Ordering::Relaxed));
+    fn pending_request(results: &RwLock<ResultMap>, id: u64) -> oneshot::Receiver<Payload> {
+        let (tx, rx) = oneshot::channel();
+        results
+            .write()
+            .expect("results lock poisoned")
+            .insert(id, tx);
+        rx
+    }
 
+    fn enrollment_response(deadline_timestamp: i64) -> Payload {
+        Payload::EnrollmentStart(EnrollmentStartResponse {
+            admin: None,
+            user: None,
+            deadline_timestamp,
+            final_page_content: String::new(),
+            instance: None,
+            settings: None,
+        })
+    }
+
+    /// `send` must stamp the same id into the outgoing `CoreRequest` and into the `results` key,
+    /// or the response loop looks up an entry that was never registered.
+    #[test]
+    fn test_send_registers_the_id_it_puts_on_the_wire() {
+        let server = test_proxy_server(Arc::default());
         let mut client = server.register_test_client();
-        let response_rx = server
+
+        let _response_rx = server
             .send(
                 core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
                     token: "enrollment-token".to_owned(),
@@ -680,70 +712,105 @@ mod tests {
                 test_device_info(),
             )
             .expect("Failed to send enrollment request");
+
         let request = client
-            .recv()
-            .await
-            .expect("Test client channel closed")
+            .try_recv()
+            .expect("No CoreRequest reached the client channel")
             .expect("Test client received an error");
-        let request_id = request.id;
         assert!(matches!(
             request.payload,
             Some(core_request::Payload::EnrollmentStart(_))
         ));
+        assert_eq!(request.device_info, Some(test_device_info()));
+        assert!(
+            server
+                .results
+                .read()
+                .expect("results lock poisoned")
+                .contains_key(&request.id),
+            "Request #{} went out without a registered receiver",
+            request.id
+        );
+        assert!(server.connected.load(Ordering::Relaxed));
+    }
 
-        let expected = core_response::Payload::EnrollmentStart(EnrollmentStartResponse {
-            admin: None,
-            user: None,
-            deadline_timestamp: 1,
-            final_page_content: String::new(),
-            instance: None,
-            settings: None,
-        });
-        server.resolve_test_response(request_id, expected);
+    #[test]
+    fn test_send_fails_when_core_is_not_connected() {
+        let server = test_proxy_server(Arc::default());
+        server.connected.store(true, Ordering::Relaxed);
+
+        let result = server.send(
+            core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
+                token: "enrollment-token".to_owned(),
+            }),
+            test_device_info(),
+        );
+
+        assert!(result.is_err());
+        assert!(!server.connected.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_resolve_response_delivers_to_the_waiting_request() {
+        let results = RwLock::new(ResultMap::new());
+        let mut rx = pending_request(&results, 7);
+
+        assert!(resolve_response(&results, 7, enrollment_response(1)));
+
         assert!(matches!(
-            response_rx.await.expect("Response receiver canceled"),
-            core_response::Payload::EnrollmentStart(response)
-                if response.deadline_timestamp == 1
+            rx.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(response) if response.deadline_timestamp == 1
         ));
     }
 
-    #[tokio::test]
-    async fn test_send_and_resolve_password_reset_response() {
-        let server = test_proxy_server(Arc::default());
-        server
-            .public_settings
-            .apply(test_public_settings(Some("http://edge.example.com")));
-        assert!(!server.public_settings.cookie_secure.load(Ordering::Relaxed));
+    /// Each request must get its own reply. Resolving out of order is the ordinary case, since
+    /// Core answers whenever each request completes rather than in the order they were sent.
+    #[test]
+    fn test_resolve_response_does_not_cross_talk_between_requests() {
+        let results = RwLock::new(ResultMap::new());
+        let mut first = pending_request(&results, 1);
+        let mut second = pending_request(&results, 2);
 
-        let mut client = server.register_test_client();
-        let response_rx = server
-            .send(
-                core_request::Payload::PasswordResetStart(PasswordResetStartRequest {
-                    token: "password-reset-token".to_owned(),
-                }),
-                test_device_info(),
-            )
-            .expect("Failed to send password reset request");
-        let request = client
-            .recv()
-            .await
-            .expect("Test client channel closed")
-            .expect("Test client received an error");
-        let request_id = request.id;
-        assert!(matches!(
-            request.payload,
-            Some(core_request::Payload::PasswordResetStart(_))
-        ));
+        assert!(resolve_response(&results, 2, enrollment_response(22)));
+        assert!(resolve_response(&results, 1, enrollment_response(11)));
 
-        let expected = core_response::Payload::PasswordResetStart(PasswordResetStartResponse {
-            deadline_timestamp: 2,
-        });
-        server.resolve_test_response(request_id, expected);
         assert!(matches!(
-            response_rx.await.expect("Response receiver canceled"),
-            core_response::Payload::PasswordResetStart(response)
-                if response.deadline_timestamp == 2
+            first.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(response) if response.deadline_timestamp == 11
         ));
+        assert!(matches!(
+            second.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(response) if response.deadline_timestamp == 22
+        ));
+    }
+
+    /// An id Core makes up, or answers twice, must be dropped rather than panicking the response
+    /// loop or leaving a stale entry behind.
+    #[test]
+    fn test_resolve_response_reports_an_unknown_id() {
+        let results = RwLock::new(ResultMap::new());
+        let mut rx = pending_request(&results, 7);
+
+        assert!(!resolve_response(&results, 8, enrollment_response(1)));
+        assert!(rx.try_recv().is_err());
+
+        assert!(resolve_response(&results, 7, enrollment_response(1)));
+        assert!(
+            !resolve_response(&results, 7, enrollment_response(1)),
+            "A resolved request must not stay in the map"
+        );
+    }
+
+    #[test]
+    fn test_resolve_response_reports_an_abandoned_request() {
+        let results = RwLock::new(ResultMap::new());
+        drop(pending_request(&results, 7));
+
+        assert!(!resolve_response(&results, 7, enrollment_response(1)));
+        assert!(
+            results.read().expect("results lock poisoned").is_empty(),
+            "An abandoned request must not stay in the map"
+        );
     }
 
     #[test]
