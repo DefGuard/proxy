@@ -1063,7 +1063,7 @@ dependencies = [
 [[package]]
 name = "defguard_certs"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
+source = "git+https://github.com/DefGuard/defguard.git?rev=a1b67061bb4670324e4559a1a2a18990932e9af2#a1b67061bb4670324e4559a1a2a18990932e9af2"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1077,7 +1077,7 @@ dependencies = [
 [[package]]
 name = "defguard_common"
 version = "2.1.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
+source = "git+https://github.com/DefGuard/defguard.git?rev=a1b67061bb4670324e4559a1a2a18990932e9af2#a1b67061bb4670324e4559a1a2a18990932e9af2"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1119,7 +1119,7 @@ dependencies = [
 [[package]]
 name = "defguard_grpc_tls"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
+source = "git+https://github.com/DefGuard/defguard.git?rev=a1b67061bb4670324e4559a1a2a18990932e9af2#a1b67061bb4670324e4559a1a2a18990932e9af2"
 dependencies = [
  "defguard_common",
  "http",
@@ -1136,7 +1136,7 @@ dependencies = [
 [[package]]
 name = "defguard_version"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
+source = "git+https://github.com/DefGuard/defguard.git?rev=a1b67061bb4670324e4559a1a2a18990932e9af2#a1b67061bb4670324e4559a1a2a18990932e9af2"
 dependencies = [
  "axum",
  "http",
@@ -2692,7 +2692,7 @@ dependencies = [
 [[package]]
 name = "model_derive"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5#cdf3ef9a70796d47a6247ad1300d2e6bb7474cf5"
+source = "git+https://github.com/DefGuard/defguard.git?rev=a1b67061bb4670324e4559a1a2a18990932e9af2#a1b67061bb4670324e4559a1a2a18990932e9af2"
 dependencies = [
  "quote",
  "syn 2.0.119",
