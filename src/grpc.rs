@@ -66,10 +66,23 @@ impl PublicSettingsState {
         self.display_download_step
             .store(settings.display_download_step, Ordering::Relaxed);
 
+        // Default to `Secure` whenever the URL does not explicitly say the proxy is reached over
+        // plaintext HTTP. A schemeless value like `proxy.example.com:8443` parses successfully with
+        // the hostname as its scheme, so matching on `https` alone would silently drop the flag.
         let secure = match settings.public_url.as_deref() {
             None | Some("") => true,
             Some(public_url) => match Url::parse(public_url) {
-                Ok(url) => url.scheme() == "https",
+                Ok(url) => match url.scheme() {
+                    "https" => true,
+                    "http" => false,
+                    scheme => {
+                        warn!(
+                            "Unexpected scheme {scheme:?} in public proxy URL from Core \
+                            ({public_url:?}); defaulting to secure cookies"
+                        );
+                        true
+                    }
+                },
                 Err(err) => {
                     warn!("Failed to parse public proxy URL from Core ({public_url:?}): {err}");
                     true
@@ -823,5 +836,40 @@ mod tests {
         assert!(state.cookie_secure.load(Ordering::Relaxed));
         assert!(!state.display_password_reset.load(Ordering::Relaxed));
         assert!(!state.display_download_step.load(Ordering::Relaxed));
+    }
+
+    /// A URL with no scheme but a port parses successfully, with the hostname taken as the
+    /// scheme. Such a value must not be mistaken for a plaintext deployment.
+    #[test]
+    fn test_schemeless_public_settings_url_resets_secure_default() {
+        for (public_url, parsed_scheme) in [
+            ("edge.example.com:8443", "edge.example.com"),
+            ("localhost:8080", "localhost"),
+        ] {
+            // Pin the premise: these parse successfully rather than erroring, so the fail-closed
+            // `Err` arm never sees them and the scheme match is what has to get this right.
+            assert_eq!(
+                Url::parse(public_url)
+                    .expect("expected a successful parse")
+                    .scheme(),
+                parsed_scheme
+            );
+
+            let state = applied_public_settings(
+                PublicSettings {
+                    display_password_reset: true,
+                    display_download_step: true,
+                    public_url: Some("http://edge.example.com".to_owned()),
+                },
+                true,
+            );
+            assert!(!state.cookie_secure.load(Ordering::Relaxed));
+
+            state.apply(test_public_settings(Some(public_url)));
+            assert!(
+                state.cookie_secure.load(Ordering::Relaxed),
+                "schemeless URL {public_url:?} must default to secure cookies"
+            );
+        }
     }
 }

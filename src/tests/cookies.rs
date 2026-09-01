@@ -250,7 +250,11 @@ async fn test_enrollment_cookie_attributes_follow_core_public_url() {
         (Some("https://proxy.example.com"), true),
         (Some("http://proxy.example.com"), false),
         (None, true),
+        (Some(""), true),
         (Some("not a URL"), true),
+        // Parses successfully with `proxy.example.com` as the scheme, so it must not be
+        // mistaken for a plaintext deployment.
+        (Some("proxy.example.com:8443"), true),
     ] {
         let cookie = request_cookie(
             public_url,
@@ -273,7 +277,11 @@ async fn test_password_reset_cookie_attributes_follow_core_public_url() {
         (Some("https://proxy.example.com"), true),
         (Some("http://proxy.example.com"), false),
         (None, true),
+        (Some(""), true),
         (Some("not a URL"), true),
+        // Parses successfully with `proxy.example.com` as the scheme, so it must not be
+        // mistaken for a plaintext deployment.
+        (Some("proxy.example.com:8443"), true),
     ] {
         let cookie = request_cookie(
             public_url,
