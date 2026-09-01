@@ -102,6 +102,18 @@ impl FromRef<AppState> for Key {
     }
 }
 
+#[cfg(test)]
+impl AppState {
+    pub(crate) fn for_test(grpc_server: ProxyServer, cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
+        let cookie_secure = Arc::clone(&grpc_server.cookie_secure);
+        Self {
+            grpc_server,
+            cookie_secure,
+            cookie_key,
+        }
+    }
+}
+
 async fn handle_404() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not found")
 }
@@ -749,7 +761,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn session_cookie_sets_security_attributes_in_both_modes() {
+    fn test_session_cookie_sets_security_attributes_in_both_modes() {
         for secure in [true, false] {
             let cookie =
                 session_cookie("session", "value".to_owned(), "/api/v1/session", secure).build();

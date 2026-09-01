@@ -778,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn public_settings_set_https_secure_and_update_display_flags() {
+    fn test_public_settings_set_https_secure_and_update_display_flags() {
         assert_eq!(
             apply(Some("https://edge.example.com"), true, false, false),
             (true, false, true)
@@ -786,7 +786,7 @@ mod tests {
     }
 
     #[test]
-    fn public_settings_set_http_insecure() {
+    fn test_public_settings_set_http_insecure() {
         assert_eq!(
             apply(Some("http://edge.example.com"), false, true, true),
             (false, true, false)
@@ -794,13 +794,13 @@ mod tests {
     }
 
     #[test]
-    fn public_settings_default_to_secure_without_url() {
+    fn test_public_settings_default_to_secure_without_url() {
         assert_eq!(apply(None, true, true, false), (true, true, true));
         assert_eq!(apply(Some(""), true, true, false), (true, true, true));
     }
 
     #[test]
-    fn invalid_public_settings_url_resets_secure_default() {
+    fn test_invalid_public_settings_url_resets_secure_default() {
         let display_password_reset = AtomicBool::new(false);
         let display_download_step = AtomicBool::new(false);
         let cookie_secure = AtomicBool::new(true);
