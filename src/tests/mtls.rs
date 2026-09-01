@@ -161,9 +161,10 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
     // helper fast on capable hardware.
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        if Instant::now() >= deadline {
-            panic!("timeout waiting for test gRPC server to start on {addr}");
-        }
+        assert!(
+            Instant::now() < deadline,
+            "timeout waiting for test gRPC server to start on {addr}"
+        );
         if TcpStream::connect(addr).await.is_ok() {
             break;
         }

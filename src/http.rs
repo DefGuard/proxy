@@ -266,20 +266,7 @@ async fn security_headers_middleware(
 
 pub async fn run_setup(env_config: &EnvConfig, logs_rx: LogsReceiver) -> anyhow::Result<TlsConfig> {
     let cert_dir = Path::new(&env_config.cert_dir);
-    if !cert_dir.exists() {
-        tokio::fs::create_dir_all(cert_dir).await.map_err(|err| {
-            if err.kind() == ErrorKind::PermissionDenied {
-                anyhow::anyhow!(
-                    "Cannot create certificate directory {}. Permission denied.",
-                    cert_dir.display()
-                )
-            } else {
-                err.into()
-            }
-        })?;
-        #[cfg(unix)]
-        tokio::fs::set_permissions(cert_dir, Permissions::from_mode(0o700)).await?;
-    } else {
+    if cert_dir.exists() {
         // verify write access before starting the setup server
         let test_path = cert_dir.join(".write_test");
         match tokio::fs::OpenOptions::new()
@@ -300,6 +287,19 @@ pub async fn run_setup(env_config: &EnvConfig, logs_rx: LogsReceiver) -> anyhow:
             }
             Err(err) => return Err(err.into()),
         }
+    } else {
+        tokio::fs::create_dir_all(cert_dir).await.map_err(|err| {
+            if err.kind() == ErrorKind::PermissionDenied {
+                anyhow::anyhow!(
+                    "Cannot create certificate directory {}. Permission denied.",
+                    cert_dir.display()
+                )
+            } else {
+                err.into()
+            }
+        })?;
+        #[cfg(unix)]
+        tokio::fs::set_permissions(cert_dir, Permissions::from_mode(0o700)).await?;
     }
 
     info!(

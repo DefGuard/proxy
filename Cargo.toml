@@ -14,7 +14,7 @@ rustls-webpki = { version = "0.103", features = ["aws-lc-rs", "std"] }
 rustls-pki-types = "1"
 # base `axum` deps
 axum = { version = "0.8", features = ["ws"] }
-axum-client-ip = "0.7"
+axum-client-ip = {version = "1.3", default-features = false, features = ["forwarded-header"] }
 axum-extra = { version = "0.12", features = [
     "cookie",
     "cookie-private",
@@ -25,7 +25,7 @@ axum-server = { version = "0.8", features = ["tls-rustls"] }
 time = { version = "0.3", default-features = false }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-stream = "0.1"
-tower-http = { version = "0.6", features = ["fs", "trace", "timeout"] }
+tower-http = { version = "0.7", features = ["fs", "trace", "timeout"] }
 # logging/tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -45,7 +45,7 @@ tonic-prost = "0.14"
 thiserror = "2.0"
 anyhow = "1.0"
 # CLI
-clap = { version = "4.5", features = ["derive", "env", "cargo"] }
+clap = { version = "4.6", features = ["derive", "env", "cargo"] }
 # other utils
 dotenvy = "0.15"
 url = { version = "2.5", features = ["serde"] }
@@ -53,7 +53,7 @@ tower_governor = "0.8"
 # UI embedding
 rust-embed = { version = "8.5", features = ["include-exclude"] }
 mime_guess = "2.0"
-base64 = "0.22"
+base64 = "0.23"
 tower = "0.5"
 futures-util = "0.3"
 ammonia = "4.1"
