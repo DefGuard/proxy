@@ -21,9 +21,13 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use axum_extra::extract::cookie::Key;
+use axum_extra::extract::{
+    PrivateCookieJar,
+    cookie::{Cookie, Key, SameSite},
+};
 use axum_server::tls_rustls::RustlsConfig;
 use clap::crate_version;
+use cookie::CookieBuilder;
 use defguard_version::{Version, server::DefguardVersionLayer};
 use serde::Serialize;
 use tokio::{
@@ -51,7 +55,10 @@ use crate::{
 };
 
 pub(crate) static ENROLLMENT_COOKIE_NAME: &str = "defguard_proxy";
+pub(crate) const ENROLLMENT_COOKIE_PATH: &str = "/api/v1/enrollment";
 pub(crate) static PASSWORD_RESET_COOKIE_NAME: &str = "defguard_proxy_password_reset";
+pub(crate) const PASSWORD_RESET_COOKIE_PATH: &str = "/api/v1/password-reset";
+
 const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
@@ -76,6 +83,25 @@ pub(crate) struct AppState {
     cookie_key: Arc<RwLock<Option<Key>>>,
 }
 
+impl AppState {
+    pub(crate) fn new(grpc_server: ProxyServer, cookie_key: Arc<RwLock<Option<Key>>>) -> Self {
+        Self {
+            grpc_server,
+            cookie_key,
+        }
+    }
+
+    /// Whether session cookies must carry the `Secure` attribute. Derived by
+    /// [`crate::grpc::PublicSettingsState`] from the public proxy URL Core sends, and defaulting
+    /// to `true` until Core says otherwise.
+    pub(crate) fn cookie_secure(&self) -> bool {
+        self.grpc_server
+            .public_settings
+            .cookie_secure
+            .load(Ordering::Relaxed)
+    }
+}
+
 impl FromRef<AppState> for Key {
     fn from_ref(state: &AppState) -> Self {
         let maybe_key = state.cookie_key.read().unwrap().clone();
@@ -83,6 +109,32 @@ impl FromRef<AppState> for Key {
         // used in practice because of the `ensure_configured` middleware.
         maybe_key.unwrap_or_else(|| Key::from(&[0; 64]))
     }
+}
+
+#[must_use]
+pub(crate) fn session_cookie(
+    name: &'static str,
+    value: String,
+    path: &'static str,
+    secure: bool,
+) -> CookieBuilder<'static> {
+    Cookie::build((name, value))
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .secure(secure)
+        .path(path)
+}
+
+/// Build the removal counterpart of [`session_cookie`]. The attributes must match those the
+/// cookie was set with, or the browser keeps the original.
+// `PrivateCookieJar` is itself `#[must_use]`, so the return value cannot be dropped silently.
+pub(crate) fn remove_session_cookie(
+    cookies: PrivateCookieJar,
+    name: &'static str,
+    path: &'static str,
+    secure: bool,
+) -> PrivateCookieJar {
+    cookies.remove(session_cookie(name, String::new(), path, secure).build())
 }
 
 async fn handle_404() -> (StatusCode, &'static str) {
@@ -126,10 +178,12 @@ async fn app_info(State(state): State<AppState>) -> Result<Json<AppInfo>, ApiErr
         server_state,
         display_password_reset: state
             .grpc_server
+            .public_settings
             .display_password_reset
             .load(Ordering::Relaxed),
         display_download_step: state
             .grpc_server
+            .public_settings
             .display_download_step
             .load(Ordering::Relaxed),
     }))
@@ -366,6 +420,80 @@ async fn build_tls_config(cert_pem: &str, key_pem: &str) -> anyhow::Result<Rustl
         .context("Failed to build HTTPS TLS configuration from PEM")
 }
 
+pub(crate) fn build_router(
+    state: AppState,
+    apply_rate_limit: impl FnOnce(Router<AppState>) -> Router<AppState>,
+    tls_active: Arc<AtomicBool>,
+) -> anyhow::Result<Router> {
+    // Collect all API routes into a separate router to scope API-only middleware.
+    let api_router = Router::new().nest(
+        "/api/v1",
+        Router::new()
+            .nest("/enrollment", enrollment::router())
+            .nest("/password-reset", password_reset::router())
+            .nest("/client-mfa", desktop_client_mfa::router())
+            .nest("/openid", openid_login::router())
+            .nest("/posture", desktop_client_posture::router())
+            .route("/poll", post(polling::info))
+            .route("/health", get(healthcheck))
+            .route("/health-grpc", get(healthcheckgrpc))
+            .route("/info", get(app_info)),
+    );
+    let mut api_router = apply_rate_limit(api_router);
+    api_router = api_router.layer(middleware::from_fn_with_state(
+        state.clone(),
+        ensure_configured,
+    ));
+
+    // Build axum app
+    let mut app = Router::new()
+        .route("/", get(index))
+        .route("/{*path}", get(index))
+        .route("/fonts/{*path}", get(web_asset))
+        .route("/assets/{*path}", get(web_asset))
+        .merge(api_router)
+        .fallback_service(get(handle_404))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            core_version_middleware,
+        ))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
+        .with_state(state)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<Body>| {
+                    let addr = get_client_addr(request);
+                    info_span!(
+                        "http_request",
+                        method = ?request.method(),
+                        path = ?request.uri(),
+                        // TODO: headers only in debug logs
+                        // headers = ?request.headers(),
+                        client_addr = addr,
+                    )
+                })
+                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
+        );
+
+    // Global request body size limit; all proxy endpoints have small payloads.
+    app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
+    // Security headers and version are the outermost layers so that ALL short-circuit
+    // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
+    // baseline security headers and the server version header.
+    let tls_for_headers = Arc::clone(&tls_active);
+    app = app
+        .layer(middleware::from_fn(move |req, next| {
+            security_headers_middleware(Arc::clone(&tls_for_headers), req, next)
+        }))
+        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
+    debug!("Configured API server routing: {app:?}");
+
+    Ok(app)
+}
+
 pub async fn run_server(
     env_config: EnvConfig,
     tls_config: Option<TlsConfig>,
@@ -474,10 +602,7 @@ pub async fn run_server(
     // build application
     debug!("Setting up API server");
     let tls_active = Arc::new(AtomicBool::new(false));
-    let shared_state = AppState {
-        grpc_server,
-        cookie_key,
-    };
+    let shared_state = AppState::new(grpc_server, cookie_key);
 
     // Setup tower_governor rate-limiter
     debug!(
@@ -514,73 +639,14 @@ pub async fn run_server(
         None
     };
 
-    // Collect all API routes into a separate router to scope API-only middleware.
-    let mut api_router = Router::new().nest(
-        "/api/v1",
-        Router::new()
-            .nest("/enrollment", enrollment::router())
-            .nest("/password-reset", password_reset::router())
-            .nest("/client-mfa", desktop_client_mfa::router())
-            .nest("/openid", openid_login::router())
-            .nest("/posture", desktop_client_posture::router())
-            .route("/poll", post(polling::info))
-            .route("/health", get(healthcheck))
-            .route("/health-grpc", get(healthcheckgrpc))
-            .route("/info", get(app_info)),
-    );
-    if let Some(conf) = governor_conf {
-        api_router = api_router.layer(GovernorLayer::new(conf));
-    }
-    api_router = api_router.layer(middleware::from_fn_with_state(
-        shared_state.clone(),
-        ensure_configured,
-    ));
-
-    // Build axum app
-    let mut app = Router::new()
-        .route("/", get(index))
-        .route("/{*path}", get(index))
-        .route("/fonts/{*path}", get(web_asset))
-        .route("/assets/{*path}", get(web_asset))
-        .merge(api_router)
-        .fallback_service(get(handle_404))
-        .layer(middleware::from_fn_with_state(
-            shared_state.clone(),
-            core_version_middleware,
-        ))
-        .layer(TimeoutLayer::with_status_code(
-            StatusCode::REQUEST_TIMEOUT,
-            REQUEST_TIMEOUT,
-        ))
-        .with_state(shared_state)
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<Body>| {
-                    let addr = get_client_addr(request);
-                    info_span!(
-                        "http_request",
-                        method = ?request.method(),
-                        path = ?request.uri(),
-                        // TODO: headers only in debug logs
-                        // headers = ?request.headers(),
-                        client_addr = addr,
-                    )
-                })
-                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
-        );
-
-    // Global request body size limit; all proxy endpoints have small payloads.
-    app = app.layer(DefaultBodyLimit::max(REQUEST_BODY_LIMIT));
-    // Security headers and version are the outermost layers so that ALL short-circuit
-    // responses (408 timeout, 413 body-too-large, 429 rate-limited) also carry the
-    // baseline security headers and the server version header.
-    let tls_for_headers = Arc::clone(&tls_active);
-    app = app
-        .layer(middleware::from_fn(move |req, next| {
-            security_headers_middleware(Arc::clone(&tls_for_headers), req, next)
-        }))
-        .layer(DefguardVersionLayer::new(Version::parse(VERSION)?));
-    debug!("Configured API server routing: {app:?}");
+    let app = build_router(
+        shared_state,
+        move |router| match governor_conf {
+            Some(conf) => router.layer(GovernorLayer::new(conf)),
+            None => router,
+        },
+        Arc::clone(&tls_active),
+    )?;
 
     // Start web server.
     debug!("Spawning API web server");
@@ -706,4 +772,22 @@ pub async fn run_server(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_session_cookie_sets_security_attributes_in_both_modes() {
+        for secure in [true, false] {
+            let cookie =
+                session_cookie("session", "value".to_owned(), "/api/v1/session", secure).build();
+
+            assert_eq!(cookie.http_only(), Some(true));
+            assert_eq!(cookie.same_site(), Some(SameSite::Strict));
+            assert_eq!(cookie.secure(), Some(secure));
+            assert_eq!(cookie.path(), Some("/api/v1/session"));
+        }
+    }
 }

@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     collections::HashMap,
     future::Future,
     net::SocketAddr,
@@ -25,6 +24,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status, Streaming, service::InterceptorLayer, transport::Server};
 use tower::ServiceBuilder;
 use tracing::Instrument;
+use url::Url;
 
 use crate::{
     LogsReceiver, MIN_CORE_VERSION, VERSION, acme,
@@ -33,13 +33,96 @@ use crate::{
     http::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{
         AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
-        CoreRequest, CoreResponse, DeviceInfo, acme_issue_event, core_request, core_response,
-        proxy_server,
+        CoreRequest, CoreResponse, DeviceInfo, PublicSettings, acme_issue_event, core_request,
+        core_response, proxy_server,
     },
 };
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
+
+// requests awaiting a `CoreResponse`, keyed by the id stamped into the outgoing `CoreRequest`
+type ResultMap = HashMap<u64, oneshot::Sender<core_response::Payload>>;
+
+/// Hand a `CoreResponse` payload to the request waiting on it.
+///
+/// [`ProxyServer::send`] registers a oneshot sender under the id it stamps into the outgoing
+/// `CoreRequest`; Core echoes that id back and this is the lookup that pairs the two. Returns
+/// whether the payload reached a waiting receiver: it does not when Core answers an id we never
+/// sent, or answers twice, or when the caller gave up before the reply arrived.
+fn resolve_response(results: &RwLock<ResultMap>, id: u64, payload: core_response::Payload) -> bool {
+    let Some(tx) = results
+        .write()
+        .expect("Failed to acquire lock on results hashmap when resolving response")
+        .remove(&id)
+    else {
+        error!("Missing receiver for response #{id}");
+        return false;
+    };
+    if tx.send(payload).is_err() {
+        error!("Receiver for response #{id} is gone; the request was likely canceled");
+        return false;
+    }
+    true
+}
+
+#[derive(Clone)]
+pub(crate) struct PublicSettingsState {
+    pub(crate) display_password_reset: Arc<AtomicBool>,
+    pub(crate) display_download_step: Arc<AtomicBool>,
+    pub(crate) cookie_secure: Arc<AtomicBool>,
+}
+
+impl Default for PublicSettingsState {
+    fn default() -> Self {
+        Self {
+            display_password_reset: Arc::new(AtomicBool::new(true)),
+            display_download_step: Arc::new(AtomicBool::new(true)),
+            cookie_secure: Arc::new(AtomicBool::new(true)),
+        }
+    }
+}
+
+impl PublicSettingsState {
+    pub(crate) fn apply(&self, settings: PublicSettings) {
+        self.display_password_reset
+            .store(settings.display_password_reset, Ordering::Relaxed);
+        self.display_download_step
+            .store(settings.display_download_step, Ordering::Relaxed);
+
+        // Default to `Secure` whenever the URL does not explicitly say the proxy is reached over
+        // plaintext HTTP. A schemeless value like `proxy.example.com:8443` parses successfully with
+        // the hostname as its scheme, so matching on `https` alone would silently drop the flag.
+        let secure = match settings.public_url.as_deref() {
+            None | Some("") => {
+                warn!(
+                    "Core did not send the public proxy URL; defaulting to secure cookies. \
+                    Enrollment and password reset over plain HTTP will not work until Core is \
+                    upgraded to a version that sends it"
+                );
+                true
+            }
+            Some(public_url) => match Url::parse(public_url) {
+                Ok(url) => match url.scheme() {
+                    "https" => true,
+                    "http" => false,
+                    scheme => {
+                        warn!(
+                            "Unexpected scheme {scheme:?} in public proxy URL from Core \
+                            ({public_url:?}); defaulting to secure cookies"
+                        );
+                        true
+                    }
+                },
+                Err(err) => {
+                    warn!("Failed to parse public proxy URL from Core ({public_url:?}): {err}");
+                    true
+                }
+            },
+        };
+        self.cookie_secure.store(secure, Ordering::Relaxed);
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct TlsConfig {
@@ -54,13 +137,11 @@ pub struct TlsConfig {
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<RwLock<ClientMap>>,
-    results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
+    results: Arc<RwLock<ResultMap>>,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
-    /// Whether the password reset option is displayed on the Edge home page.
-    pub(crate) display_password_reset: Arc<AtomicBool>,
-    /// Whether the client download page is shown during enrollment.
-    pub(crate) display_download_step: Arc<AtomicBool>,
+    /// Public settings received from Core and shared with HTTP handlers.
+    pub(crate) public_settings: PublicSettingsState,
     tls_config: Arc<Mutex<Option<TlsConfig>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
@@ -97,8 +178,7 @@ impl ProxyServer {
             results: Arc::new(RwLock::new(HashMap::new())),
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
-            display_password_reset: Arc::new(AtomicBool::new(true)),
-            display_download_step: Arc::new(AtomicBool::new(true)),
+            public_settings: PublicSettingsState::default(),
             tls_config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
@@ -224,6 +304,30 @@ impl ProxyServer {
     }
 }
 
+#[cfg(test)]
+impl ProxyServer {
+    pub(crate) fn register_test_client(
+        &self,
+    ) -> mpsc::UnboundedReceiver<Result<CoreRequest, Status>> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.clients
+            .write()
+            .expect("Failed to acquire lock on clients hashmap when registering test client")
+            .insert(SocketAddr::from(([127, 0, 0, 1], 0)), tx);
+        self.connected.store(true, Ordering::Relaxed);
+        rx
+    }
+
+    /// Resolve a pending request through the same dispatch the gRPC response loop uses, so tests
+    /// driving a full flow exercise that path rather than mirroring it.
+    pub(crate) fn resolve_test_response(&self, id: u64, payload: core_response::Payload) {
+        assert!(
+            resolve_response(&self.results, id, payload),
+            "Response #{id} did not reach a waiting receiver"
+        );
+    }
+}
+
 impl Clone for ProxyServer {
     fn clone(&self) -> Self {
         Self {
@@ -232,8 +336,7 @@ impl Clone for ProxyServer {
             results: Arc::clone(&self.results),
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
-            display_password_reset: Arc::clone(&self.display_password_reset),
-            display_download_step: Arc::clone(&self.display_download_step),
+            public_settings: self.public_settings.clone(),
             cookie_key: Arc::clone(&self.cookie_key),
             tls_config: Arc::clone(&self.tls_config),
             cert_dir: self.cert_dir.clone(),
@@ -293,8 +396,7 @@ impl proxy_server::Proxy for ProxyServer {
         let results = Arc::clone(&self.results);
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
-        let display_password_reset = Arc::clone(&self.display_password_reset);
-        let display_download_step = Arc::clone(&self.display_download_step);
+        let public_settings = self.public_settings.clone();
         let https_cert_tx = self.https_cert_tx.clone();
         let clear_https_tx = self.clear_https_tx.clone();
         tokio::spawn(
@@ -317,9 +419,7 @@ impl proxy_server::Proxy for ProxyServer {
                                         if let Err(err) =
                                             https_cert_tx.send((certs.cert_pem, certs.key_pem))
                                         {
-                                            error!(
-                                                "Failed to broadcast HTTPS certificates: {err}"
-                                            );
+                                            error!("Failed to broadcast HTTPS certificates: {err}");
                                         }
                                     }
                                     core_response::Payload::ClearHttpsCerts(()) => {
@@ -330,24 +430,10 @@ impl proxy_server::Proxy for ProxyServer {
                                     }
                                     core_response::Payload::PublicSettings(settings) => {
                                         debug!("Received PublicSettings from Core");
-                                        display_password_reset.store(
-                                            settings.display_password_reset,
-                                            Ordering::Relaxed,
-                                        );
-                                        display_download_step.store(
-                                            settings.display_download_step,
-                                            Ordering::Relaxed,
-                                        );
+                                        public_settings.apply(settings);
                                     }
                                     other => {
-                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                        if let Some(rx) = maybe_rx {
-                                            if let Err(err) = rx.send(other) {
-                                                error!("Failed to send message to rx {:?}", err.type_id());
-                                            }
-                                        } else {
-                                            error!("Missing receiver for response #{}", response.id);
-                                        }
+                                        resolve_response(&results, response.id, other);
                                     }
                                 }
                             }
@@ -364,8 +450,13 @@ impl proxy_server::Proxy for ProxyServer {
                 }
                 info!("Defguard core client disconnected: {address}");
                 connected.store(false, Ordering::Relaxed);
-                clients.write().expect("Failed to acquire lock on clients hashmap when removing \
-                    disconnected client").remove(&address);
+                clients
+                    .write()
+                    .expect(
+                        "Failed to acquire lock on clients hashmap when removing \
+                    disconnected client",
+                    )
+                    .remove(&address);
             }
             .instrument(tracing::Span::current()),
         );
@@ -555,5 +646,277 @@ impl proxy_server::Proxy for ProxyServer {
         });
 
         Ok(Response::new(UnboundedReceiverStream::new(rx)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+
+    use super::{core_response::Payload, *};
+    use crate::{
+        proto::{EnrollmentStartRequest, EnrollmentStartResponse},
+        tests::support::{test_proxy_server, test_public_settings},
+    };
+
+    fn test_device_info() -> DeviceInfo {
+        DeviceInfo {
+            ip_address: "127.0.0.1".to_owned(),
+            user_agent: None,
+            version: None,
+            platform: None,
+        }
+    }
+
+    fn applied_public_settings(
+        settings: PublicSettings,
+        initial_cookie_secure: bool,
+    ) -> PublicSettingsState {
+        let state = PublicSettingsState {
+            display_password_reset: Arc::new(AtomicBool::new(false)),
+            display_download_step: Arc::new(AtomicBool::new(false)),
+            cookie_secure: Arc::new(AtomicBool::new(initial_cookie_secure)),
+        };
+        state.apply(settings);
+        state
+    }
+
+    fn pending_request(results: &RwLock<ResultMap>, id: u64) -> oneshot::Receiver<Payload> {
+        let (tx, rx) = oneshot::channel();
+        results
+            .write()
+            .expect("results lock poisoned")
+            .insert(id, tx);
+        rx
+    }
+
+    fn enrollment_response(deadline_timestamp: i64) -> Payload {
+        Payload::EnrollmentStart(EnrollmentStartResponse {
+            admin: None,
+            user: None,
+            deadline_timestamp,
+            final_page_content: String::new(),
+            instance: None,
+            settings: None,
+        })
+    }
+
+    /// `send` must stamp the same id into the outgoing `CoreRequest` and into the `results` key,
+    /// or the response loop looks up an entry that was never registered.
+    #[test]
+    fn test_send_registers_the_id_it_puts_on_the_wire() {
+        let server = test_proxy_server(Arc::default());
+        let mut client = server.register_test_client();
+
+        let _response_rx = server
+            .send(
+                core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
+                    token: "enrollment-token".to_owned(),
+                }),
+                test_device_info(),
+            )
+            .expect("Failed to send enrollment request");
+
+        let request = client
+            .try_recv()
+            .expect("No CoreRequest reached the client channel")
+            .expect("Test client received an error");
+        assert!(matches!(
+            request.payload,
+            Some(core_request::Payload::EnrollmentStart(_))
+        ));
+        assert_eq!(request.device_info, Some(test_device_info()));
+        assert!(
+            server
+                .results
+                .read()
+                .expect("results lock poisoned")
+                .contains_key(&request.id),
+            "Request #{} went out without a registered receiver",
+            request.id
+        );
+        assert!(server.connected.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_send_fails_when_core_is_not_connected() {
+        let server = test_proxy_server(Arc::default());
+        server.connected.store(true, Ordering::Relaxed);
+
+        let result = server.send(
+            core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
+                token: "enrollment-token".to_owned(),
+            }),
+            test_device_info(),
+        );
+
+        assert!(result.is_err());
+        assert!(!server.connected.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_resolve_response_delivers_to_the_waiting_request() {
+        let results = RwLock::new(ResultMap::new());
+        let mut rx = pending_request(&results, 7);
+
+        assert!(resolve_response(&results, 7, enrollment_response(1)));
+
+        assert!(matches!(
+            rx.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(response) if response.deadline_timestamp == 1
+        ));
+    }
+
+    /// Each request must get its own reply. Resolving out of order is the ordinary case, since
+    /// Core answers whenever each request completes rather than in the order they were sent.
+    #[test]
+    fn test_resolve_response_does_not_cross_talk_between_requests() {
+        let results = RwLock::new(ResultMap::new());
+        let mut first = pending_request(&results, 1);
+        let mut second = pending_request(&results, 2);
+
+        assert!(resolve_response(&results, 2, enrollment_response(22)));
+        assert!(resolve_response(&results, 1, enrollment_response(11)));
+
+        assert!(matches!(
+            first.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(response) if response.deadline_timestamp == 11
+        ));
+        assert!(matches!(
+            second.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(response) if response.deadline_timestamp == 22
+        ));
+    }
+
+    /// An id Core makes up, or answers twice, must be dropped rather than panicking the response
+    /// loop or leaving a stale entry behind.
+    #[test]
+    fn test_resolve_response_reports_an_unknown_id() {
+        let results = RwLock::new(ResultMap::new());
+        let mut rx = pending_request(&results, 7);
+
+        assert!(!resolve_response(&results, 8, enrollment_response(1)));
+        assert!(rx.try_recv().is_err());
+
+        assert!(resolve_response(&results, 7, enrollment_response(1)));
+        assert!(
+            !resolve_response(&results, 7, enrollment_response(1)),
+            "A resolved request must not stay in the map"
+        );
+    }
+
+    #[test]
+    fn test_resolve_response_reports_an_abandoned_request() {
+        let results = RwLock::new(ResultMap::new());
+        drop(pending_request(&results, 7));
+
+        assert!(!resolve_response(&results, 7, enrollment_response(1)));
+        assert!(
+            results.read().expect("results lock poisoned").is_empty(),
+            "An abandoned request must not stay in the map"
+        );
+    }
+
+    #[test]
+    fn test_public_settings_set_https_secure_and_update_display_flags() {
+        let state = applied_public_settings(
+            PublicSettings {
+                display_password_reset: true,
+                display_download_step: false,
+                public_url: Some("https://edge.example.com".to_owned()),
+            },
+            false,
+        );
+
+        assert!(state.display_password_reset.load(Ordering::Relaxed));
+        assert!(!state.display_download_step.load(Ordering::Relaxed));
+        assert!(state.cookie_secure.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_public_settings_set_http_insecure() {
+        let state = applied_public_settings(
+            PublicSettings {
+                display_password_reset: false,
+                display_download_step: true,
+                public_url: Some("http://edge.example.com".to_owned()),
+            },
+            true,
+        );
+
+        assert!(!state.display_password_reset.load(Ordering::Relaxed));
+        assert!(state.display_download_step.load(Ordering::Relaxed));
+        assert!(!state.cookie_secure.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_public_settings_default_to_secure_without_url() {
+        for public_url in [None, Some("")] {
+            let state = applied_public_settings(test_public_settings(public_url), false);
+
+            assert!(state.display_password_reset.load(Ordering::Relaxed));
+            assert!(state.display_download_step.load(Ordering::Relaxed));
+            assert!(state.cookie_secure.load(Ordering::Relaxed));
+        }
+    }
+
+    #[test]
+    fn test_invalid_public_settings_url_resets_secure_default() {
+        let state = applied_public_settings(
+            PublicSettings {
+                display_password_reset: true,
+                display_download_step: true,
+                public_url: Some("http://edge.example.com".to_owned()),
+            },
+            true,
+        );
+        assert!(!state.cookie_secure.load(Ordering::Relaxed));
+
+        state.apply(PublicSettings {
+            display_password_reset: false,
+            display_download_step: false,
+            public_url: Some("not a URL".to_owned()),
+        });
+        assert!(state.cookie_secure.load(Ordering::Relaxed));
+        assert!(!state.display_password_reset.load(Ordering::Relaxed));
+        assert!(!state.display_download_step.load(Ordering::Relaxed));
+    }
+
+    /// A URL with no scheme but a port parses successfully, with the hostname taken as the
+    /// scheme. Such a value must not be mistaken for a plaintext deployment.
+    #[test]
+    fn test_schemeless_public_settings_url_resets_secure_default() {
+        for (public_url, parsed_scheme) in [
+            ("edge.example.com:8443", "edge.example.com"),
+            ("localhost:8080", "localhost"),
+        ] {
+            // Pin the premise: these parse successfully rather than erroring, so the fail-closed
+            // `Err` arm never sees them and the scheme match is what has to get this right.
+            assert_eq!(
+                Url::parse(public_url)
+                    .expect("expected a successful parse")
+                    .scheme(),
+                parsed_scheme
+            );
+
+            let state = applied_public_settings(
+                PublicSettings {
+                    display_password_reset: true,
+                    display_download_step: true,
+                    public_url: Some("http://edge.example.com".to_owned()),
+                },
+                true,
+            );
+            assert!(!state.cookie_secure.load(Ordering::Relaxed));
+
+            state.apply(test_public_settings(Some(public_url)));
+            assert!(
+                state.cookie_secure.load(Ordering::Relaxed),
+                "schemeless URL {public_url:?} must default to secure cookies"
+            );
+        }
     }
 }
