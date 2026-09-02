@@ -94,7 +94,14 @@ impl PublicSettingsState {
         // plaintext HTTP. A schemeless value like `proxy.example.com:8443` parses successfully with
         // the hostname as its scheme, so matching on `https` alone would silently drop the flag.
         let secure = match settings.public_url.as_deref() {
-            None | Some("") => true,
+            None | Some("") => {
+                warn!(
+                    "Core did not send the public proxy URL; defaulting to secure cookies. \
+                    Enrollment and password reset over plain HTTP will not work until Core is \
+                    upgraded to a version that sends it"
+                );
+                true
+            }
             Some(public_url) => match Url::parse(public_url) {
                 Ok(url) => match url.scheme() {
                     "https" => true,
