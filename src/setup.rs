@@ -252,7 +252,7 @@ impl ProxySetupServer {
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         tokio::spawn(async move {
             tokio::select! {
-                _ = tokio::time::sleep(adoption_timeout) => {
+                () = tokio::time::sleep(adoption_timeout) => {
                     adoption_expired.store(true, Ordering::Relaxed);
                     error!(
                         "Edge adoption expired and is now blocked. Restart the Edge to enable adoption."
