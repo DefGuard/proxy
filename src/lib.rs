@@ -57,6 +57,6 @@ pub(crate) mod proto {
 extern crate tracing;
 
 pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "+", env!("VERGEN_GIT_SHA"));
-pub const MIN_CORE_VERSION: Version = Version::new(2, 0, 0);
+pub const MIN_CORE_VERSION: Version = Version::new(2, 1, 0);
 
 type LogsReceiver = Arc<tokio::sync::Mutex<mpsc::Receiver<LogEntry>>>;

@@ -32,6 +32,8 @@ pub enum ApiError {
     NotFound(String),
     #[error("PostureRejected: {0:?}")]
     PostureRejected(Vec<String>),
+    #[error("Failed to get client IP address")]
+    ClientIpError,
 }
 
 impl IntoResponse for ApiError {

@@ -1,8 +1,6 @@
 use axum::{Json, Router, extract::State, routing::post};
-use axum_extra::extract::{
-    PrivateCookieJar,
-    cookie::{Cookie, SameSite},
-};
+use axum_extra::extract::PrivateCookieJar;
+use cookie::CookieBuilder;
 use serde::{Deserialize, Serialize};
 use time::Duration;
 
@@ -10,7 +8,7 @@ use crate::{
     enterprise::handlers::desktop_client_mfa::mfa_auth_callback,
     error::ApiError,
     handlers::get_core_response,
-    http::AppState,
+    http::{AppState, session_cookie},
     proto::{
         AuthCallbackRequest, AuthCallbackResponse, AuthFlowType, AuthInfoRequest, DeviceInfo,
         core_request, core_response,
@@ -18,8 +16,13 @@ use crate::{
 };
 
 const COOKIE_MAX_AGE: Duration = Duration::days(1);
+pub(super) const OIDC_CALLBACK_PATH: &str = "/api/v1/openid/callback";
 pub(super) static CSRF_COOKIE_NAME: &str = "csrf_proxy";
 pub(super) static NONCE_COOKIE_NAME: &str = "nonce_proxy";
+
+pub(super) fn oidc_cookie(name: &'static str, value: String) -> CookieBuilder<'static> {
+    session_cookie(name, value, OIDC_CALLBACK_PATH, true)
+}
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
@@ -86,20 +89,12 @@ async fn auth_info(
     if let core_response::Payload::AuthInfo(response) = payload {
         debug!("Received auth info response");
 
-        let nonce_cookie = Cookie::build((NONCE_COOKIE_NAME, response.nonce))
+        let nonce_cookie = oidc_cookie(NONCE_COOKIE_NAME, response.nonce)
             // .domain(cookie_domain)
-            .path("/api/v1/openid/callback")
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .secure(true)
             .max_age(COOKIE_MAX_AGE)
             .build();
-        let csrf_cookie = Cookie::build((CSRF_COOKIE_NAME, response.csrf_token))
+        let csrf_cookie = oidc_cookie(CSRF_COOKIE_NAME, response.csrf_token)
             // .domain(cookie_domain)
-            .path("/api/v1/openid/callback")
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .secure(true)
             .max_age(COOKIE_MAX_AGE)
             .build();
         let private_cookies = private_cookies.add(nonce_cookie).add(csrf_cookie);
@@ -158,8 +153,8 @@ async fn auth_callback(
     }
 
     private_cookies = private_cookies
-        .remove(Cookie::from(NONCE_COOKIE_NAME))
-        .remove(Cookie::from(CSRF_COOKIE_NAME));
+        .remove(oidc_cookie(NONCE_COOKIE_NAME, String::new()).build())
+        .remove(oidc_cookie(CSRF_COOKIE_NAME, String::new()).build());
 
     let request = AuthCallbackRequest {
         code: payload.code,
@@ -180,5 +175,34 @@ async fn auth_callback(
             callback"
         );
         Err(ApiError::InvalidResponseType)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum_extra::extract::cookie::SameSite;
+
+    use super::*;
+
+    #[test]
+    fn test_oidc_cookie_attributes_preserve_security() {
+        for name in [NONCE_COOKIE_NAME, CSRF_COOKIE_NAME] {
+            let cookie = oidc_cookie(name, "value".to_owned())
+                .max_age(COOKIE_MAX_AGE)
+                .build();
+            assert_eq!(cookie.secure(), Some(true));
+            assert_eq!(cookie.http_only(), Some(true));
+            assert_eq!(cookie.same_site(), Some(SameSite::Strict));
+            assert_eq!(cookie.path(), Some(OIDC_CALLBACK_PATH));
+            assert_eq!(cookie.max_age(), Some(COOKIE_MAX_AGE));
+
+            let mut removal = oidc_cookie(name, String::new()).build();
+            removal.make_removal();
+            assert_eq!(removal.secure(), Some(true));
+            assert_eq!(removal.http_only(), Some(true));
+            assert_eq!(removal.same_site(), Some(SameSite::Strict));
+            assert_eq!(removal.path(), Some(OIDC_CALLBACK_PATH));
+            assert_eq!(removal.max_age(), Some(Duration::ZERO));
+        }
     }
 }
