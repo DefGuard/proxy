@@ -145,7 +145,7 @@ where
         self.format_timestamp(&mut versioned_writer)?;
         let meta = event.metadata();
         write!(versioned_writer, "{} ", meta.level())?;
-        write!(versioned_writer, "{}: ", meta.target(),)?;
+        write!(versioned_writer, "{}: ", meta.target())?;
 
         // write http context log (ip, method, path)
         if let Some(log) = http_log {
