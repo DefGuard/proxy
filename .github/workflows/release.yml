@@ -8,8 +8,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-
-
 jobs:
   build-docker-release:
     # Ignore tags with -, like v1.0.0-alpha
@@ -20,7 +18,6 @@ jobs:
       tags: |
         type=semver,pattern={{version}}
         type=semver,pattern={{major}}.{{minor}}
-        type=semver,pattern={{major}}
         type=sha
       # Explicitly disable latest tag. It will be added otherwise.
       flavor: |
@@ -158,8 +155,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
             linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts:
-            "--architecture amd64
+          fpm_opts: "--architecture amd64
             --output-type deb
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb
@@ -175,8 +171,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts:
-            "--architecture arm64
+          fpm_opts: "--architecture arm64
             --output-type deb
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb
@@ -192,8 +187,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu=/usr/bin/defguard-proxy
             linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts:
-            "--architecture amd64
+          fpm_opts: "--architecture amd64
             --output-type rpm
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm
@@ -209,8 +203,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu=/usr/bin/defguard-proxy
             linux/defguard-proxy.service=/usr/lib/systemd/system/defguard-proxy.service
             example-config.toml=/etc/defguard/proxy.toml"
-          fpm_opts:
-            "--architecture arm64
+          fpm_opts: "--architecture arm64
             --output-type rpm
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm
@@ -226,8 +219,7 @@ jobs:
             "defguard-proxy-${{ env.VERSION }}-x86_64-unknown-freebsd=/usr/local/bin/defguard-proxy
             freebsd/defguard-proxy=/usr/local/etc/rc.d/defguard-proxy
             example-config.toml=/etc/defguard/proxy.toml.sample"
-          fpm_opts:
-            "--architecture amd64
+          fpm_opts: "--architecture amd64
             --output-type freebsd
             --version ${{ env.VERSION }}
             --package defguard-proxy-${{ env.VERSION }}_x86_64-unknown-freebsd.pkg

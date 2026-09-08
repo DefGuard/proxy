@@ -1,7 +1,13 @@
-use std::time::Duration;
+use std::{
+    net::{IpAddr, SocketAddr},
+    time::Duration,
+};
 
-use axum::{extract::FromRequestParts, http::request::Parts};
-use axum_client_ip::{InsecureClientIp, LeftmostXForwardedFor};
+use axum::{
+    extract::{ConnectInfo, FromRequestParts},
+    http::{HeaderName, header::FORWARDED, request::Parts},
+};
+use axum_client_ip::{RightmostForwarded, RightmostXForwardedFor};
 use axum_extra::{TypedHeader, headers::UserAgent};
 use tokio::{sync::oneshot::Receiver, time};
 use tonic::Code;
@@ -16,6 +22,42 @@ pub(crate) mod password_reset;
 pub(crate) mod polling;
 pub(crate) mod register_mfa;
 
+const X_FORWARDED_FOR: HeaderName = HeaderName::from_static("x-forwarded-for");
+
+/// Extracts client IP address. It tries "forwarded", then "x-forwarded-for" headers,
+/// with a fallback to `ConnectInfo` when these headers are absent.
+pub struct ClientIpAddr(pub IpAddr);
+
+impl<S> FromRequestParts<S> for ClientIpAddr
+where
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let ip_addr = if parts.headers.contains_key(FORWARDED) {
+            let RightmostForwarded(ip_addr) = RightmostForwarded::from_request_parts(parts, state)
+                .await
+                .map_err(|_| ApiError::ClientIpError)?;
+            ip_addr
+        } else if parts.headers.contains_key(X_FORWARDED_FOR) {
+            let RightmostXForwardedFor(ip_addr) =
+                RightmostXForwardedFor::from_request_parts(parts, state)
+                    .await
+                    .map_err(|_| ApiError::ClientIpError)?;
+            ip_addr
+        } else {
+            let ConnectInfo(socket_addr) =
+                ConnectInfo::<SocketAddr>::from_request_parts(parts, state)
+                    .await
+                    .map_err(|_| ApiError::ClientIpError)?;
+            socket_addr.ip()
+        };
+
+        Ok(Self(ip_addr))
+    }
+}
+
 // Timeout for awaiting response from Defguard Core.
 const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 const CLIENT_VERSION_HEADER: &str = "defguard-client-version";
@@ -28,12 +70,10 @@ where
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let forwarded_for_ip = LeftmostXForwardedFor::from_request_parts(parts, state)
+        let ip_address = ClientIpAddr::from_request_parts(parts, state)
             .await
-            .map(|v| v.0);
-        let insecure_ip = InsecureClientIp::from_request_parts(parts, state)
-            .await
-            .map(|v| v.0);
+            .map(|v| v.0.to_string())
+            .map_err(|_| ApiError::Unexpected("Missing client IP".to_string()))?;
         let user_agent = TypedHeader::<UserAgent>::from_request_parts(parts, state)
             .await
             .map(|v| v.to_string())
@@ -51,11 +91,6 @@ where
             .get(CLIENT_PLATFORM_HEADER)
             .and_then(|v| v.to_str().ok())
             .map(str::to_string);
-
-        let ip_address = forwarded_for_ip
-            .or(insecure_ip)
-            .map(|v| v.to_string())
-            .map_err(|_| ApiError::Unexpected("Missing client IP".to_string()))?;
 
         Ok(Self {
             ip_address,
