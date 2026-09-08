@@ -6,6 +6,7 @@ import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
 
 const searchSchema = z.object({
   token: z.string().trim().min(1),
+  step_attempt_id: z.string().trim().min(1).optional(),
 });
 
 export const Route = createFileRoute('/openid/mfa/')({
@@ -23,7 +24,9 @@ export const Route = createFileRoute('/openid/mfa/')({
       .callbackFn({
         data: {
           type: 'mfa',
-          state: deps.search.token,
+          state: deps.search.step_attempt_id
+            ? `${deps.search.token}.${deps.search.step_attempt_id}`
+            : deps.search.token,
         },
       })
       .catch((e) => {
