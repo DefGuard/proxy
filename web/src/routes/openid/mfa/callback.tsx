@@ -26,8 +26,10 @@ export const Route = createFileRoute('/openid/mfa/callback')({
           type: 'mfa',
         },
       });
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('OIDC MFA callback failed');
+      useOpenidStore.setState({ error: m.openid_mfa_redirect_error_message() });
+      throw redirect({ to: '/openid/error', replace: true });
     }
   },
   component: RouteComponent,

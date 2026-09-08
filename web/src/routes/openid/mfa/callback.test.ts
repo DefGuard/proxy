@@ -17,7 +17,7 @@ vi.mock('../../../shared/api/api', () => ({
 }));
 vi.mock('../../../paraglide/messages', () => ({
   m: {
-    openid_generic_error: () => 'OpenID authentication error',
+    openid_mfa_redirect_error_message: () => 'MFA callback error',
     openid_mfa_redirect_error_missing_args: () => 'Missing callback arguments',
   },
 }));
@@ -45,6 +45,7 @@ describe('OpenID MFA callback route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.callback.mockRejectedValue({
+      isAxiosError: true,
       response: { data: { error: 'provider rejected' } },
     });
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -54,13 +55,47 @@ describe('OpenID MFA callback route', () => {
     consoleError.mockRestore();
   });
 
-  it('redirects rejected authentication responses to the error route', async () => {
+  it('preserves successful authentication responses', async () => {
+    mocks.callback.mockResolvedValue({ data: {} });
+
+    await expect(load({ code: 'code', state: 'state' })).resolves.toBeUndefined();
+    expect(mocks.setError).not.toHaveBeenCalled();
+  });
+
+  it('redirects rejected authentication responses with the MFA error', async () => {
     await expect(load({ code: 'code', state: 'state' })).rejects.toMatchObject({
       options: {
         replace: true,
         to: '/openid/error',
       },
     });
-    expect(mocks.setError).toHaveBeenCalledWith({ error: 'provider rejected' });
+    expect(mocks.setError).toHaveBeenCalledWith({ error: 'MFA callback error' });
+  });
+
+  it('uses the MFA error when the response has no error message', async () => {
+    mocks.callback.mockRejectedValue({
+      isAxiosError: true,
+      response: { data: { error: '' } },
+    });
+
+    await expect(load({ code: 'code', state: 'state' })).rejects.toMatchObject({
+      options: {
+        replace: true,
+        to: '/openid/error',
+      },
+    });
+    expect(mocks.setError).toHaveBeenCalledWith({ error: 'MFA callback error' });
+  });
+
+  it('uses the MFA error for non-Axios callback failures', async () => {
+    mocks.callback.mockRejectedValue(undefined);
+
+    await expect(load({ code: 'code', state: 'state' })).rejects.toMatchObject({
+      options: {
+        replace: true,
+        to: '/openid/error',
+      },
+    });
+    expect(mocks.setError).toHaveBeenCalledWith({ error: 'MFA callback error' });
   });
 });
