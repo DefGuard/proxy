@@ -46,7 +46,7 @@ use crate::{
     enterprise::handlers::{desktop_client_posture, openid_login},
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
-    handlers::{desktop_client_mfa, enrollment, password_reset, polling},
+    handlers::{desktop_client_mfa, enrollment, mfa_config, password_reset, polling},
     setup::ProxySetupServer,
 };
 
@@ -73,7 +73,7 @@ pub use crate::setup::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME,
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    cookie_key: Arc<RwLock<Option<Key>>>,
+    pub(crate) cookie_key: Arc<RwLock<Option<Key>>>,
 }
 
 impl FromRef<AppState> for Key {
@@ -366,6 +366,24 @@ async fn build_tls_config(cert_pem: &str, key_pem: &str) -> anyhow::Result<Rustl
         .context("Failed to build HTTPS TLS configuration from PEM")
 }
 
+/// All `/api/v1` routes without middleware, so tests can drive them with a fake Core.
+pub(crate) fn api_router() -> Router<AppState> {
+    Router::new().nest(
+        "/api/v1",
+        Router::new()
+            .nest("/enrollment", enrollment::router())
+            .nest("/password-reset", password_reset::router())
+            .nest("/client-mfa", desktop_client_mfa::router())
+            .nest("/mfa-config", mfa_config::router())
+            .nest("/openid", openid_login::router())
+            .nest("/posture", desktop_client_posture::router())
+            .route("/poll", post(polling::info))
+            .route("/health", get(healthcheck))
+            .route("/health-grpc", get(healthcheckgrpc))
+            .route("/info", get(app_info)),
+    )
+}
+
 pub async fn run_server(
     env_config: EnvConfig,
     tls_config: Option<TlsConfig>,
@@ -515,19 +533,7 @@ pub async fn run_server(
     };
 
     // Collect all API routes into a separate router to scope API-only middleware.
-    let mut api_router = Router::new().nest(
-        "/api/v1",
-        Router::new()
-            .nest("/enrollment", enrollment::router())
-            .nest("/password-reset", password_reset::router())
-            .nest("/client-mfa", desktop_client_mfa::router())
-            .nest("/openid", openid_login::router())
-            .nest("/posture", desktop_client_posture::router())
-            .route("/poll", post(polling::info))
-            .route("/health", get(healthcheck))
-            .route("/health-grpc", get(healthcheckgrpc))
-            .route("/info", get(app_info)),
-    );
+    let mut api_router = api_router();
     if let Some(conf) = governor_conf {
         api_router = api_router.layer(GovernorLayer::new(conf));
     }

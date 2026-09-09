@@ -40,6 +40,7 @@ use crate::{
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
+type ResultMap = Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>;
 
 #[derive(Debug, Clone, Default)]
 pub struct TlsConfig {
@@ -54,7 +55,7 @@ pub struct TlsConfig {
 pub(crate) struct ProxyServer {
     current_id: Arc<AtomicU64>,
     clients: Arc<RwLock<ClientMap>>,
-    results: Arc<RwLock<HashMap<u64, oneshot::Sender<core_response::Payload>>>>,
+    results: ResultMap,
     pub(crate) connected: Arc<AtomicBool>,
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     /// Whether the password reset option is displayed on the Edge home page.
@@ -195,15 +196,21 @@ impl ProxyServer {
                 device_info: Some(device_info),
                 payload: Some(payload),
             };
-            if let Err(err) = client_tx.send(Ok(res)) {
-                error!("Failed to send CoreRequest: {err}");
-                return Err(ApiError::Unexpected("Failed to send CoreRequest".into()));
-            }
+            // Core can answer before this thread resumes, so the receiver must be registered
+            // before the request leaves.
             let (tx, rx) = oneshot::channel();
             self.results
                 .write()
                 .expect("Failed to acquire lock on results hashmap when sending CoreRequest")
                 .insert(id, tx);
+            if let Err(err) = client_tx.send(Ok(res)) {
+                error!("Failed to send CoreRequest: {err}");
+                self.results
+                    .write()
+                    .expect("Failed to acquire lock on results hashmap when sending CoreRequest")
+                    .remove(&id);
+                return Err(ApiError::Unexpected("Failed to send CoreRequest".into()));
+            }
             self.connected.store(true, Ordering::Relaxed);
             Ok(rx)
         } else {
@@ -244,6 +251,39 @@ impl Clone for ProxyServer {
             logs_rx: Arc::clone(&self.logs_rx),
             acme_staging: self.acme_staging,
         }
+    }
+}
+
+/// Hands a Core response to the HTTP handler that awaits request `id`.
+fn deliver(results: &ResultMap, id: u64, payload: core_response::Payload) {
+    let maybe_tx = results
+        .write()
+        .expect("Failed to acquire lock on results hashmap when processing response")
+        .remove(&id);
+    if let Some(tx) = maybe_tx {
+        if let Err(err) = tx.send(payload) {
+            error!("Failed to send message to rx {:?}", err.type_id());
+        }
+    } else {
+        error!("Missing receiver for response #{id}");
+    }
+}
+
+#[cfg(test)]
+impl ProxyServer {
+    /// Registers a fake Core connection and returns the stream of requests sent to it.
+    pub(crate) fn connect_fake_core(&self) -> mpsc::UnboundedReceiver<Result<CoreRequest, Status>> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.clients
+            .write()
+            .unwrap()
+            .insert(SocketAddr::from(([127, 0, 0, 1], 1)), tx);
+        rx
+    }
+
+    /// Answers request `id` as Core would over the bidi stream.
+    pub(crate) fn respond(&self, id: u64, payload: core_response::Payload) {
+        deliver(&self.results, id, payload);
     }
 }
 
@@ -317,9 +357,7 @@ impl proxy_server::Proxy for ProxyServer {
                                         if let Err(err) =
                                             https_cert_tx.send((certs.cert_pem, certs.key_pem))
                                         {
-                                            error!(
-                                                "Failed to broadcast HTTPS certificates: {err}"
-                                            );
+                                            error!("Failed to broadcast HTTPS certificates: {err}");
                                         }
                                     }
                                     core_response::Payload::ClearHttpsCerts(_) => {
@@ -339,16 +377,7 @@ impl proxy_server::Proxy for ProxyServer {
                                             Ordering::Relaxed,
                                         );
                                     }
-                                    other => {
-                                        let maybe_rx = results.write().expect("Failed to acquire lock on results hashmap when processing response").remove(&response.id);
-                                        if let Some(rx) = maybe_rx {
-                                            if let Err(err) = rx.send(other) {
-                                                error!("Failed to send message to rx {:?}", err.type_id());
-                                            }
-                                        } else {
-                                            error!("Missing receiver for response #{}", response.id);
-                                        }
-                                    }
+                                    other => deliver(&results, response.id, other),
                                 }
                             }
                         }
@@ -364,8 +393,13 @@ impl proxy_server::Proxy for ProxyServer {
                 }
                 info!("Defguard core client disconnected: {address}");
                 connected.store(false, Ordering::Relaxed);
-                clients.write().expect("Failed to acquire lock on clients hashmap when removing \
-                    disconnected client").remove(&address);
+                clients
+                    .write()
+                    .expect(
+                        "Failed to acquire lock on clients hashmap when removing \
+                    disconnected client",
+                    )
+                    .remove(&address);
             }
             .instrument(tracing::Span::current()),
         );

@@ -1,11 +1,8 @@
 use std::{
-    env::temp_dir,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
-    sync::{Arc, RwLock},
     time::Duration,
 };
 
-use axum_extra::extract::cookie::Key;
 use defguard_certs::{
     CertificateAuthority, Csr, PemLabel, cert_der_to_pem, der_to_pem, generate_key_pair,
 };
@@ -14,7 +11,7 @@ use rustls::crypto::aws_lc_rs;
 use tokio::{
     net::TcpStream,
     spawn,
-    sync::{Mutex, broadcast, mpsc, oneshot},
+    sync::oneshot,
     time::{Instant, sleep},
 };
 use tonic::{
@@ -22,10 +19,8 @@ use tonic::{
     transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity},
 };
 
-use crate::{
-    grpc::{ProxyServer, TlsConfig},
-    proto::proxy_client::ProxyClient,
-};
+use super::{build_proxy_server, cookie_key};
+use crate::{grpc::TlsConfig, proto::proxy_client::ProxyClient};
 
 struct TestCerts {
     /// PEM-encoded CA certificate (used as the trust root for both server and client validation).
@@ -104,24 +99,6 @@ fn make_tls_config(certs: &TestCerts) -> TlsConfig {
     }
 }
 
-fn build_proxy_server() -> ProxyServer {
-    let (reset_tx, _) = broadcast::channel(1);
-    let (https_cert_tx, _) = broadcast::channel(1);
-    let (clear_https_tx, _) = broadcast::channel(1);
-    let (_, logs_rx) = mpsc::channel(1);
-    let cookie_key = Arc::new(RwLock::new(Some(Key::generate())));
-    ProxyServer::new(
-        cookie_key,
-        temp_dir(),
-        reset_tx,
-        https_cert_tx,
-        clear_https_tx,
-        None,
-        Arc::new(Mutex::new(logs_rx)),
-        false,
-    )
-}
-
 /// Install the rustls AWS-LC crypto provider for the process.
 ///
 /// Must be called before any TLS code runs. Safe to call from multiple tests -
@@ -137,7 +114,7 @@ fn init_crypto() {
 /// Waits until the server is accepting TCP connections before returning, so
 /// callers do not need a fixed sleep to avoid startup races.
 async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>) {
-    let server = build_proxy_server();
+    let server = build_proxy_server(cookie_key());
     server.configure(make_tls_config(certs));
 
     // Find a free port, drop the listener, pass the addr to run().
@@ -211,7 +188,7 @@ async fn call_bidi(client: &mut ProxyClient<Channel>) -> Status {
 /// `run()` must return `Err` immediately when no `TlsConfig` has been set.
 #[tokio::test]
 async fn run_errors_without_tls_config() {
-    let server = build_proxy_server();
+    let server = build_proxy_server(cookie_key());
     // configure() is deliberately NOT called.
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
     let result = server
