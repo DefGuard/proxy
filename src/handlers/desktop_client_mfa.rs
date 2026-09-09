@@ -143,6 +143,18 @@ async fn handle_remote_auth_socket(
                     error!("Received malformed MFA result from Core");
                 }
             }
+            Ok(Payload::CoreError(status)) if status.status_code == tonic::Code::Aborted as i32 => {
+                debug!(
+                    "Remote MFA wait superseded (status {}): {}",
+                    status.status_code, status.message
+                );
+            }
+            Ok(Payload::CoreError(status)) => {
+                error!(
+                    "Remote MFA wait failed (status {}): {}",
+                    status.status_code, status.message
+                );
+            }
             Ok(_) => {
                 error!("Received wrong response type, expected AwaitRemoteMfaFinish");
             }
