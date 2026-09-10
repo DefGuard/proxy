@@ -19,7 +19,7 @@ use tonic::{
     transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity},
 };
 
-use super::{build_proxy_server, cookie_key};
+use super::support::{cookie_key, test_proxy_server};
 use crate::{grpc::TlsConfig, proto::proxy_client::ProxyClient};
 
 struct TestCerts {
@@ -114,7 +114,7 @@ fn init_crypto() {
 /// Waits until the server is accepting TCP connections before returning, so
 /// callers do not need a fixed sleep to avoid startup races.
 async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>) {
-    let server = build_proxy_server(cookie_key());
+    let server = test_proxy_server(cookie_key());
     server.configure(make_tls_config(certs));
 
     // Find a free port, drop the listener, pass the addr to run().
@@ -138,9 +138,10 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
     // helper fast on capable hardware.
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        if Instant::now() >= deadline {
-            panic!("timeout waiting for test gRPC server to start on {addr}");
-        }
+        assert!(
+            Instant::now() < deadline,
+            "timeout waiting for test gRPC server to start on {addr}"
+        );
         if TcpStream::connect(addr).await.is_ok() {
             break;
         }
@@ -188,7 +189,7 @@ async fn call_bidi(client: &mut ProxyClient<Channel>) -> Status {
 /// `run()` must return `Err` immediately when no `TlsConfig` has been set.
 #[tokio::test]
 async fn run_errors_without_tls_config() {
-    let server = build_proxy_server(cookie_key());
+    let server = test_proxy_server(cookie_key());
     // configure() is deliberately NOT called.
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
     let result = server

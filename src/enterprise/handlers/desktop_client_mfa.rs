@@ -1,10 +1,10 @@
 use axum::{Json, extract::State};
-use axum_extra::extract::{PrivateCookieJar, cookie::Cookie};
+use axum_extra::extract::PrivateCookieJar;
 use tracing::{debug, error, info, warn};
 
 use crate::{
     enterprise::handlers::openid_login::{
-        AuthenticationResponse, CSRF_COOKIE_NAME, FlowType, NONCE_COOKIE_NAME,
+        AuthenticationResponse, CSRF_COOKIE_NAME, FlowType, NONCE_COOKIE_NAME, oidc_cookie,
     },
     error::ApiError,
     handlers::get_core_response,
@@ -71,8 +71,8 @@ pub(super) async fn mfa_auth_callback(
     debug!("CSRF token validation passed");
 
     private_cookies = private_cookies
-        .remove(Cookie::from(NONCE_COOKIE_NAME))
-        .remove(Cookie::from(CSRF_COOKIE_NAME));
+        .remove(oidc_cookie(NONCE_COOKIE_NAME, String::new()).build())
+        .remove(oidc_cookie(CSRF_COOKIE_NAME, String::new()).build());
 
     debug!("Removed security cookies");
 

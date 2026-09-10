@@ -8,7 +8,7 @@ use std::sync::{
 use axum::http::StatusCode;
 use serde_json::json;
 
-use super::{app_with_fake_core, post_json};
+use super::support::{app_with_fake_core, post_json};
 use crate::proto::{
     CodeMfaSetupFinishResponse, CodeMfaSetupStartResponse, CoreError, MfaConfigAuthorizeResponse,
     MfaConfigSendCodeResponse, MfaConfigStartResponse, MfaMethod, core_request, core_response,
