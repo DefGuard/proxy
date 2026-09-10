@@ -40,7 +40,6 @@ use crate::{
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
-
 // requests awaiting a `CoreResponse`, keyed by the id stamped into the outgoing `CoreRequest`
 type ResultMap = HashMap<u64, oneshot::Sender<core_response::Payload>>;
 
@@ -275,15 +274,21 @@ impl ProxyServer {
                 device_info: Some(device_info),
                 payload: Some(payload),
             };
-            if let Err(err) = client_tx.send(Ok(res)) {
-                error!("Failed to send CoreRequest: {err}");
-                return Err(ApiError::Unexpected("Failed to send CoreRequest".into()));
-            }
+            // Core can answer before this thread resumes, so the receiver must be registered
+            // before the request leaves.
             let (tx, rx) = oneshot::channel();
             self.results
                 .write()
                 .expect("Failed to acquire lock on results hashmap when sending CoreRequest")
                 .insert(id, tx);
+            if let Err(err) = client_tx.send(Ok(res)) {
+                error!("Failed to send CoreRequest: {err}");
+                self.results
+                    .write()
+                    .expect("Failed to acquire lock on results hashmap when sending CoreRequest")
+                    .remove(&id);
+                return Err(ApiError::Unexpected("Failed to send CoreRequest".into()));
+            }
             self.connected.store(true, Ordering::Relaxed);
             Ok(rx)
         } else {

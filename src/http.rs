@@ -50,7 +50,7 @@ use crate::{
     enterprise::handlers::{desktop_client_posture, openid_login},
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
-    handlers::{desktop_client_mfa, enrollment, password_reset, polling},
+    handlers::{desktop_client_mfa, enrollment, mfa_config, password_reset, polling},
     setup::ProxySetupServer,
 };
 
@@ -80,7 +80,7 @@ pub use crate::setup::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME,
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub(crate) grpc_server: ProxyServer,
-    cookie_key: Arc<RwLock<Option<Key>>>,
+    pub(crate) cookie_key: Arc<RwLock<Option<Key>>>,
 }
 
 impl AppState {
@@ -420,26 +420,31 @@ async fn build_tls_config(cert_pem: &str, key_pem: &str) -> anyhow::Result<Rustl
         .context("Failed to build HTTPS TLS configuration from PEM")
 }
 
-pub(crate) fn build_router(
-    state: AppState,
-    apply_rate_limit: impl FnOnce(Router<AppState>) -> Router<AppState>,
-    tls_active: Arc<AtomicBool>,
-) -> anyhow::Result<Router> {
-    // Collect all API routes into a separate router to scope API-only middleware.
-    let api_router = Router::new().nest(
+/// All `/api/v1` routes without middleware, so tests can drive them with a fake Core.
+pub(crate) fn api_router() -> Router<AppState> {
+    Router::new().nest(
         "/api/v1",
         Router::new()
             .nest("/enrollment", enrollment::router())
             .nest("/password-reset", password_reset::router())
             .nest("/client-mfa", desktop_client_mfa::router())
+            .nest("/mfa-config", mfa_config::router())
             .nest("/openid", openid_login::router())
             .nest("/posture", desktop_client_posture::router())
             .route("/poll", post(polling::info))
             .route("/health", get(healthcheck))
             .route("/health-grpc", get(healthcheckgrpc))
             .route("/info", get(app_info)),
-    );
-    let mut api_router = apply_rate_limit(api_router);
+    )
+}
+
+pub(crate) fn build_router(
+    state: AppState,
+    apply_rate_limit: impl FnOnce(Router<AppState>) -> Router<AppState>,
+    tls_active: Arc<AtomicBool>,
+) -> anyhow::Result<Router> {
+    // Collect all API routes into a separate router to scope API-only middleware.
+    let mut api_router = apply_rate_limit(api_router());
     api_router = api_router.layer(middleware::from_fn_with_state(
         state.clone(),
         ensure_configured,
