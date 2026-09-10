@@ -44,12 +44,6 @@ pub(super) fn build_proxy_server(cookie_key: Arc<RwLock<Option<Key>>>) -> ProxyS
     )
 }
 
-/// The API router backed by a fake Core that answers every request with `core`.
-///
-/// `core` receives each request payload and returns the response payload. It runs on a
-/// separate task, so a handler can await the response like in production. A panic inside
-/// `core` would only kill that task, so it is turned into an internal `CoreError` that
-/// carries the panic message back through the handler under test.
 pub(super) fn app_with_fake_core<F>(core: F) -> Router
 where
     F: Fn(core_request::Payload) -> core_response::Payload + Send + 'static,
@@ -83,7 +77,7 @@ where
 
 /// Sends a JSON POST like a desktop client and returns the status with the JSON body.
 ///
-/// The `X-Forwarded-For` header satisfies the `DeviceInfo` extractor without a socket.
+/// The `X-Forwarded-For` header satisfies the `DeviceInfo` extractor.
 pub(super) async fn post_json<T: Serialize>(
     app: &Router,
     path: &str,
