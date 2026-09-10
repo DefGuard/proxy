@@ -14,8 +14,6 @@ use crate::{
 };
 
 /// MFA factor configuration for an enrolled desktop client.
-///
-/// The client is not a browser, so every request carries its token in the JSON body.
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_mfa_config))
