@@ -39,7 +39,9 @@ RUN cargo install --locked --path . --root /build
 
 # run
 FROM debian:13-slim AS runtime
-RUN apt-get update -y && apt-get upgrade -y && \
+# Bust the cache for the layer below on every build so OS security updates are always applied.
+ARG CACHEBUST=0
+RUN echo "cachebust=${CACHEBUST}" && apt-get update -y && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y ca-certificates libssl-dev lsb-release && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
