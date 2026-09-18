@@ -12,6 +12,7 @@ FROM rust:1 AS chef
 WORKDIR /build
 
 # install & cache necessary components
+RUN apt-get update && apt-get -y install pkg-config libudev-dev && rm -rf /var/lib/apt/lists/*
 RUN cargo install cargo-chef
 RUN rustup component add rustfmt
 
@@ -42,7 +43,7 @@ FROM debian:13-slim AS runtime
 # Bust the cache for the layer below on every build so OS security updates are always applied.
 ARG CACHEBUST=0
 RUN echo "cachebust=${CACHEBUST}" && apt-get update -y && apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y ca-certificates libssl-dev lsb-release && \
+    apt-get install --no-install-recommends -y ca-certificates libssl-dev libudev1 lsb-release && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /build/bin/defguard-proxy .

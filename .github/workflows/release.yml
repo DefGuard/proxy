@@ -123,6 +123,12 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@1583d6b38d7be47f593cb472781bbb21cab4321e # v0.0.10
 
+      - name: Install build dependencies
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get -y install pkg-config libudev-dev libudev-dev:arm64
+
       - name: Build Linux x86_64 binary
         run: |
           cargo build --locked --release --target x86_64-unknown-linux-gnu
@@ -133,7 +139,8 @@ jobs:
       - name: Build Linux aarch64 binary
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          PKG_CONFIG_SYSROOT_DIR: /usr/lib/aarch64-linux-gnu
+          PKG_CONFIG_ALLOW_CROSS: "1"
+          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
         run: |
           cargo build --locked --release --target aarch64-unknown-linux-gnu
           mv target/aarch64-unknown-linux-gnu/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu
