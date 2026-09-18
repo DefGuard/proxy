@@ -60,10 +60,10 @@ pub(super) async fn code_mfa_setup_finish(
 /// The factors Core's MFA setup can enable: a code by email or TOTP, or a FIDO2
 /// security key, whose proof is an attestation rather than a code.
 fn reject_unsupported_method(method: i32) -> Result<(), ApiError> {
-    if method == MfaMethod::Email as i32
-        || method == MfaMethod::Totp as i32
-        || method == MfaMethod::Fido2 as i32
-    {
+    if matches!(
+        MfaMethod::try_from(method),
+        Ok(MfaMethod::Email | MfaMethod::Totp | MfaMethod::Fido2)
+    ) {
         Ok(())
     } else {
         error!("Requested method not supported");
