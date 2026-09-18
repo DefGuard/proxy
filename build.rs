@@ -32,9 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "ClientMfaStartRequest.selected_methods",
             "#[serde(default)]",
         )
-        // These are only ever sent when setting up a FIDO2 factor. Clients configuring a
-        // code factor leave them out of the request body entirely, so they cannot be
-        // required here just because protobuf lists them.
+        // Sent only when setting up FIDO2, absent from code-factor request bodies.
         .field_attribute("CodeMfaSetupFinishRequest.name", "#[serde(default)]")
         .field_attribute(
             "CodeMfaSetupFinishRequest.fido2_attestation",

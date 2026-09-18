@@ -57,8 +57,6 @@ pub(super) async fn code_mfa_setup_finish(
     }
 }
 
-/// The factors Core's MFA setup can enable: a code by email or TOTP, or a FIDO2
-/// security key, whose proof is an attestation rather than a code.
 fn reject_unsupported_method(method: i32) -> Result<(), ApiError> {
     if matches!(
         MfaMethod::try_from(method),
@@ -71,8 +69,8 @@ fn reject_unsupported_method(method: i32) -> Result<(), ApiError> {
     }
 }
 
-/// The enrollment routes below carry neither a key name nor an attestation, so they
-/// can only ever set up a code factor; FIDO2 has to go through MFA configuration.
+/// Enrollment routes carry no key name or attestation, so FIDO2 must go
+/// through MFA configuration instead.
 fn reject_non_code_method(method: MfaMethod) -> Result<(), ApiError> {
     if matches!(method, MfaMethod::Email | MfaMethod::Totp) {
         Ok(())
