@@ -42,7 +42,7 @@ fn start_response() -> MfaFlowStartResponse {
 }
 
 #[tokio::test]
-async fn start_dispatches_to_mfa_flow_start() {
+async fn test_start_dispatches_to_mfa_flow_start() {
     let response = start_response();
     let expected = serde_json::to_value(&response).unwrap();
     let app = app_with_fake_core(move |payload| match payload {
@@ -68,7 +68,7 @@ async fn start_dispatches_to_mfa_flow_start() {
 }
 
 #[tokio::test]
-async fn step_start_dispatches_to_mfa_flow_step_start() {
+async fn test_step_start_dispatches_to_mfa_flow_step_start() {
     let response = MfaFlowStepStartResponse {
         started: Some(first_step()),
     };
@@ -93,7 +93,7 @@ async fn step_start_dispatches_to_mfa_flow_step_start() {
 }
 
 #[tokio::test]
-async fn step_finish_dispatches_and_preserves_all_result_arms() {
+async fn test_step_finish_dispatches_and_preserves_all_result_arms() {
     let outcomes = [
         mfa_step_result::Outcome::Advanced(MfaAdvanced { next_step: 1 }),
         mfa_step_result::Outcome::Completed(MfaCompleted {
@@ -139,7 +139,7 @@ async fn step_finish_dispatches_and_preserves_all_result_arms() {
 }
 
 #[tokio::test]
-async fn approve_dispatches_and_returns_empty_json() {
+async fn test_approve_dispatches_and_returns_empty_json() {
     let app = app_with_fake_core(|payload| match payload {
         core_request::Payload::MfaFlowApprove(request) => {
             assert!(request.token == "flow-token");
@@ -165,7 +165,7 @@ async fn approve_dispatches_and_returns_empty_json() {
 }
 
 #[tokio::test]
-async fn remote_dispatches_to_mfa_flow_remote() {
+async fn test_remote_dispatches_to_mfa_flow_remote() {
     let cookie_key = cookie_key();
     let server = test_proxy_server(Arc::clone(&cookie_key));
     let mut requests = server.register_test_client();
@@ -215,7 +215,7 @@ async fn remote_dispatches_to_mfa_flow_remote() {
 }
 
 #[tokio::test]
-async fn legacy_http_routes_keep_their_response_shapes() {
+async fn test_legacy_http_routes_keep_their_response_shapes() {
     let app = app_with_fake_core(|payload| match payload {
         core_request::Payload::ClientMfaStart(_) => {
             core_response::Payload::ClientMfaStart(ClientMfaStartResponse {
@@ -261,7 +261,7 @@ async fn legacy_http_routes_keep_their_response_shapes() {
 }
 
 #[tokio::test]
-async fn legacy_step_start_is_an_unknown_route() {
+async fn test_legacy_step_start_is_an_unknown_route() {
     let app = app_with_fake_core(|_| panic!("unknown route reached Core"));
     let (step_status, step_body) =
         post_json(&app, "/api/v1/client-mfa/step-start", &json!({})).await;
@@ -273,7 +273,7 @@ async fn legacy_step_start_is_an_unknown_route() {
 }
 
 #[tokio::test]
-async fn malformed_step_finish_is_rejected_before_core_dispatch() {
+async fn test_malformed_step_finish_is_rejected_before_core_dispatch() {
     let app = app_with_fake_core(|_| panic!("malformed request reached Core"));
     let (status, _) = post_json(
         &app,

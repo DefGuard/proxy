@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn advanced_serializes_as_mfa_result() {
+    fn test_advanced_serializes_as_mfa_result() {
         let frame = serialized(&response(mfa_step_result::Outcome::Advanced(MfaAdvanced {
             next_step: 1,
         })));
@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn completed_nests_the_preshared_key() {
+    fn test_completed_nests_the_preshared_key() {
         let frame = serialized(&response(mfa_step_result::Outcome::Completed(
             MfaCompleted {
                 preshared_key: "completed-psk".to_string(),
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn awaiting_external_is_not_a_remote_result() {
+    fn test_awaiting_external_is_not_a_remote_result() {
         let response = MfaFlowRemoteResponse {
             result: Some(MfaStepResult {
                 outcome: Some(mfa_step_result::Outcome::AwaitingExternal(
