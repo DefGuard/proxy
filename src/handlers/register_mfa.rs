@@ -18,7 +18,7 @@ pub(crate) fn router() -> Router<AppState> {
         .route("/code/finish", post(register_code_mfa_finish))
 }
 
-/// Forwards a code MFA setup start to Core.
+/// Forwards an MFA factor setup start to Core.
 ///
 /// `req.token` is either an enrollment token or an authorized MFA config session token.
 pub(super) async fn code_mfa_setup_start(
@@ -26,8 +26,8 @@ pub(super) async fn code_mfa_setup_start(
     device_info: DeviceInfo,
     req: CodeMfaSetupStartRequest,
 ) -> Result<Json<CodeMfaSetupStartResponse>, ApiError> {
-    debug!("Code MFA setup started");
-    reject_non_code_method(req.method)?;
+    debug!("MFA factor setup started");
+    reject_unsupported_method(req.method)?;
 
     let rx = state
         .grpc_server
@@ -39,13 +39,13 @@ pub(super) async fn code_mfa_setup_start(
     }
 }
 
-/// Forwards a code MFA setup finish to Core. See [`code_mfa_setup_start`] for the token.
+/// Forwards an MFA factor setup finish to Core. See [`code_mfa_setup_start`] for the token.
 pub(super) async fn code_mfa_setup_finish(
     state: &AppState,
     device_info: DeviceInfo,
     req: CodeMfaSetupFinishRequest,
 ) -> Result<Json<CodeMfaSetupFinishResponse>, ApiError> {
-    reject_non_code_method(req.method)?;
+    reject_unsupported_method(req.method)?;
 
     let rx = state
         .grpc_server
@@ -57,12 +57,25 @@ pub(super) async fn code_mfa_setup_finish(
     }
 }
 
-/// Code MFA setup only knows how to deliver a code by email or TOTP.
-fn reject_non_code_method(method: i32) -> Result<(), ApiError> {
-    if method == MfaMethod::Email as i32 || method == MfaMethod::Totp as i32 {
+fn reject_unsupported_method(method: i32) -> Result<(), ApiError> {
+    if matches!(
+        MfaMethod::try_from(method),
+        Ok(MfaMethod::Email | MfaMethod::Totp | MfaMethod::Fido2)
+    ) {
         Ok(())
     } else {
         error!("Requested method not supported");
+        Err(ApiError::BadRequest("Method not supported.".to_string()))
+    }
+}
+
+/// Enrollment routes carry no key name or attestation, so FIDO2 must go
+/// through MFA configuration instead.
+fn reject_non_code_method(method: MfaMethod) -> Result<(), ApiError> {
+    if matches!(method, MfaMethod::Email | MfaMethod::Totp) {
+        Ok(())
+    } else {
+        error!("Requested method not supported during enrollment");
         Err(ApiError::BadRequest("Method not supported.".to_string()))
     }
 }
@@ -80,6 +93,7 @@ async fn register_code_mfa_start(
     Json(req): Json<RegisterMfaCodeStartRequest>,
 ) -> Result<Json<CodeMfaSetupStartResponse>, ApiError> {
     let token = enrollment_token(&cookie_jar)?;
+    reject_non_code_method(req.method)?;
     code_mfa_setup_start(
         &state,
         device_info,
@@ -105,6 +119,7 @@ async fn register_code_mfa_finish(
     Json(req): Json<RegisterMfaCodeFinishRequest>,
 ) -> Result<Json<CodeMfaSetupFinishResponse>, ApiError> {
     let token = enrollment_token(&cookie_jar)?;
+    reject_non_code_method(req.method)?;
     code_mfa_setup_finish(
         &state,
         device_info,
@@ -112,6 +127,9 @@ async fn register_code_mfa_finish(
             token,
             code: req.code,
             method: req.method as i32,
+            // FIDO2 only, and rejected above.
+            name: None,
+            fido2_attestation: None,
         },
     )
     .await

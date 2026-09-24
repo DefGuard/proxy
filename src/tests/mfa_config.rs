@@ -45,6 +45,7 @@ fn fallback_then_totp(
                 assert_eq!(req.code, "123456");
                 core_response::Payload::MfaConfigAuthorize(MfaConfigAuthorizeResponse {
                     deadline_timestamp: 1_800_003_600,
+                    recovery_codes: vec![],
                 })
             }
             core_request::Payload::CodeMfaSetupStart(req) => {
@@ -52,6 +53,7 @@ fn fallback_then_totp(
                 assert_eq!(req.method, TOTP);
                 core_response::Payload::CodeMfaSetupStartResponse(CodeMfaSetupStartResponse {
                     totp_secret: Some("JBSWY3DPEHPK3PXP".into()),
+                    fido2_creation_challenge: None,
                 })
             }
             core_request::Payload::CodeMfaSetupFinish(req) => {
