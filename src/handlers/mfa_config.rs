@@ -64,7 +64,6 @@ async fn send_mfa_config_code(
     }
 }
 
-/// Issues a challenge for authorizing the session with a FIDO2 security key.
 #[instrument(level = "debug", skip(state, req))]
 async fn mfa_config_fido2_challenge(
     State(state): State<AppState>,

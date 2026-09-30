@@ -136,12 +136,12 @@ pub(crate) async fn get_core_response(
             }
             if is_oidc_not_completed(&core_error) {
                 debug!("OIDC authentication still pending: {}", core_error.message);
-                return Err(core_error.into());
+            } else {
+                error!(
+                    "Received an error response from Core service. | status code: {} message: {}",
+                    core_error.status_code, core_error.message
+                );
             }
-            error!(
-                "Received an error response from Core service. | status code: {} message: {}",
-                core_error.status_code, core_error.message
-            );
             return Err(core_error.into());
         }
         core_response

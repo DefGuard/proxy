@@ -158,7 +158,7 @@ async fn test_mfa_setup_rejects_unsupported_method_before_core() {
         let (status, _) = post_json(
             &app,
             path,
-            &json!({ "token": SESSION_TOKEN, "method": MfaMethod::Oidc as i32, "code": "1" }),
+            &json!({ "token": SESSION_TOKEN, "method": OIDC, "code": "1" }),
         )
         .await;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{path}");

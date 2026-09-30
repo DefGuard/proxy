@@ -8,11 +8,10 @@ use tonic::{Code, Status, metadata::errors::InvalidMetadataValue};
 
 use crate::proto::CoreError;
 
-/// Prefix of Core's answer to an OIDC MFA poll made before the browser round trip completes.
+/// Core's message prefix for an OIDC MFA poll made before the browser round trip completes.
 const OIDC_NOT_COMPLETED: &str = "OIDC authentication not completed";
 
-/// Whether Core reports that OIDC authentication is still pending. Clients poll until it
-/// completes, so this is expected and not an error.
+/// Expected while clients poll OIDC, so not an error.
 pub(crate) fn is_oidc_not_completed(core_error: &CoreError) -> bool {
     core_error.status_code == Code::FailedPrecondition as i32
         && core_error.message.starts_with(OIDC_NOT_COMPLETED)
@@ -38,7 +37,7 @@ pub enum ApiError {
     EnterpriseNotEnabled,
     #[error("Precondition required: {0}")]
     PreconditionRequired(String),
-    #[error("OIDC authentication pending: {0}")]
+    #[error("{0}")]
     OidcNotCompleted(String),
     #[error("Bad request: {0}")]
     NotFound(String),
@@ -50,7 +49,7 @@ pub enum ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        if let Self::OidcNotCompleted(_) = self {
+        if matches!(self, Self::OidcNotCompleted(_)) {
             debug!("{self}");
         } else {
             error!("{self}");
@@ -125,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_oidc_not_completed_maps_to_own_variant() {
-        // MFA configuration and VPN client MFA polls respectively.
+        // Core's MFA config and client MFA wordings.
         for message in [
             "OIDC authentication not completed",
             "OIDC authentication not completed yet",
