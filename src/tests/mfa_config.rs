@@ -230,7 +230,7 @@ async fn test_mfa_config_authorize_forwards_fido2_assertion() {
             assert_eq!(req.session_token, SESSION_TOKEN);
             assert_eq!(req.method, FIDO2);
             assert_eq!(req.code, "");
-            assert_eq!(req.signature.as_deref(), Some("c2lnbmF0dXJl"));
+            assert_eq!(req.signature.as_deref(), Some(&[7, 8, 9][..]));
             assert_eq!(req.auth_data.as_deref(), Some(&[1, 2, 3][..]));
             assert_eq!(req.credential_id.as_deref(), Some(&[4, 5][..]));
             authorize_response()
@@ -244,7 +244,7 @@ async fn test_mfa_config_authorize_forwards_fido2_assertion() {
         &json!({
             "session_token": SESSION_TOKEN,
             "method": FIDO2,
-            "signature": "c2lnbmF0dXJl",
+            "signature": [7, 8, 9],
             "auth_data": [1, 2, 3],
             "credential_id": [4, 5],
         }),
