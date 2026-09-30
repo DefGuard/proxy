@@ -192,7 +192,7 @@ async fn test_mfa_config_core_error_maps_to_http_status() {
     let (status, body) = post_json(
         &app,
         "/api/v1/mfa-config/authorize",
-        &json!({ "session_token": SESSION_TOKEN, "method": OIDC, "code": "" }),
+        &json!({ "session_token": SESSION_TOKEN, "method": OIDC }),
     )
     .await;
     assert_eq!(status, StatusCode::PRECONDITION_REQUIRED, "{body}");
@@ -244,7 +244,6 @@ async fn test_mfa_config_authorize_forwards_fido2_assertion() {
         &json!({
             "session_token": SESSION_TOKEN,
             "method": FIDO2,
-            "code": "",
             "signature": "c2lnbmF0dXJl",
             "auth_data": [1, 2, 3],
             "credential_id": [4, 5],

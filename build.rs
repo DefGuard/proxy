@@ -38,6 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "CodeMfaSetupFinishRequest.fido2_attestation",
             "#[serde(default)]",
         )
+        // Only code factors (TOTP/email) send `code`; FIDO2 and OIDC may omit it.
+        .field_attribute("MfaConfigAuthorizeRequest.code", "#[serde(default)]")
         // FIDO2 assertion, absent from code-factor and OIDC authorize request bodies.
         .field_attribute("MfaConfigAuthorizeRequest.signature", "#[serde(default)]")
         .field_attribute("MfaConfigAuthorizeRequest.auth_data", "#[serde(default)]")
