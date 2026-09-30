@@ -45,6 +45,7 @@ fn fallback_then_totp(
                 assert_eq!(req.code, "123456");
                 core_response::Payload::MfaConfigAuthorize(MfaConfigAuthorizeResponse {
                     deadline_timestamp: 1_800_003_600,
+                    recovery_codes: vec![],
                 })
             }
             core_request::Payload::CodeMfaSetupStart(req) => {
@@ -52,6 +53,7 @@ fn fallback_then_totp(
                 assert_eq!(req.method, TOTP);
                 core_response::Payload::CodeMfaSetupStartResponse(CodeMfaSetupStartResponse {
                     totp_secret: Some("JBSWY3DPEHPK3PXP".into()),
+                    fido2_creation_challenge: None,
                 })
             }
             core_request::Payload::CodeMfaSetupFinish(req) => {
@@ -61,6 +63,10 @@ fn fallback_then_totp(
                 core_response::Payload::CodeMfaSetupFinishResponse(CodeMfaSetupFinishResponse {
                     recovery_codes: vec!["aaaa-bbbb".into(), "cccc-dddd".into()],
                 })
+            }
+            core_request::Payload::MfaConfigEnd(req) => {
+                assert_eq!(req.session_token, SESSION_TOKEN);
+                core_response::Payload::Empty(())
             }
             _ => panic!("unexpected request to Core"),
         }
@@ -119,9 +125,17 @@ async fn test_mfa_config_flow_forwards_session_token() {
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(body["recovery_codes"], json!(["aaaa-bbbb", "cccc-dddd"]));
 
+    let (status, body) = post_json(
+        &app,
+        "/api/v1/mfa-config/end",
+        &json!({ "session_token": session_token }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
     assert_eq!(
         steps.load(Ordering::Relaxed),
-        5,
+        6,
         "Core must see every step once"
     );
 }

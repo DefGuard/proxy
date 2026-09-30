@@ -32,6 +32,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "ClientMfaStartRequest.selected_methods",
             "#[serde(default)]",
         )
+        // Sent only when setting up FIDO2, absent from code-factor request bodies.
+        .field_attribute("CodeMfaSetupFinishRequest.name", "#[serde(default)]")
+        .field_attribute(
+            "CodeMfaSetupFinishRequest.fido2_attestation",
+            "#[serde(default)]",
+        )
         // Protobuf enum values carry the enum name prefix to avoid package-scope
         // collisions, so the generated Rust variants all share a prefix that clippy
         // flags. Suppress it on the generated type.
