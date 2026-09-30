@@ -8,8 +8,9 @@ use crate::{
     proto::{
         CodeMfaSetupFinishRequest, CodeMfaSetupFinishResponse, CodeMfaSetupStartRequest,
         CodeMfaSetupStartResponse, DeviceInfo, MfaConfigAuthorizeRequest,
-        MfaConfigAuthorizeResponse, MfaConfigEndRequest, MfaConfigSendCodeRequest,
-        MfaConfigStartRequest, MfaConfigStartResponse, core_request, core_response,
+        MfaConfigAuthorizeResponse, MfaConfigEndRequest, MfaConfigFido2ChallengeRequest,
+        MfaConfigFido2ChallengeResponse, MfaConfigSendCodeRequest, MfaConfigStartRequest,
+        MfaConfigStartResponse, core_request, core_response,
     },
 };
 
@@ -18,6 +19,7 @@ pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_mfa_config))
         .route("/send-code", post(send_mfa_config_code))
+        .route("/fido2-challenge", post(mfa_config_fido2_challenge))
         .route("/authorize", post(authorize_mfa_config))
         .route("/setup/start", post(start_mfa_setup))
         .route("/setup/finish", post(finish_mfa_setup))
@@ -58,6 +60,27 @@ async fn send_mfa_config_code(
         Ok(())
     } else {
         error!("Received invalid gRPC response type, expected MfaConfigSendCode");
+        Err(ApiError::InvalidResponseType)
+    }
+}
+
+/// Issues a challenge for authorizing the session with a FIDO2 security key.
+#[instrument(level = "debug", skip(state, req))]
+async fn mfa_config_fido2_challenge(
+    State(state): State<AppState>,
+    device_info: DeviceInfo,
+    Json(req): Json<MfaConfigFido2ChallengeRequest>,
+) -> Result<Json<MfaConfigFido2ChallengeResponse>, ApiError> {
+    info!("Issuing FIDO2 challenge for MFA configuration session");
+    let rx = state.grpc_server.send(
+        core_request::Payload::MfaConfigFido2Challenge(req),
+        device_info,
+    )?;
+    let payload = get_core_response(rx, None).await?;
+    if let core_response::Payload::MfaConfigFido2Challenge(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type, expected MfaConfigFido2Challenge");
         Err(ApiError::InvalidResponseType)
     }
 }

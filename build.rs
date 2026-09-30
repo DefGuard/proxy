@@ -38,6 +38,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "CodeMfaSetupFinishRequest.fido2_attestation",
             "#[serde(default)]",
         )
+        // FIDO2 assertion, absent from code-factor and OIDC authorize request bodies.
+        .field_attribute("MfaConfigAuthorizeRequest.signature", "#[serde(default)]")
+        .field_attribute("MfaConfigAuthorizeRequest.auth_data", "#[serde(default)]")
+        .field_attribute(
+            "MfaConfigAuthorizeRequest.credential_id",
+            "#[serde(default)]",
+        )
         // Protobuf enum values carry the enum name prefix to avoid package-scope
         // collisions, so the generated Rust variants all share a prefix that clippy
         // flags. Suppress it on the generated type.
