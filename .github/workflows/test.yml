@@ -52,8 +52,8 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@1583d6b38d7be47f593cb472781bbb21cab4321e # v0.0.10
 
-      - name: Install protoc
-        run: apt-get update && apt-get -y install protobuf-compiler
+      - name: Install protoc and build dependencies
+        run: apt-get update && apt-get -y install protobuf-compiler pkg-config libudev-dev
 
       - name: Check format
         run: |

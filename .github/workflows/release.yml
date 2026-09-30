@@ -123,6 +123,12 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@1583d6b38d7be47f593cb472781bbb21cab4321e # v0.0.10
 
+      - name: Install build dependencies
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get -y install pkg-config libudev-dev libudev-dev:arm64
+
       - name: Build Linux x86_64 binary
         run: |
           cargo build --locked --release --target x86_64-unknown-linux-gnu
@@ -133,7 +139,8 @@ jobs:
       - name: Build Linux aarch64 binary
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          PKG_CONFIG_SYSROOT_DIR: /usr/lib/aarch64-linux-gnu
+          PKG_CONFIG_ALLOW_CROSS: "1"
+          PKG_CONFIG_PATH_aarch64_unknown_linux_gnu: /usr/lib/aarch64-linux-gnu/pkgconfig
         run: |
           cargo build --locked --release --target aarch64-unknown-linux-gnu
           mv target/aarch64-unknown-linux-gnu/release/defguard-proxy defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu
@@ -158,6 +165,7 @@ jobs:
           fpm_opts: "--architecture amd64
             --output-type deb
             --version ${{ env.VERSION }}
+            --depends libudev1
             --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.deb
             --before-install linux/preinst
             --after-install linux/postinst
@@ -174,6 +182,7 @@ jobs:
           fpm_opts: "--architecture arm64
             --output-type deb
             --version ${{ env.VERSION }}
+            --depends libudev1
             --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.deb
             --before-install linux/preinst
             --after-install linux/postinst
@@ -190,6 +199,7 @@ jobs:
           fpm_opts: "--architecture amd64
             --output-type rpm
             --version ${{ env.VERSION }}
+            --depends 'libudev.so.1()(64bit)'
             --package defguard-proxy-${{ env.VERSION }}-x86_64-unknown-linux-gnu.rpm
             --before-install linux/preinst
             --after-install linux/postinst
@@ -206,6 +216,7 @@ jobs:
           fpm_opts: "--architecture arm64
             --output-type rpm
             --version ${{ env.VERSION }}
+            --depends 'libudev.so.1()(64bit)'
             --package defguard-proxy-${{ env.VERSION }}-aarch64-unknown-linux-gnu.rpm
             --before-install linux/preinst
             --after-install linux/postinst
@@ -378,7 +389,7 @@ jobs:
         run: |
           apt-get install -y \
             build-essential pkg-config \
-            libssl-dev \
+            libssl-dev libudev-dev \
             protobuf-compiler libprotobuf-dev \
             ruby ruby-dev rubygems rpm
           gem install fpm --no-document
@@ -393,6 +404,7 @@ jobs:
             --output-type deb \
             --version "${{ env.VERSION }}" \
             --architecture ${{ matrix.deb_arch }} \
+            --depends libudev1 \
             --package defguard-proxy-${{ env.VERSION }}-${{ matrix.deb_arch }}_ubuntu-22-04-lts.deb \
             --before-install linux/preinst \
             --after-install linux/postinst \
