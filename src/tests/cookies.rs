@@ -104,6 +104,7 @@ fn auth_info_response() -> core_response::Payload {
         csrf_token: "csrf-token".to_owned(),
         nonce: "nonce".to_owned(),
         button_display_name: None,
+        provider_kind: 0,
     })
 }
 

@@ -12,6 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "AuthInfoResponse",
             "AuthenticateRequest",
             "AuthenticateResponse",
+            "AwaitRemoteMfaFinishResponse",
             "ClientMfaFinishResponse",
             "CodeMfaSetupStartResponse",
             "CodeMfaSetupFinishResponse",
@@ -20,6 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "MfaBiometricSignature",
             "MfaCodeCredential",
             "MfaCompleted",
+            "MfaConfigAuthorizeRequest",
+            "MfaConfigAuthorizeResponse",
+            "MfaConfigFido2ChallengeRequest",
+            "MfaConfigFido2ChallengeResponse",
             "MfaFido2Assertion",
             "MfaFlowApproveRequest",
             "MfaFlowRemoteRequest",
@@ -55,6 +60,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .field_attribute("CodeMfaSetupFinishRequest.name", "#[serde(default)]")
         .field_attribute(
             "CodeMfaSetupFinishRequest.fido2_attestation",
+            "#[serde(default)]",
+        )
+        // Only code factors (TOTP/email) send `code`; FIDO2 and OIDC may omit it.
+        .field_attribute("MfaConfigAuthorizeRequest.code", "#[serde(default)]")
+        // FIDO2 assertion, absent from code-factor and OIDC authorize request bodies.
+        .field_attribute("MfaConfigAuthorizeRequest.signature", "#[serde(default)]")
+        .field_attribute("MfaConfigAuthorizeRequest.auth_data", "#[serde(default)]")
+        .field_attribute(
+            "MfaConfigAuthorizeRequest.credential_id",
             "#[serde(default)]",
         )
         // Protobuf enum values carry the enum name prefix to avoid package-scope

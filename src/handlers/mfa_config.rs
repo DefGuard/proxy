@@ -8,7 +8,8 @@ use crate::{
     proto::{
         CodeMfaSetupFinishRequest, CodeMfaSetupFinishResponse, CodeMfaSetupStartRequest,
         CodeMfaSetupStartResponse, DeviceInfo, MfaConfigAuthorizeRequest,
-        MfaConfigAuthorizeResponse, MfaConfigSendCodeRequest, MfaConfigStartRequest,
+        MfaConfigAuthorizeResponse, MfaConfigEndRequest, MfaConfigFido2ChallengeRequest,
+        MfaConfigFido2ChallengeResponse, MfaConfigSendCodeRequest, MfaConfigStartRequest,
         MfaConfigStartResponse, core_request, core_response,
     },
 };
@@ -18,9 +19,11 @@ pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_mfa_config))
         .route("/send-code", post(send_mfa_config_code))
+        .route("/fido2-challenge", post(mfa_config_fido2_challenge))
         .route("/authorize", post(authorize_mfa_config))
         .route("/setup/start", post(start_mfa_setup))
         .route("/setup/finish", post(finish_mfa_setup))
+        .route("/end", post(end_mfa_config))
 }
 
 #[instrument(level = "debug", skip(state, req))]
@@ -62,6 +65,26 @@ async fn send_mfa_config_code(
 }
 
 #[instrument(level = "debug", skip(state, req))]
+async fn mfa_config_fido2_challenge(
+    State(state): State<AppState>,
+    device_info: DeviceInfo,
+    Json(req): Json<MfaConfigFido2ChallengeRequest>,
+) -> Result<Json<MfaConfigFido2ChallengeResponse>, ApiError> {
+    info!("Issuing FIDO2 challenge for MFA configuration session");
+    let rx = state.grpc_server.send(
+        core_request::Payload::MfaConfigFido2Challenge(req),
+        device_info,
+    )?;
+    let payload = get_core_response(rx, None).await?;
+    if let core_response::Payload::MfaConfigFido2Challenge(response) = payload {
+        Ok(Json(response))
+    } else {
+        error!("Received invalid gRPC response type, expected MfaConfigFido2Challenge");
+        Err(ApiError::InvalidResponseType)
+    }
+}
+
+#[instrument(level = "debug", skip(state, req))]
 async fn authorize_mfa_config(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -96,4 +119,24 @@ async fn finish_mfa_setup(
     Json(req): Json<CodeMfaSetupFinishRequest>,
 ) -> Result<Json<CodeMfaSetupFinishResponse>, ApiError> {
     code_mfa_setup_finish(&state, device_info, req).await
+}
+
+/// Ends the whole MFA configuration session.
+#[instrument(level = "debug", skip(state, req))]
+async fn end_mfa_config(
+    State(state): State<AppState>,
+    device_info: DeviceInfo,
+    Json(req): Json<MfaConfigEndRequest>,
+) -> Result<(), ApiError> {
+    info!("Ending MFA configuration session");
+    let rx = state
+        .grpc_server
+        .send(core_request::Payload::MfaConfigEnd(req), device_info)?;
+    let payload = get_core_response(rx, None).await?;
+    if let core_response::Payload::Empty(()) = payload {
+        Ok(())
+    } else {
+        error!("Received invalid gRPC response type, expected Empty");
+        Err(ApiError::InvalidResponseType)
+    }
 }

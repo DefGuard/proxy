@@ -13,7 +13,11 @@ use tokio::{sync::oneshot::Receiver, time};
 use tonic::Code;
 
 use super::proto::DeviceInfo;
-use crate::{error::ApiError, http::ENROLLMENT_COOKIE_NAME, proto::core_response::Payload};
+use crate::{
+    error::{ApiError, is_oidc_not_completed},
+    http::ENROLLMENT_COOKIE_NAME,
+    proto::core_response::Payload,
+};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
@@ -131,10 +135,14 @@ pub(crate) async fn get_core_response(
                 );
                 return Err(ApiError::EnterpriseNotEnabled);
             }
-            error!(
-                "Received an error response from Core service. | status code: {} message: {}",
-                core_error.status_code, core_error.message
-            );
+            if is_oidc_not_completed(&core_error) {
+                debug!("OIDC authentication still pending: {}", core_error.message);
+            } else {
+                error!(
+                    "Received an error response from Core service. | status code: {} message: {}",
+                    core_error.status_code, core_error.message
+                );
+            }
             return Err(core_error.into());
         }
         core_response
