@@ -92,20 +92,20 @@ export const TestPage = () => {
         <Avatar size="big" />
       </TestRow>
       <TestRow>
+        <Badge text="Neutral" variant="neutral" removeBackground />
+        <Badge text="Success" variant="success" removeBackground />
+        <Badge text="Critical" variant="critical" removeBackground />
+        <Badge text="Warning" variant="warning" removeBackground />
+      </TestRow>
+      <TestRow>
         <Badge text="Neutral" variant="neutral" />
         <Badge text="Success" variant="success" />
         <Badge text="Critical" variant="critical" />
         <Badge text="Warning" variant="warning" />
       </TestRow>
       <TestRow>
-        <Badge text="Neutral" variant="neutral" background />
-        <Badge text="Success" variant="success" background />
-        <Badge text="Critical" variant="critical" background />
-        <Badge text="Warning" variant="warning" background />
-      </TestRow>
-      <TestRow>
         <EmptyState
-          icon="arrow-big"
+          icon="devices"
           title="No Yubikey stations registered"
           subtitle="Add your first provision station by clicking the button below."
           primaryAction={{
