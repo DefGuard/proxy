@@ -11,11 +11,11 @@ import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import z from 'zod';
 import { api } from '../../../shared/api/api';
-import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ExternalProviderButton } from '../../../shared/defguard-ui/components/ExternalProviderButton/ExternalProviderButton';
-import { useAppForm } from '../../../shared/form';
+import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
+import { useAppForm } from '../../../shared/form';
 import { useEnrollmentStore } from '../../../shared/hooks/useEnrollmentStore';
 import { getAppInfoQueryOptions } from '../../../shared/query/queryOptions';
 
