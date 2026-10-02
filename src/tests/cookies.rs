@@ -13,8 +13,8 @@ use crate::{
     grpc::ProxyServer,
     http::{AppState, ENROLLMENT_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME, build_router},
     proto::{
-        AuthInfoResponse, CoreRequest, EnrollmentStartResponse, PasswordResetStartResponse,
-        core_response,
+        AuthInfoResponse, CoreRequest, EnrollmentStartResponse, OpenIdProviderKind,
+        PasswordResetStartResponse, core_response,
     },
     tests::support::{cookie_key, test_proxy_server, test_public_settings},
 };
@@ -104,7 +104,7 @@ fn auth_info_response() -> core_response::Payload {
         csrf_token: "csrf-token".to_owned(),
         nonce: "nonce".to_owned(),
         button_display_name: None,
-        provider_kind: 0,
+        provider_kind: OpenIdProviderKind::Custom as i32,
     })
 }
 
