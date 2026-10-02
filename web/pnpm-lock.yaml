@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  seroval: 1.5.4
+  seroval: 1.6.7
 
 importers:
 
@@ -109,64 +109,64 @@ importers:
         specifier: 2.5.14
         version: 2.5.14
       '@inlang/paraglide-js':
-        specifier: ^2.20.1
+        specifier: 2.20.1
         version: 2.20.1(typescript@6.0.3)
       '@tanstack/devtools-vite':
-        specifier: ^0.8.5
+        specifier: 0.8.5
         version: 0.8.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.21.0))
       '@tanstack/router-plugin':
-        specifier: ^1.168.41
+        specifier: 1.168.41
         version: 1.168.41(@tanstack/react-router@1.170.39(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(esbuild@0.28.2)(rolldown@1.2.11)(rollup@4.63.1)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.21.0))
       '@types/lodash-es':
-        specifier: ^4.17.12
+        specifier: 4.17.12
         version: 4.17.12
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 26.6.3
         version: 26.6.3
       '@types/qs':
-        specifier: ^6.15.1
+        specifier: 6.15.1
         version: 6.15.1
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 19.3.0
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.3.0
+        specifier: 19.3.0
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react-swc':
-        specifier: ^4.3.3
+        specifier: 4.3.3
         version: 4.3.3(@swc/helpers@0.5.23)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.21.0))
       globals:
-        specifier: ^17.12.0
+        specifier: 17.12.0
         version: 17.12.0
       prettier:
-        specifier: ^3.9.9
+        specifier: 3.9.9
         version: 3.9.9
       sass:
-        specifier: ^1.105.1
+        specifier: 1.105.1
         version: 1.105.1
       sharp:
-        specifier: ^0.35.4
+        specifier: 0.35.4
         version: 0.35.4(@types/node@26.6.3)
       stylelint:
-        specifier: ^17.15.0
+        specifier: 17.15.0
         version: 17.15.0(typescript@6.0.3)
       stylelint-config-standard-scss:
-        specifier: ^17.0.0
+        specifier: 17.0.0
         version: 17.0.0(postcss@8.5.28)(stylelint@17.15.0(typescript@6.0.3))
       stylelint-scss:
-        specifier: ^7.3.0
+        specifier: 7.3.0
         version: 7.3.0(stylelint@17.15.0(typescript@6.0.3))
       typescript:
-        specifier: ~6.0.3
+        specifier: 6.0.3
         version: 6.0.3
       typescript-eslint:
-        specifier: ^8.69.0
+        specifier: 8.69.0
         version: 8.69.0(eslint@9.38.0(jiti@2.7.0))(typescript@6.0.3)
       vite:
-        specifier: ^8.3.1
+        specifier: 8.3.1
         version: 8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.21.0)
       vite-plugin-image-optimizer:
-        specifier: ^2.0.3
+        specifier: 2.0.3
         version: 2.0.3(sharp@0.35.4(@types/node@26.6.3))(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.21.0))
       vitest:
         specifier: ^4.1.9
@@ -3134,11 +3134,6 @@ packages:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
 
-  prettier@3.9.6:
-    resolution: {integrity: sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==}
-    engines: {node: '>=14'}
-    hasBin: true
-
   prettier@3.9.9:
     resolution: {integrity: sha512-Z/CJHIkdujO/OtN7nXUii0Rf3VT5SRuhjBA82Xvu2XhBUgX3nhP67T0LHceBdQLex7OOFGTox+Q5Yg8Jk2Qivg==}
     engines: {node: '>=14'}
@@ -3271,16 +3266,16 @@ packages:
     resolution: {integrity: sha512-HXuLAX2pu/UByPpaeo/TaMfvMIi+1QqIoPJYCcAtU8QkVNwgR6MPlGuCQTErV1JwraaMbYaWVIBX7mppzGLATQ==}
     engines: {node: '>=10'}
     peerDependencies:
-      seroval: 1.5.4
+      seroval: 1.6.7
 
   seroval-plugins@1.6.8:
     resolution: {integrity: sha512-N7mWAMydj89EnYTHtRpS3LBrAz3J9O6oVrqpuXuvlAHfAUG8WEKqtbAd7SBiJNY5NfCAFhSdyAh7wI4Shjqy4g==}
     engines: {node: '>=10'}
     peerDependencies:
-      seroval: 1.5.4
+      seroval: 1.6.7
 
-  seroval@1.5.4:
-    resolution: {integrity: sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw==}
+  seroval@1.6.7:
+    resolution: {integrity: sha512-AeDcLh0yO2SFm9W71essgnSzLV9DI8ZH0x0knXn2DMnUZj728mpLbxjlbB6IqKCmqh8JA3cEqRyGoNkt584JcQ==}
     engines: {node: '>=10'}
 
   sharp@0.35.4:
@@ -5060,15 +5055,15 @@ snapshots:
     dependencies:
       '@tanstack/history': 1.162.4
       cookie-es: 3.1.1
-      seroval: 1.5.4
-      seroval-plugins: 1.6.8(seroval@1.5.4)
+      seroval: 1.6.7
+      seroval-plugins: 1.6.8(seroval@1.6.7)
 
   '@tanstack/router-core@1.171.33':
     dependencies:
       '@tanstack/history': 1.162.4
       cookie-es: 3.1.1
-      seroval: 1.5.4
-      seroval-plugins: 1.6.8(seroval@1.5.4)
+      seroval: 1.6.7
+      seroval-plugins: 1.6.8(seroval@1.6.7)
 
   '@tanstack/router-devtools-core@1.168.2(@tanstack/router-core@1.171.33)(csstype@3.2.3)':
     dependencies:
@@ -5086,7 +5081,7 @@ snapshots:
       '@tanstack/virtual-file-routes': 1.162.0
       jiti: 2.7.0
       magic-string: 0.30.21
-      prettier: 3.9.6
+      prettier: 3.9.9
       zod: 4.6.5
     transitivePeerDependencies:
       - supports-color
@@ -6575,8 +6570,6 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
-  prettier@3.9.6: {}
-
   prettier@3.9.9: {}
 
   property-information@7.2.0: {}
@@ -6752,15 +6745,15 @@ snapshots:
 
   semver@7.8.5: {}
 
-  seroval-plugins@1.5.6(seroval@1.5.4):
+  seroval-plugins@1.5.6(seroval@1.6.7):
     dependencies:
-      seroval: 1.5.4
+      seroval: 1.6.7
 
-  seroval-plugins@1.6.8(seroval@1.5.4):
+  seroval-plugins@1.6.8(seroval@1.6.7):
     dependencies:
-      seroval: 1.5.4
+      seroval: 1.6.7
 
-  seroval@1.5.4: {}
+  seroval@1.6.7: {}
 
   sharp@0.35.4(@types/node@26.6.3):
     dependencies:
@@ -6846,8 +6839,8 @@ snapshots:
   solid-js@1.9.15:
     dependencies:
       csstype: 3.2.3
-      seroval: 1.5.4
-      seroval-plugins: 1.5.6(seroval@1.5.4)
+      seroval: 1.6.7
+      seroval-plugins: 1.5.6(seroval@1.6.7)
 
   solid-presence@0.2.0(solid-js@1.9.15):
     dependencies:
