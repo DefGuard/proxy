@@ -44,19 +44,16 @@ pub(crate) struct RemoteMfaRequestQuery {
 }
 
 #[derive(Serialize)]
-#[serde(tag = "type")]
-enum MfaFlowSocketResponse<'a> {
-    #[serde(rename = "mfa_result")]
-    Result { result: &'a MfaStepResult },
+#[serde(tag = "type", rename = "mfa_result")]
+struct MfaFlowSocketResponse<'a> {
+    result: &'a MfaStepResult,
 }
 
 fn mfa_flow_socket_response(response: &MfaFlowRemoteResponse) -> Option<MfaFlowSocketResponse<'_>> {
     let result = response.result.as_ref()?;
     match result.outcome.as_ref() {
         Some(mfa_step_result::Outcome::Advanced(_))
-        | Some(mfa_step_result::Outcome::Completed(_)) => {
-            Some(MfaFlowSocketResponse::Result { result })
-        }
+        | Some(mfa_step_result::Outcome::Completed(_)) => Some(MfaFlowSocketResponse { result }),
         Some(mfa_step_result::Outcome::AwaitingExternal(_)) | None => None,
     }
 }

@@ -19,9 +19,8 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        AwaitRemoteMfaFinishRequest, AwaitRemoteMfaFinishResponse, ClientMfaFinishRequest,
-        ClientMfaFinishResponse, ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo,
-        core_request,
+        AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse,
+        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo, core_request,
         core_response::{self, Payload},
     },
 };
@@ -43,16 +42,9 @@ pub(crate) struct RemoteMfaRequestQuery {
 }
 
 #[derive(Serialize)]
-#[serde(tag = "type")]
-enum RemoteMfaResponse<'a> {
-    #[serde(rename = "mfa_success")]
-    Legacy { preshared_key: &'a str },
-}
-
-fn remote_mfa_response(response: &AwaitRemoteMfaFinishResponse) -> RemoteMfaResponse<'_> {
-    RemoteMfaResponse::Legacy {
-        preshared_key: response.preshared_key.as_str(),
-    }
+#[serde(tag = "type", rename = "mfa_success")]
+struct RemoteMfaResponse<'a> {
+    preshared_key: &'a str,
 }
 
 // Allows desktop client to await for another device to complete MFA for it via mobile client.
@@ -114,7 +106,9 @@ async fn handle_remote_auth_socket(
     set.spawn(async move {
         match rx.await {
             Ok(Payload::AwaitRemoteMfaFinish(response)) => {
-                match serde_json::to_string(&remote_mfa_response(&response)) {
+                match serde_json::to_string(&RemoteMfaResponse {
+                    preshared_key: &response.preshared_key,
+                }) {
                     Ok(serialized) => {
                         let message = Message::Text(serialized.into());
                         if let Err(err) = ws_tx.send(message).await {
@@ -241,16 +235,14 @@ async fn finish_remote_mfa(
 
 #[cfg(test)]
 mod tests {
-    use super::remote_mfa_response;
-    use crate::proto::AwaitRemoteMfaFinishResponse;
+    use super::RemoteMfaResponse;
 
     #[test]
     fn test_legacy_response_preserves_success_envelope() {
-        let response = AwaitRemoteMfaFinishResponse {
-            preshared_key: "legacy-psk".to_string(),
-        };
-        let serialized = serde_json::to_string(&remote_mfa_response(&response))
-            .expect("legacy response should serialize");
+        let serialized = serde_json::to_string(&RemoteMfaResponse {
+            preshared_key: "legacy-psk",
+        })
+        .expect("legacy response should serialize");
 
         assert_eq!(
             serialized,
