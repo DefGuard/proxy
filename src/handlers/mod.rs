@@ -8,15 +8,21 @@ use axum::{
     http::{HeaderName, header::FORWARDED, request::Parts},
 };
 use axum_client_ip::{RightmostForwarded, RightmostXForwardedFor};
-use axum_extra::{TypedHeader, headers::UserAgent};
+use axum_extra::{TypedHeader, extract::PrivateCookieJar, headers::UserAgent};
 use tokio::{sync::oneshot::Receiver, time};
 use tonic::Code;
 
 use super::proto::DeviceInfo;
-use crate::{error::ApiError, proto::core_response::Payload};
+use crate::{
+    error::{ApiError, is_oidc_not_completed},
+    http::ENROLLMENT_COOKIE_NAME,
+    proto::core_response::Payload,
+};
 
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
+pub(crate) mod mfa_config;
+pub(crate) mod mfa_flow;
 pub(crate) mod mobile_client;
 pub(crate) mod password_reset;
 pub(crate) mod polling;
@@ -62,6 +68,14 @@ where
 const CORE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(5);
 const CLIENT_VERSION_HEADER: &str = "defguard-client-version";
 const CLIENT_PLATFORM_HEADER: &str = "defguard-client-platform";
+
+/// Reads the enrollment token from the private cookie set at enrollment start.
+pub(super) fn enrollment_token(cookie_jar: &PrivateCookieJar) -> Result<String, ApiError> {
+    cookie_jar
+        .get(ENROLLMENT_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string())
+        .ok_or_else(|| ApiError::Unauthorized(String::new()))
+}
 
 impl<S> FromRequestParts<S> for DeviceInfo
 where
@@ -121,10 +135,14 @@ pub(crate) async fn get_core_response(
                 );
                 return Err(ApiError::EnterpriseNotEnabled);
             }
-            error!(
-                "Received an error response from Core service. | status code: {} message: {}",
-                core_error.status_code, core_error.message
-            );
+            if is_oidc_not_completed(&core_error) {
+                debug!("OIDC authentication still pending: {}", core_error.message);
+            } else {
+                error!(
+                    "Received an error response from Core service. | status code: {} message: {}",
+                    core_error.status_code, core_error.message
+                );
+            }
             return Err(core_error.into());
         }
         core_response

@@ -1,10 +1,10 @@
-use std::sync::{Arc, RwLock, atomic::AtomicBool};
+use std::sync::{Arc, atomic::AtomicBool};
 
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},
 };
-use axum_extra::extract::cookie::{Cookie, Key, SameSite};
+use axum_extra::extract::cookie::{Cookie, SameSite};
 use tokio::sync::mpsc;
 use tonic::Status;
 use tower::ServiceExt;
@@ -13,10 +13,10 @@ use crate::{
     grpc::ProxyServer,
     http::{AppState, ENROLLMENT_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME, build_router},
     proto::{
-        AuthInfoResponse, CoreRequest, EnrollmentStartResponse, PasswordResetStartResponse,
-        core_response,
+        AuthInfoResponse, CoreRequest, EnrollmentStartResponse, OpenIdProviderKind,
+        PasswordResetStartResponse, core_response,
     },
-    tests::support::{test_proxy_server, test_public_settings},
+    tests::support::{cookie_key, test_proxy_server, test_public_settings},
 };
 
 /// A router wired to a `ProxyServer` whose Core responses the test drives by hand.
@@ -29,7 +29,7 @@ struct TestApp {
 /// Build a router whose cookie `Secure` attribute reflects `public_url`. Passing `None` leaves
 /// the state at its default, standing in for a Core that never sent `PublicSettings`.
 fn test_app(public_url: Option<&str>) -> TestApp {
-    let cookie_key = Arc::new(RwLock::new(Some(Key::generate())));
+    let cookie_key = cookie_key();
     let server = test_proxy_server(Arc::clone(&cookie_key));
     if public_url.is_some() {
         server
@@ -104,6 +104,7 @@ fn auth_info_response() -> core_response::Payload {
         csrf_token: "csrf-token".to_owned(),
         nonce: "nonce".to_owned(),
         button_display_name: None,
+        provider_kind: OpenIdProviderKind::Custom as i32,
     })
 }
 

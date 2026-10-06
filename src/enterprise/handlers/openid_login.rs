@@ -3,6 +3,7 @@ use axum_extra::extract::PrivateCookieJar;
 use cookie::CookieBuilder;
 use serde::{Deserialize, Serialize};
 use time::Duration;
+use url::Url;
 
 use crate::{
     enterprise::handlers::desktop_client_mfa::mfa_auth_callback,
@@ -11,7 +12,7 @@ use crate::{
     http::{AppState, session_cookie},
     proto::{
         AuthCallbackRequest, AuthCallbackResponse, AuthFlowType, AuthInfoRequest, DeviceInfo,
-        core_request, core_response,
+        OpenIdProviderKind, core_request, core_response,
     },
 };
 
@@ -31,18 +32,51 @@ pub(crate) fn router() -> Router<AppState> {
         .route("/callback/mfa", post(mfa_auth_callback))
 }
 
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum ProviderKind {
+    Custom,
+    Google,
+    Microsoft,
+    Okta,
+    JumpCloud,
+}
+
+impl ProviderKind {
+    fn new(kind: OpenIdProviderKind, url: &str) -> Self {
+        match kind {
+            OpenIdProviderKind::Unspecified => Self::from_url(url),
+            OpenIdProviderKind::Custom | OpenIdProviderKind::Zitadel => Self::Custom,
+            OpenIdProviderKind::Google => Self::Google,
+            OpenIdProviderKind::Microsoft => Self::Microsoft,
+            OpenIdProviderKind::Okta => Self::Okta,
+            OpenIdProviderKind::Jumpcloud => Self::JumpCloud,
+        }
+    }
+
+    fn from_url(url: &str) -> Self {
+        match Url::parse(url).ok().as_ref().and_then(Url::host_str) {
+            Some("accounts.google.com") => Self::Google,
+            Some("login.microsoftonline.com") => Self::Microsoft,
+            _ => Self::Custom,
+        }
+    }
+}
+
 #[derive(Serialize)]
 struct AuthInfo {
     url: String,
     button_display_name: Option<String>,
+    provider_kind: ProviderKind,
 }
 
 impl AuthInfo {
     #[must_use]
-    fn new(url: String, button_display_name: Option<String>) -> Self {
+    fn new(url: String, button_display_name: Option<String>, provider_kind: ProviderKind) -> Self {
         Self {
             url,
             button_display_name,
+            provider_kind,
         }
     }
 }
@@ -89,6 +123,7 @@ async fn auth_info(
     if let core_response::Payload::AuthInfo(response) = payload {
         debug!("Received auth info response");
 
+        let provider_kind = ProviderKind::new(response.provider_kind(), &response.url);
         let nonce_cookie = oidc_cookie(NONCE_COOKIE_NAME, response.nonce)
             // .domain(cookie_domain)
             .max_age(COOKIE_MAX_AGE)
@@ -99,7 +134,7 @@ async fn auth_info(
             .build();
         let private_cookies = private_cookies.add(nonce_cookie).add(csrf_cookie);
 
-        let auth_info = AuthInfo::new(response.url, response.button_display_name);
+        let auth_info = AuthInfo::new(response.url, response.button_display_name, provider_kind);
         Ok((private_cookies, Json(auth_info)))
     } else {
         error!("Received invalid gRPC response type");
@@ -204,5 +239,26 @@ mod tests {
             assert_eq!(removal.path(), Some(OIDC_CALLBACK_PATH));
             assert_eq!(removal.max_age(), Some(Duration::ZERO));
         }
+    }
+
+    #[test]
+    fn test_provider_kind() {
+        let google_url = "https://accounts.google.com/o/oauth2/auth";
+        assert_eq!(
+            ProviderKind::new(OpenIdProviderKind::Okta, google_url),
+            ProviderKind::Okta
+        );
+        assert_eq!(
+            ProviderKind::new(OpenIdProviderKind::Zitadel, google_url),
+            ProviderKind::Custom
+        );
+        assert_eq!(
+            ProviderKind::new(OpenIdProviderKind::Unspecified, google_url),
+            ProviderKind::Google
+        );
+        assert_eq!(
+            ProviderKind::new(OpenIdProviderKind::Unspecified, "https://example.okta.com"),
+            ProviderKind::Custom
+        );
     }
 }

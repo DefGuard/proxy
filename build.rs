@@ -1,8 +1,8 @@
-use vergen_git2::{Emitter, Git2Builder};
+use vergen_git2::{Emitter, Git2};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // set VERGEN_GIT_SHA env variable based on git commit hash
-    let git2 = Git2Builder::default().branch(true).sha(true).build()?;
+    let git2 = Git2::builder().branch(true).sha(true).build();
     Emitter::default().add_instructions(&git2)?.emit()?;
 
     tonic_prost_build::configure()
@@ -12,11 +12,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "AuthInfoResponse",
             "AuthenticateRequest",
             "AuthenticateResponse",
+            "AwaitRemoteMfaFinishResponse",
             "ClientMfaFinishResponse",
             "CodeMfaSetupStartResponse",
             "CodeMfaSetupFinishResponse",
             "CoreRequest",
             "CoreResponse",
+            "MfaBiometricSignature",
+            "MfaCodeCredential",
+            "MfaCompleted",
+            "MfaConfigAuthorizeRequest",
+            "MfaConfigAuthorizeResponse",
+            "MfaConfigFido2ChallengeRequest",
+            "MfaConfigFido2ChallengeResponse",
+            "MfaFido2Assertion",
+            "MfaFlowApproveRequest",
+            "MfaFlowRemoteRequest",
+            "MfaFlowRemoteResponse",
+            "MfaFlowStartAccepted",
+            "MfaFlowStartRequest",
+            "MfaFlowStartResponse",
+            "MfaFlowStepFinishRequest",
+            "MfaFlowStepFinishResponse",
+            "MfaFlowStepStartRequest",
+            "MfaFlowStepStartResponse",
+            "MfaMobileApprovalProof",
+            "MfaSignatureChallenge",
+            "MfaStepResult",
+            "MfaStepStarted",
+            "MfaFido2Challenge",
             "DeviceConfigResponse",
             "DevicePostureCheckRequest",
             "InstanceInfoResponse",
@@ -27,6 +51,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .protoc_arg("--experimental_allow_proto3_optional")
         // Make all messages serde-serializable.
         .type_attribute(".", "#[derive(serde::Serialize,serde::Deserialize)]")
+        // Legacy (pre-2.2) clients omit `selected_methods`; default it to an empty list.
+        .field_attribute(
+            "ClientMfaStartRequest.selected_methods",
+            "#[serde(default)]",
+        )
+        // Sent only when setting up FIDO2, absent from code-factor request bodies.
+        .field_attribute("CodeMfaSetupFinishRequest.name", "#[serde(default)]")
+        .field_attribute(
+            "CodeMfaSetupFinishRequest.fido2_attestation",
+            "#[serde(default)]",
+        )
+        // Only code factors (TOTP/email) send `code`; FIDO2 and OIDC may omit it.
+        .field_attribute("MfaConfigAuthorizeRequest.code", "#[serde(default)]")
+        // FIDO2 assertion, absent from code-factor and OIDC authorize request bodies.
+        .field_attribute("MfaConfigAuthorizeRequest.signature", "#[serde(default)]")
+        .field_attribute("MfaConfigAuthorizeRequest.auth_data", "#[serde(default)]")
+        .field_attribute(
+            "MfaConfigAuthorizeRequest.credential_id",
+            "#[serde(default)]",
+        )
+        // Protobuf enum values carry the enum name prefix to avoid package-scope
+        // collisions, so the generated Rust variants all share a prefix that clippy
+        // flags. Suppress it on the generated type.
+        .type_attribute(
+            "MfaStartRejectionReason",
+            "#[allow(clippy::enum_variant_names)]",
+        )
         // Compiling protos using path on build time.
         .compile_protos(
             &[

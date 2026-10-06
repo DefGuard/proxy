@@ -11,11 +11,11 @@ import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import z from 'zod';
 import { api } from '../../../shared/api/api';
+import { ExternalProviderButton } from '../../../shared/defguard-ui/components/ExternalProviderButton/ExternalProviderButton';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
-import { OIDCButton } from '../../../shared/defguard-ui/components/SSOButton/OIDCButton';
-import { useAppForm } from '../../../shared/defguard-ui/form';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { isPresent } from '../../../shared/defguard-ui/utils/isPresent';
+import { useAppForm } from '../../../shared/form';
 import { useEnrollmentStore } from '../../../shared/hooks/useEnrollmentStore';
 import { getAppInfoQueryOptions } from '../../../shared/query/queryOptions';
 
@@ -102,12 +102,15 @@ export const EnrollmentStartPage = () => {
               <p>{m.enrollment_start_external_subtitle()}</p>
             </header>
             <div className="openid-link">
-              <OIDCButton
-                url={loaderData.url}
-                text={m.cmp_openid_button({
-                  provider: loaderData.button_display_name,
-                })}
-              />
+              <a href={loaderData.url} target="_self" rel="noopener noreferrer">
+                <ExternalProviderButton
+                  variant="default"
+                  provider={loaderData.provider_kind ?? 'custom'}
+                  text={m.cmp_openid_button({
+                    provider: loaderData.button_display_name,
+                  })}
+                />
+              </a>
             </div>
           </ContainerWithIcon>
           <Divider text={m.misc_or()} orientation="horizontal" />

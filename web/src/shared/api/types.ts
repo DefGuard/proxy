@@ -1,4 +1,5 @@
 import type { AxiosError } from 'axios';
+import type { ExternalProviderButtonProps } from '../defguard-ui/components/ExternalProviderButton/types';
 
 export type EmptyApiResponse = Record<never, never>;
 
@@ -73,6 +74,7 @@ export type OpenIdAuthInfoRequest = {
 export type OpenIdAuthInfoResponse = {
   url?: string;
   button_display_name?: string;
+  provider_kind?: ExternalProviderButtonProps['provider'];
 };
 
 export type OpenIdCallbackRequest = {

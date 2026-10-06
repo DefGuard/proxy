@@ -9,56 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SessionEndRouteImport } from './routes/session-end'
-import { Route as ServerWarningRouteImport } from './routes/server-warning'
-import { Route as PasswordResetRouteImport } from './routes/password-reset'
-import { Route as OpenDesktopRouteImport } from './routes/open-desktop'
-import { Route as LinkInvalidRouteImport } from './routes/link-invalid'
-import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
-import { Route as DownloadRouteImport } from './routes/download'
-import { Route as ClientSetupRouteImport } from './routes/client-setup'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PasswordIndexRouteImport } from './routes/password/index'
-import { Route as PasswordSentRouteImport } from './routes/password/sent'
-import { Route as PasswordFinishRouteImport } from './routes/password/finish'
-import { Route as OpenidErrorRouteImport } from './routes/openid/error'
+import { Route as ClientSetupRouteImport } from './routes/client-setup'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as EnrollmentStartRouteImport } from './routes/enrollment-start'
+import { Route as LinkInvalidRouteImport } from './routes/link-invalid'
+import { Route as OpenDesktopRouteImport } from './routes/open-desktop'
+import { Route as PasswordResetRouteImport } from './routes/password-reset'
+import { Route as ServerWarningRouteImport } from './routes/server-warning'
+import { Route as SessionEndRouteImport } from './routes/session-end'
 import { Route as OpenidCallbackRouteImport } from './routes/openid/callback'
+import { Route as OpenidErrorRouteImport } from './routes/openid/error'
+import { Route as PasswordIndexRouteImport } from './routes/password/index'
+import { Route as PasswordFinishRouteImport } from './routes/password/finish'
+import { Route as PasswordSentRouteImport } from './routes/password/sent'
 import { Route as OpenidMfaIndexRouteImport } from './routes/openid/mfa/index'
 import { Route as OpenidMfaCallbackRouteImport } from './routes/openid/mfa/callback'
 
-const SessionEndRoute = SessionEndRouteImport.update({
-  id: '/session-end',
-  path: '/session-end',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ServerWarningRoute = ServerWarningRouteImport.update({
-  id: '/server-warning',
-  path: '/server-warning',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PasswordResetRoute = PasswordResetRouteImport.update({
-  id: '/password-reset',
-  path: '/password-reset',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OpenDesktopRoute = OpenDesktopRouteImport.update({
-  id: '/open-desktop',
-  path: '/open-desktop',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LinkInvalidRoute = LinkInvalidRouteImport.update({
-  id: '/link-invalid',
-  path: '/link-invalid',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EnrollmentStartRoute = EnrollmentStartRouteImport.update({
-  id: '/enrollment-start',
-  path: '/enrollment-start',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadRoute = DownloadRouteImport.update({
-  id: '/download',
-  path: '/download',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientSetupRoute = ClientSetupRouteImport.update({
@@ -66,24 +36,44 @@ const ClientSetupRoute = ClientSetupRouteImport.update({
   path: '/client-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PasswordIndexRoute = PasswordIndexRouteImport.update({
-  id: '/password/',
-  path: '/password/',
+const EnrollmentStartRoute = EnrollmentStartRouteImport.update({
+  id: '/enrollment-start',
+  path: '/enrollment-start',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PasswordSentRoute = PasswordSentRouteImport.update({
-  id: '/password/sent',
-  path: '/password/sent',
+const LinkInvalidRoute = LinkInvalidRouteImport.update({
+  id: '/link-invalid',
+  path: '/link-invalid',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PasswordFinishRoute = PasswordFinishRouteImport.update({
-  id: '/password/finish',
-  path: '/password/finish',
+const OpenDesktopRoute = OpenDesktopRouteImport.update({
+  id: '/open-desktop',
+  path: '/open-desktop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordResetRoute = PasswordResetRouteImport.update({
+  id: '/password-reset',
+  path: '/password-reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerWarningRoute = ServerWarningRouteImport.update({
+  id: '/server-warning',
+  path: '/server-warning',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionEndRoute = SessionEndRouteImport.update({
+  id: '/session-end',
+  path: '/session-end',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenidCallbackRoute = OpenidCallbackRouteImport.update({
+  id: '/openid/callback',
+  path: '/openid/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpenidErrorRoute = OpenidErrorRouteImport.update({
@@ -91,9 +81,19 @@ const OpenidErrorRoute = OpenidErrorRouteImport.update({
   path: '/openid/error',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OpenidCallbackRoute = OpenidCallbackRouteImport.update({
-  id: '/openid/callback',
-  path: '/openid/callback',
+const PasswordIndexRoute = PasswordIndexRouteImport.update({
+  id: '/password/',
+  path: '/password/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordFinishRoute = PasswordFinishRouteImport.update({
+  id: '/password/finish',
+  path: '/password/finish',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordSentRoute = PasswordSentRouteImport.update({
+  id: '/password/sent',
+  path: '/password/sent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpenidMfaIndexRoute = OpenidMfaIndexRouteImport.update({
@@ -240,53 +240,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/session-end': {
-      id: '/session-end'
-      path: '/session-end'
-      fullPath: '/session-end'
-      preLoaderRoute: typeof SessionEndRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/server-warning': {
-      id: '/server-warning'
-      path: '/server-warning'
-      fullPath: '/server-warning'
-      preLoaderRoute: typeof ServerWarningRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/password-reset': {
-      id: '/password-reset'
-      path: '/password-reset'
-      fullPath: '/password-reset'
-      preLoaderRoute: typeof PasswordResetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/open-desktop': {
-      id: '/open-desktop'
-      path: '/open-desktop'
-      fullPath: '/open-desktop'
-      preLoaderRoute: typeof OpenDesktopRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/link-invalid': {
-      id: '/link-invalid'
-      path: '/link-invalid'
-      fullPath: '/link-invalid'
-      preLoaderRoute: typeof LinkInvalidRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/enrollment-start': {
-      id: '/enrollment-start'
-      path: '/enrollment-start'
-      fullPath: '/enrollment-start'
-      preLoaderRoute: typeof EnrollmentStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download': {
-      id: '/download'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client-setup': {
@@ -296,32 +254,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/password/': {
-      id: '/password/'
-      path: '/password'
-      fullPath: '/password/'
-      preLoaderRoute: typeof PasswordIndexRouteImport
+    '/enrollment-start': {
+      id: '/enrollment-start'
+      path: '/enrollment-start'
+      fullPath: '/enrollment-start'
+      preLoaderRoute: typeof EnrollmentStartRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/password/sent': {
-      id: '/password/sent'
-      path: '/password/sent'
-      fullPath: '/password/sent'
-      preLoaderRoute: typeof PasswordSentRouteImport
+    '/link-invalid': {
+      id: '/link-invalid'
+      path: '/link-invalid'
+      fullPath: '/link-invalid'
+      preLoaderRoute: typeof LinkInvalidRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/password/finish': {
-      id: '/password/finish'
-      path: '/password/finish'
-      fullPath: '/password/finish'
-      preLoaderRoute: typeof PasswordFinishRouteImport
+    '/open-desktop': {
+      id: '/open-desktop'
+      path: '/open-desktop'
+      fullPath: '/open-desktop'
+      preLoaderRoute: typeof OpenDesktopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password-reset': {
+      id: '/password-reset'
+      path: '/password-reset'
+      fullPath: '/password-reset'
+      preLoaderRoute: typeof PasswordResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-warning': {
+      id: '/server-warning'
+      path: '/server-warning'
+      fullPath: '/server-warning'
+      preLoaderRoute: typeof ServerWarningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/session-end': {
+      id: '/session-end'
+      path: '/session-end'
+      fullPath: '/session-end'
+      preLoaderRoute: typeof SessionEndRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/openid/callback': {
+      id: '/openid/callback'
+      path: '/openid/callback'
+      fullPath: '/openid/callback'
+      preLoaderRoute: typeof OpenidCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/openid/error': {
@@ -331,11 +317,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpenidErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/openid/callback': {
-      id: '/openid/callback'
-      path: '/openid/callback'
-      fullPath: '/openid/callback'
-      preLoaderRoute: typeof OpenidCallbackRouteImport
+    '/password/': {
+      id: '/password/'
+      path: '/password'
+      fullPath: '/password/'
+      preLoaderRoute: typeof PasswordIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password/finish': {
+      id: '/password/finish'
+      path: '/password/finish'
+      fullPath: '/password/finish'
+      preLoaderRoute: typeof PasswordFinishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password/sent': {
+      id: '/password/sent'
+      path: '/password/sent'
+      fullPath: '/password/sent'
+      preLoaderRoute: typeof PasswordSentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/openid/mfa/': {

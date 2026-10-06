@@ -10,7 +10,7 @@ use axum::{
     routing::{any, post},
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::task::JoinSet;
 
@@ -39,6 +39,12 @@ pub(crate) fn router() -> Router<AppState> {
 #[derive(Deserialize)]
 pub(crate) struct RemoteMfaRequestQuery {
     pub token: String,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename = "mfa_success")]
+struct RemoteMfaResponse<'a> {
+    preshared_key: &'a str,
 }
 
 // Allows desktop client to await for another device to complete MFA for it via mobile client.
@@ -90,32 +96,47 @@ async fn handle_remote_auth_socket(
     ) {
         Ok(rx) => rx,
         Err(err) => {
-            error!("Failed to send ClientRemoteMfaFinishRequest: {err:?}");
+            error!("Failed to send AwaitRemoteMfaFinishRequest: {err:?}");
             return;
         }
     };
 
-    // Response to ClientRemoteMfaFinishRequest comes once the user concludes MFA with mobile device.
-    // This task then sends the preshared key to the WebSocket where desktop client awaits for it.
+    // Response to AwaitRemoteMfaFinish comes once the user concludes MFA with mobile device.
+    // This task then sends the outcome to the WebSocket where the desktop client awaits it.
     set.spawn(async move {
         match rx.await {
             Ok(Payload::AwaitRemoteMfaFinish(response)) => {
-                let ws_response = json!({
-                    "type": "mfa_success",
-                    "preshared_key": &response.preshared_key,
-                });
-                if let Ok(serialized) = serde_json::to_string(&ws_response) {
-                    let message = Message::Text(serialized.into());
-                    if let Err(err) = ws_tx.send(message).await {
-                        error!("Failed to send preshared key via ws: {err:?}");
+                match serde_json::to_string(&RemoteMfaResponse {
+                    preshared_key: &response.preshared_key,
+                }) {
+                    Ok(serialized) => {
+                        let message = Message::Text(serialized.into());
+                        if let Err(err) = ws_tx.send(message).await {
+                            error!("Failed to send MFA result via ws: {err:?}");
+                        }
+                    }
+                    Err(err) => {
+                        error!("Failed to serialize MFA result for ws: {err:?}");
                     }
                 }
             }
+            Ok(Payload::CoreError(status)) if status.status_code == tonic::Code::Aborted as i32 => {
+                debug!(
+                    "Remote MFA wait superseded (status {}): {}",
+                    status.status_code, status.message
+                );
+            }
+            Ok(Payload::CoreError(status)) => {
+                error!(
+                    "Remote MFA wait failed (status {}): {}",
+                    status.status_code, status.message
+                );
+            }
             Ok(_) => {
-                error!("Received wrong response type, expected ClientRemoteMfaFinish");
+                error!("Received wrong response type, expected AwaitRemoteMfaFinish");
             }
             Err(err) => {
-                error!("Failed to receive preshared key from receiver: {err:?}");
+                error!("Failed to receive MFA result from receiver: {err:?}");
             }
         }
 
@@ -209,5 +230,23 @@ async fn finish_remote_mfa(
     } else {
         error!("Received invalid gRPC response type, expected ClientMfaFinish");
         Err(ApiError::InvalidResponseType)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RemoteMfaResponse;
+
+    #[test]
+    fn test_legacy_response_preserves_success_envelope() {
+        let serialized = serde_json::to_string(&RemoteMfaResponse {
+            preshared_key: "legacy-psk",
+        })
+        .expect("legacy response should serialize");
+
+        assert_eq!(
+            serialized,
+            r#"{"type":"mfa_success","preshared_key":"legacy-psk"}"#
+        );
     }
 }

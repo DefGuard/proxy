@@ -63,7 +63,9 @@
 
       # define shared build inputs
       nativeBuildInputs = with pkgs; [rustToolchain pkg-config];
-      buildInputs = with pkgs; [openssl protobuf nodejs_26 pnpm_11];
+      buildInputs = with pkgs;
+        [openssl protobuf nodejs_26 pnpm_11]
+        ++ lib.optionals stdenv.hostPlatform.isLinux [systemd];
     in {
       packages = {
         default = defguard-proxy;
