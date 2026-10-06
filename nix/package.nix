@@ -24,8 +24,8 @@ let
   defguardSrc = pkgs.fetchFromGitHub {
     owner = "DefGuard";
     repo = "defguard";
-    rev = "b2bac0d3d70c2a6d7b18b9432a5fa1720c702bf3";
-    hash = "sha256-iuq5uwBLUEaTFH3S1FAwyc5r7dBIcRqrVb+g+j5WIw0=";
+    rev = "d80302d6841e107e09825e9e21507bca515663e6";
+    hash = "sha256-AwmXcelYLnJ7a3d3MCXbmPnUtPeMCcUbTbP1YrBjKu0=";
   };
 
   messageFormatPlugin = pkgs.fetchurl {
@@ -42,7 +42,7 @@ let
     inherit version;
     src = webSrc;
     fetcherVersion = 4;
-    hash = "sha256-QFMJMJaBleNzPIEs0LtAXx+0najKfZxaH3Rjk69ou1U=";
+    hash = "sha256-2pT9948Dct+bMX4xrI1CvJttiO6ZBUzvgHOrTvqsANw=";
   };
 
   webDist = pkgs.stdenv.mkDerivation {
@@ -80,7 +80,10 @@ let
     pkg-config
     protobuf
   ];
-  cargoBuildInputs = with pkgs; [openssl];
+  cargoBuildInputs = with pkgs; [
+    openssl
+    systemd # provides libudev.pc required by hidapi
+  ];
 
   cargoVendorBase = craneLib.vendorCargoDeps {
     src = rootSrc;
