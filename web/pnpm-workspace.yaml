@@ -9,4 +9,4 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
 overrides:
-  seroval: 1.6.3
+  seroval: 1.6.8
