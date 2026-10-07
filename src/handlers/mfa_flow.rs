@@ -68,11 +68,16 @@ async fn start_mfa_flow(
         .grpc_server
         .send(core_request::Payload::MfaFlowStart(request), device_info)?;
     let payload = get_core_response(rx, None).await?;
-    if let Payload::MfaFlowStart(response) = payload {
-        Ok(Json(response))
-    } else {
-        error!("Received invalid gRPC response type, expected MfaFlowStart");
-        Err(ApiError::InvalidResponseType)
+    match payload {
+        Payload::MfaFlowStart(response) => Ok(Json(response)),
+        Payload::DevicePostureRejected(response) => {
+            info!("Desktop client failed posture check {response:?}");
+            Err(ApiError::PostureRejected(response.failed_posture_checks))
+        }
+        _ => {
+            error!("Received invalid gRPC response type, expected MfaFlowStart");
+            Err(ApiError::InvalidResponseType)
+        }
     }
 }
 

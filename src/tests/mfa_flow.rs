@@ -8,13 +8,13 @@ use crate::{
     http::AppState,
     proto::{
         ClientMfaFinishRequest, ClientMfaFinishResponse, ClientMfaStartRequest,
-        ClientMfaStartResponse, DeviceInfo, MfaAdvanced, MfaAwaitingExternal, MfaCodeCredential,
-        MfaCompleted, MfaFlowApproveRequest, MfaFlowRemoteRequest, MfaFlowRemoteResponse,
-        MfaFlowStartAccepted, MfaFlowStartRequest, MfaFlowStartResponse, MfaFlowStepFinishRequest,
-        MfaFlowStepFinishResponse, MfaFlowStepStartRequest, MfaFlowStepStartResponse, MfaMethod,
-        MfaMobileApprovalProof, MfaSignatureChallenge, MfaStepResult, MfaStepStarted, core_request,
-        core_response, mfa_flow_start_response, mfa_flow_step_finish_request, mfa_step_result,
-        mfa_step_started,
+        ClientMfaStartResponse, DeviceInfo, DevicePostureRejection, MfaAdvanced,
+        MfaAwaitingExternal, MfaCodeCredential, MfaCompleted, MfaFlowApproveRequest,
+        MfaFlowRemoteRequest, MfaFlowRemoteResponse, MfaFlowStartAccepted, MfaFlowStartRequest,
+        MfaFlowStartResponse, MfaFlowStepFinishRequest, MfaFlowStepFinishResponse,
+        MfaFlowStepStartRequest, MfaFlowStepStartResponse, MfaMethod, MfaMobileApprovalProof,
+        MfaSignatureChallenge, MfaStepResult, MfaStepStarted, core_request, core_response,
+        mfa_flow_start_response, mfa_flow_step_finish_request, mfa_step_result, mfa_step_started,
     },
     tests::support::{app_with_fake_core, cookie_key, post_json, test_proxy_server},
 };
@@ -65,6 +65,29 @@ async fn test_start_dispatches_to_mfa_flow_start() {
 
     assert_eq!(status, StatusCode::OK);
     assert!(body == expected);
+}
+
+#[tokio::test]
+async fn test_start_maps_posture_rejection_to_forbidden() {
+    let app = app_with_fake_core(|payload| match payload {
+        core_request::Payload::MfaFlowStart(_) => {
+            core_response::Payload::DevicePostureRejected(DevicePostureRejection {
+                failed_posture_checks: vec!["OS version".to_string()],
+            })
+        }
+        _ => panic!("unexpected Core request"),
+    });
+
+    let request = MfaFlowStartRequest {
+        location_id: 7,
+        pubkey: "device-public-key".to_string(),
+        posture_data: None,
+        selected_methods: vec![MfaMethod::Totp as i32],
+    };
+    let (status, body) = post_json(&app, "/api/v1/mfa-flow/start", &request).await;
+
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(body, json!({"error": "OS version"}));
 }
 
 #[tokio::test]
