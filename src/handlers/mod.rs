@@ -22,6 +22,7 @@ use crate::{
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
 pub(crate) mod mfa_config;
+pub(crate) mod mfa_flow;
 pub(crate) mod mobile_client;
 pub(crate) mod password_reset;
 pub(crate) mod polling;

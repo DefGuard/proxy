@@ -50,7 +50,7 @@ use crate::{
     enterprise::handlers::{desktop_client_posture, openid_login},
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
-    handlers::{desktop_client_mfa, enrollment, mfa_config, password_reset, polling},
+    handlers::{desktop_client_mfa, enrollment, mfa_config, mfa_flow, password_reset, polling},
     setup::ProxySetupServer,
 };
 
@@ -428,6 +428,7 @@ pub(crate) fn api_router() -> Router<AppState> {
             .nest("/enrollment", enrollment::router())
             .nest("/password-reset", password_reset::router())
             .nest("/client-mfa", desktop_client_mfa::router())
+            .nest("/mfa-flow", mfa_flow::router())
             .nest("/mfa-config", mfa_config::router())
             .nest("/openid", openid_login::router())
             .nest("/posture", desktop_client_posture::router())

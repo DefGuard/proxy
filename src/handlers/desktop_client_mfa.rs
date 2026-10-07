@@ -19,10 +19,8 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        AwaitRemoteMfaFinishRequest, AwaitRemoteMfaFinishResponse, ClientMfaFinishRequest,
-        ClientMfaFinishResponse, ClientMfaStartRequest, ClientMfaStartResponse,
-        ClientMfaStepStartRequest, ClientMfaStepStartResponse, DeviceInfo, MfaStepResult,
-        core_request,
+        AwaitRemoteMfaFinishRequest, ClientMfaFinishRequest, ClientMfaFinishResponse,
+        ClientMfaStartRequest, ClientMfaStartResponse, DeviceInfo, core_request,
         core_response::{self, Payload},
     },
 };
@@ -33,7 +31,6 @@ const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(60);
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start_client_mfa))
-        .route("/step-start", post(step_start_client_mfa))
         .route("/finish", post(finish_client_mfa))
         .route("/remote", any(await_remote_auth))
         .route("/finish-remote", post(finish_remote_mfa))
@@ -45,27 +42,9 @@ pub(crate) struct RemoteMfaRequestQuery {
 }
 
 #[derive(Serialize)]
-#[serde(tag = "type")]
-enum RemoteMfaResponse<'a> {
-    #[serde(rename = "mfa_success")]
-    Legacy { preshared_key: &'a str },
-    #[serde(rename = "mfa_result")]
-    Result { result: &'a MfaStepResult },
-}
-
-fn remote_mfa_response(response: &AwaitRemoteMfaFinishResponse) -> Option<RemoteMfaResponse<'_>> {
-    match response.result.as_ref() {
-        // New-protocol outcome: preserve the result and avoid the legacy success type.
-        Some(result) if result.outcome.is_some() => Some(RemoteMfaResponse::Result { result }),
-        // A present but empty result is malformed. Do not downgrade it to legacy behavior.
-        Some(_) => None,
-        // Legacy response: preserve the deprecated envelope for deployed clients.
-        None => {
-            #[allow(deprecated)]
-            let preshared_key = response.preshared_key.as_str();
-            Some(RemoteMfaResponse::Legacy { preshared_key })
-        }
-    }
+#[serde(tag = "type", rename = "mfa_success")]
+struct RemoteMfaResponse<'a> {
+    preshared_key: &'a str,
 }
 
 // Allows desktop client to await for another device to complete MFA for it via mobile client.
@@ -127,20 +106,18 @@ async fn handle_remote_auth_socket(
     set.spawn(async move {
         match rx.await {
             Ok(Payload::AwaitRemoteMfaFinish(response)) => {
-                if let Some(ws_response) = remote_mfa_response(&response) {
-                    match serde_json::to_string(&ws_response) {
-                        Ok(serialized) => {
-                            let message = Message::Text(serialized.into());
-                            if let Err(err) = ws_tx.send(message).await {
-                                error!("Failed to send MFA result via ws: {err:?}");
-                            }
-                        }
-                        Err(err) => {
-                            error!("Failed to serialize MFA result for ws: {err:?}");
+                match serde_json::to_string(&RemoteMfaResponse {
+                    preshared_key: &response.preshared_key,
+                }) {
+                    Ok(serialized) => {
+                        let message = Message::Text(serialized.into());
+                        if let Err(err) = ws_tx.send(message).await {
+                            error!("Failed to send MFA result via ws: {err:?}");
                         }
                     }
-                } else {
-                    error!("Received malformed MFA result from Core");
+                    Err(err) => {
+                        error!("Failed to serialize MFA result for ws: {err:?}");
+                    }
                 }
             }
             Ok(Payload::CoreError(status)) if status.status_code == tonic::Code::Aborted as i32 => {
@@ -220,25 +197,6 @@ async fn start_client_mfa(
 }
 
 #[instrument(level = "debug", skip(state, req))]
-async fn step_start_client_mfa(
-    State(state): State<AppState>,
-    device_info: DeviceInfo,
-    Json(req): Json<ClientMfaStepStartRequest>,
-) -> Result<Json<ClientMfaStepStartResponse>, ApiError> {
-    info!("Starting MFA step for desktop client authorization");
-    let rx = state
-        .grpc_server
-        .send(core_request::Payload::ClientMfaStepStart(req), device_info)?;
-    let payload = get_core_response(rx, None).await?;
-    if let core_response::Payload::ClientMfaStepStart(response) = payload {
-        Ok(Json(response))
-    } else {
-        error!("Received invalid gRPC response type, expected ClientMfaStepStart");
-        Err(ApiError::InvalidResponseType)
-    }
-}
-
-#[instrument(level = "debug", skip(state, req))]
 async fn finish_client_mfa(
     State(state): State<AppState>,
     device_info: DeviceInfo,
@@ -277,86 +235,18 @@ async fn finish_remote_mfa(
 
 #[cfg(test)]
 mod tests {
-    use super::remote_mfa_response;
-    use crate::proto::{
-        AwaitRemoteMfaFinishResponse, MfaAdvanced, MfaAwaitingExternal, MfaCompleted,
-        MfaStepResult, mfa_step_result,
-    };
-
-    #[allow(deprecated)]
-    fn response(result: Option<MfaStepResult>) -> AwaitRemoteMfaFinishResponse {
-        AwaitRemoteMfaFinishResponse {
-            preshared_key: "legacy-psk".to_string(),
-            result,
-        }
-    }
-
-    fn result(outcome: mfa_step_result::Outcome) -> MfaStepResult {
-        MfaStepResult {
-            outcome: Some(outcome),
-        }
-    }
-
-    fn serialized(response: &AwaitRemoteMfaFinishResponse) -> serde_json::Value {
-        serde_json::from_str(
-            &serde_json::to_string(&remote_mfa_response(response).expect("valid MFA result"))
-                .expect("MFA response should serialize"),
-        )
-        .expect("MFA response should be valid JSON")
-    }
-
-    #[test]
-    fn test_completed_uses_result_envelope() {
-        let result = result(mfa_step_result::Outcome::Completed(MfaCompleted {
-            preshared_key: "completed-psk".to_string(),
-        }));
-        let frame = serialized(&response(Some(result.clone())));
-
-        assert_eq!(frame["type"], serde_json::json!("mfa_result"));
-        assert_eq!(frame["result"], serde_json::to_value(&result).unwrap());
-        assert!(frame.get("preshared_key").is_none());
-    }
-
-    #[test]
-    fn test_advanced_uses_result_envelope() {
-        let result = result(mfa_step_result::Outcome::Advanced(MfaAdvanced {
-            next_step: 1,
-        }));
-        let frame = serialized(&response(Some(result.clone())));
-
-        assert_eq!(frame["type"], serde_json::json!("mfa_result"));
-        assert_eq!(frame["result"], serde_json::to_value(&result).unwrap());
-        assert!(frame.get("preshared_key").is_none());
-    }
-
-    #[test]
-    fn test_awaiting_external_uses_result_envelope() {
-        let result = result(mfa_step_result::Outcome::AwaitingExternal(
-            MfaAwaitingExternal {},
-        ));
-        let frame = serialized(&response(Some(result.clone())));
-
-        assert_eq!(frame["type"], serde_json::json!("mfa_result"));
-        assert_eq!(frame["result"], serde_json::to_value(&result).unwrap());
-        assert!(frame.get("preshared_key").is_none());
-    }
+    use super::RemoteMfaResponse;
 
     #[test]
     fn test_legacy_response_preserves_success_envelope() {
-        let response = response(None);
-        let serialized = serde_json::to_string(&remote_mfa_response(&response).expect("legacy"))
-            .expect("legacy response should serialize");
+        let serialized = serde_json::to_string(&RemoteMfaResponse {
+            preshared_key: "legacy-psk",
+        })
+        .expect("legacy response should serialize");
 
         assert_eq!(
             serialized,
             r#"{"type":"mfa_success","preshared_key":"legacy-psk"}"#
         );
-    }
-
-    #[test]
-    fn test_empty_result_fails_closed() {
-        let response = response(Some(MfaStepResult { outcome: None }));
-
-        assert!(remote_mfa_response(&response).is_none());
     }
 }
