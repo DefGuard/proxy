@@ -240,6 +240,9 @@ jobs:
 
       - name: Build frontend
         working-directory: web
+        env:
+          # SWC rejects the group-writable ~/.cache on this runner, and runners on one host share /tmp, so each runner gets its own dir.
+          SWC_NATIVE_BINDING_CACHE: /tmp/swc-native-${{ runner.name }}
         run: |
           pnpm install --ignore-scripts --frozen-lockfile
           pnpm build
@@ -459,6 +462,9 @@ jobs:
 
       - name: Build frontend
         working-directory: web
+        env:
+          # The runner sets HOME to the host-mounted /github/home, which fails the SWC cache permission check.
+          SWC_NATIVE_BINDING_CACHE: /tmp/swc-native
         run: |
           pnpm install --ignore-scripts --frozen-lockfile
           pnpm build
