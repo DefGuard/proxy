@@ -26,7 +26,8 @@ use crate::{
     },
 };
 
-const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(60);
+// 10 seconds more that core-side timeout, to avoid proxy breaking the connection
+const REMOTE_AUTH_TIMEOUT: Duration = Duration::from_secs(130);
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
