@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  seroval: 1.5.4
+  seroval: 1.6.3
 
 importers:
 
@@ -3480,16 +3480,16 @@ packages:
     resolution: {integrity: sha512-HXuLAX2pu/UByPpaeo/TaMfvMIi+1QqIoPJYCcAtU8QkVNwgR6MPlGuCQTErV1JwraaMbYaWVIBX7mppzGLATQ==}
     engines: {node: '>=10'}
     peerDependencies:
-      seroval: 1.5.4
+      seroval: 1.6.3
 
   seroval-plugins@1.6.8:
     resolution: {integrity: sha512-N7mWAMydj89EnYTHtRpS3LBrAz3J9O6oVrqpuXuvlAHfAUG8WEKqtbAd7SBiJNY5NfCAFhSdyAh7wI4Shjqy4g==}
     engines: {node: '>=10'}
     peerDependencies:
-      seroval: 1.5.4
+      seroval: 1.6.3
 
-  seroval@1.5.4:
-    resolution: {integrity: sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw==}
+  seroval@1.6.3:
+    resolution: {integrity: sha512-5PwLbVPpT4DEki1hYVSSsoxWY6xCNMVucAVLK/CH0mXSDfp/I4KaAex72q80GNt5hpn7CCMGdSpIg4YGqH/wXQ==}
     engines: {node: '>=10'}
 
   sharp@0.35.5:
@@ -5422,8 +5422,8 @@ snapshots:
     dependencies:
       '@tanstack/history': 1.162.4
       cookie-es: 3.1.1
-      seroval: 1.5.4
-      seroval-plugins: 1.6.8(seroval@1.5.4)
+      seroval: 1.6.3
+      seroval-plugins: 1.6.8(seroval@1.6.3)
 
   '@tanstack/router-devtools-core@1.168.2(@tanstack/router-core@1.171.34)(csstype@3.2.3)':
     dependencies:
@@ -7134,15 +7134,15 @@ snapshots:
 
   semver@7.8.5: {}
 
-  seroval-plugins@1.5.6(seroval@1.5.4):
+  seroval-plugins@1.5.6(seroval@1.6.3):
     dependencies:
-      seroval: 1.5.4
+      seroval: 1.6.3
 
-  seroval-plugins@1.6.8(seroval@1.5.4):
+  seroval-plugins@1.6.8(seroval@1.6.3):
     dependencies:
-      seroval: 1.5.4
+      seroval: 1.6.3
 
-  seroval@1.5.4: {}
+  seroval@1.6.3: {}
 
   sharp@0.35.5(@types/node@26.6.4):
     dependencies:
@@ -7228,8 +7228,8 @@ snapshots:
   solid-js@1.9.15:
     dependencies:
       csstype: 3.2.3
-      seroval: 1.5.4
-      seroval-plugins: 1.5.6(seroval@1.5.4)
+      seroval: 1.6.3
+      seroval-plugins: 1.5.6(seroval@1.6.3)
 
   solid-presence@0.2.0(solid-js@1.9.15):
     dependencies:
