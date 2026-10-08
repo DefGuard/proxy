@@ -5,8 +5,7 @@
   fetchPnpmDeps,
   pnpmConfigHook,
   gitRev ? "unknown",
-}:
-let
+}: let
   pname = "defguard-proxy";
   version = (builtins.fromTOML (builtins.readFile ../Cargo.toml)).package.version;
   rootSrc = craneLib.path ../.;
@@ -19,13 +18,6 @@ let
     filter = path: type:
       (craneLib.filterCargoSources path type)
       || lib.hasInfix "/proto/" path;
-  };
-
-  defguardSrc = pkgs.fetchFromGitHub {
-    owner = "DefGuard";
-    repo = "defguard";
-    rev = "d80302d6841e107e09825e9e21507bca515663e6";
-    hash = "sha256-AwmXcelYLnJ7a3d3MCXbmPnUtPeMCcUbTbP1YrBjKu0=";
   };
 
   messageFormatPlugin = pkgs.fetchurl {
@@ -42,7 +34,7 @@ let
     inherit version;
     src = webSrc;
     fetcherVersion = 4;
-    hash = "sha256-2pT9948Dct+bMX4xrI1CvJttiO6ZBUzvgHOrTvqsANw=";
+    hash = "sha256-G3ob1OJDRcHQkFz/bc9K3xmYRNGIwNd//vBtgxF8GY8=";
   };
 
   webDist = pkgs.stdenv.mkDerivation {
@@ -85,25 +77,9 @@ let
     systemd # provides libudev.pc required by hidapi
   ];
 
-  cargoVendorBase = craneLib.vendorCargoDeps {
+  cargoVendorDir = craneLib.vendorCargoDeps {
     src = rootSrc;
   };
-
-  # Cargo vendor flattens git dependencies, but defguard_common expects the
-  # defguard workspace's root .sqlx cache and migrations directory. Recreate
-  # those two relative paths inside the vendor tree.
-  cargoVendorDir = pkgs.runCommand "${pname}-cargo-vendor" {} ''
-    mkdir -p "$out"
-    cp -RL ${cargoVendorBase}/. "$out/"
-    chmod -R u+rwX "$out"
-    substituteInPlace "$out/config.toml" \
-      --replace-fail "${cargoVendorBase}" "$out"
-    common="$(find "$out" -type d -name 'defguard_common-*' -print -quit)"
-    test -n "$common"
-    cp -R ${defguardSrc}/.sqlx "$common/"
-    mkdir -p "$out/migrations"
-    cp -R ${defguardSrc}/migrations/. "$out/migrations/"
-  '';
 
   cargoEnv = {
     SQLX_OFFLINE = "true";
@@ -111,40 +87,42 @@ let
   };
 
   cargoArtifacts = craneLib.buildDepsOnly ({
-    inherit pname version cargoSrc cargoVendorDir;
-    src = cargoSrc;
-    nativeBuildInputs = cargoNativeBuildInputs;
-    buildInputs = cargoBuildInputs;
-    preBuild = ''
-      mkdir -p web/dist
-      cp -r ${webDist}/. web/dist/
-    '';
-  } // cargoEnv);
+      inherit pname version cargoSrc cargoVendorDir;
+      src = cargoSrc;
+      nativeBuildInputs = cargoNativeBuildInputs;
+      buildInputs = cargoBuildInputs;
+      preBuild = ''
+        mkdir -p web/dist
+        cp -r ${webDist}/. web/dist/
+      '';
+    }
+    // cargoEnv);
 in
   craneLib.mkCargoDerivation ({
-    inherit pname version cargoArtifacts cargoVendorDir;
-    src = cargoSrc;
-    nativeBuildInputs = cargoNativeBuildInputs;
-    buildInputs = cargoBuildInputs;
+      inherit pname version cargoArtifacts cargoVendorDir;
+      src = cargoSrc;
+      nativeBuildInputs = cargoNativeBuildInputs;
+      buildInputs = cargoBuildInputs;
 
-    preBuild = ''
-      mkdir -p web/dist
-      cp -r ${webDist}/. web/dist/
-    '';
+      preBuild = ''
+        mkdir -p web/dist
+        cp -r ${webDist}/. web/dist/
+      '';
 
-    buildPhaseCargoCommand = "cargo build --release --locked";
+      buildPhaseCargoCommand = "cargo build --release --locked";
 
-    installPhase = ''
-      install -Dm755 target/release/defguard-proxy "$out/bin/defguard-proxy"
-    '';
+      installPhase = ''
+        install -Dm755 target/release/defguard-proxy "$out/bin/defguard-proxy"
+      '';
 
-    passthru = {inherit webPnpmDeps;};
+      passthru = {inherit webPnpmDeps;};
 
-    meta = with lib; {
-      description = "Defguard Edge service";
-      homepage = "https://github.com/DefGuard/proxy";
-      license = licenses.asl20;
-      mainProgram = "defguard-proxy";
-      platforms = platforms.linux;
-    };
-  } // cargoEnv)
+      meta = with lib; {
+        description = "Defguard Edge service";
+        homepage = "https://github.com/DefGuard/proxy";
+        license = licenses.asl20;
+        mainProgram = "defguard-proxy";
+        platforms = platforms.linux;
+      };
+    }
+    // cargoEnv)
