@@ -10,12 +10,18 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
+    crane.url = "github:ipetkov/crane";
+
+    # include the proto and defguard-ui submodules in the flake source
+    self.submodules = true;
   };
 
   outputs = {
+    self,
     nixpkgs,
     flake-utils,
     rust-overlay,
+    crane,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
@@ -41,12 +47,25 @@
           --config imports_granularity=Crate,group_imports=StdExternalCrate
       '';
 
+      craneLib = (crane.mkLib pkgs).overrideToolchain (_: rustToolchain);
+      defguard-proxy = pkgs.callPackage ./nix/package.nix {
+        inherit pkgs craneLib;
+        gitRev = if self ? rev then self.rev else "unknown";
+      };
+
       # define shared build inputs
       nativeBuildInputs = with pkgs; [rustToolchain pkg-config];
       buildInputs = with pkgs;
         [openssl protobuf nodejs_26 pnpm_11]
         ++ lib.optionals stdenv.hostPlatform.isLinux [systemd];
     in {
+      packages = {
+        default = defguard-proxy;
+        inherit defguard-proxy;
+      };
+
+      checks.default = defguard-proxy;
+
       devShells.default = pkgs.mkShell {
         inherit nativeBuildInputs buildInputs;
 
@@ -64,5 +83,10 @@
         # Specify the rust-src path (many editors rely on this)
         RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
       };
-    });
+    })
+    // {
+      nixosModules.default = import ./nix/nixos-module.nix {
+        mkCraneLib = crane.mkLib;
+      };
+    };
 }

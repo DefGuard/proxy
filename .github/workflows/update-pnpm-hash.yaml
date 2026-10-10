@@ -1,0 +1,104 @@
+name: Update pnpm deps Nix hash
+
+on:
+  pull_request:
+    paths:
+      - web/package.json
+      - web/pnpm-lock.yaml
+      - nix/package.nix
+      - flake.nix
+      - flake.lock
+
+concurrency:
+  group: pnpm-hash-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  update-pnpm-hash:
+    # Builds PR-controlled code on a self-hosted runner, so skip fork PRs.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write
+    runs-on:
+      - codebuild-defguard-proxy-runner-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          install_options: --no-daemon
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Compute correct pnpm deps hash
+        id: hash
+        run: |
+          set -euo pipefail
+
+          FAKE="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          SYSTEM=$(nix eval --impure --raw --expr 'builtins.currentSystem')
+
+          CURRENT=$(awk '/^[[:space:]]*webPnpmDeps = fetchPnpmDeps/,/^[[:space:]]*};[[:space:]]*$/' nix/package.nix \
+            | sed -n 's/^[[:space:]]*hash = "\(sha256-[^"]*\)".*/\1/p' | head -1)
+          if [ -z "$CURRENT" ]; then
+            echo "::error::Could not extract webPnpmDeps hash from nix/package.nix"
+            exit 1
+          fi
+          echo "current hash: $CURRENT"
+
+          sed -i "/^[[:space:]]*webPnpmDeps = fetchPnpmDeps/,/^[[:space:]]*};[[:space:]]*$/ { s|hash = \"${CURRENT}\"|hash = \"${FAKE}\"|; }" nix/package.nix
+
+          BUILD_LOG=$(nix build --no-link --no-write-lock-file \
+            ".#packages.${SYSTEM}.default.webPnpmDeps" 2>&1 || true)
+          NEW=$(printf '%s\n' "$BUILD_LOG" \
+            | sed -n 's/.*got:[[:space:]]*\(sha256-[^[:space:]]*\).*/\1/p' | head -1)
+          if [ -z "$NEW" ]; then
+            echo "::error::Could not extract the correct webPnpmDeps hash"
+            printf '%s\n' "$BUILD_LOG"
+            exit 1
+          fi
+          echo "new hash: $NEW"
+
+          sed -i "/^[[:space:]]*webPnpmDeps = fetchPnpmDeps/,/^[[:space:]]*};[[:space:]]*$/ { s|hash = \"${FAKE}\"|hash = \"${NEW}\"|; }" nix/package.nix
+          if [ "$CURRENT" != "$NEW" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit updated hash
+        if: steps.hash.outputs.changed == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('nix/package.nix', 'utf8');
+            const encoded = Buffer.from(content).toString('base64');
+
+            await github.graphql(`
+              mutation CreateCommit($input: CreateCommitOnBranchInput!) {
+                createCommitOnBranch(input: $input) {
+                  commit { url }
+                }
+              }
+            `, {
+              input: {
+                branch: {
+                  repositoryNameWithOwner: `${context.repo.owner}/${context.repo.repo}`,
+                  branchName: context.payload.pull_request.head.ref,
+                },
+                message: { headline: 'chore(nix): update web pnpm deps hash' },
+                fileChanges: {
+                  additions: [{ path: 'nix/package.nix', contents: encoded }],
+                },
+                expectedHeadOid: context.payload.pull_request.head.sha,
+              },
+            });
