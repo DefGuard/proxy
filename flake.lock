@@ -15,18 +15,6 @@
         "type": "github"
       }
     },
-    "defguard-ui": {
-      "flake": false,
-      "locked": {
-        "path": "web/src/shared/defguard-ui",
-        "type": "path"
-      },
-      "original": {
-        "path": "web/src/shared/defguard-ui",
-        "type": "path"
-      },
-      "parent": []
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -61,25 +49,11 @@
         "type": "github"
       }
     },
-    "proto": {
-      "flake": false,
-      "locked": {
-        "path": "proto",
-        "type": "path"
-      },
-      "original": {
-        "path": "proto",
-        "type": "path"
-      },
-      "parent": []
-    },
     "root": {
       "inputs": {
         "crane": "crane",
-        "defguard-ui": "defguard-ui",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
-        "proto": "proto",
         "rust-overlay": "rust-overlay"
       }
     },

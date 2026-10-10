@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: let
-  inherit (lib) mkEnableOption mkIf mkOption optional optionalAttrs types;
+  inherit (lib) mkEnableOption mkIf mkOption optional types;
 
   cfg = config.services.defguard-edge;
   package = pkgs.callPackage ./package.nix {
@@ -12,21 +12,22 @@
   };
   stateDir = "/var/lib/defguard-edge";
 
-  reservedConfigKeys = [
-    "http_port"
-    "grpc_port"
-    "https_port"
-    "http_bind_address"
-    "grpc_bind_address"
-    "log_level"
-    "rate_limit_per_second"
-    "rate_limit_burst"
-    "cert_dir"
-    "acme_staging"
-    "adoption_timeout"
-  ];
+  # Unset optional keys stay null here so that extraConfig cannot set them either.
+  typedSettings = {
+    http_port = cfg.httpPort;
+    grpc_port = cfg.grpcPort;
+    https_port = cfg.httpsPort;
+    http_bind_address = cfg.httpBindAddress;
+    grpc_bind_address = cfg.grpcBindAddress;
+    log_level = cfg.logLevel;
+    rate_limit_per_second = cfg.rateLimitPerSecond;
+    rate_limit_burst = cfg.rateLimitBurst;
+    cert_dir = "${stateDir}/certs";
+    acme_staging = cfg.acmeStaging;
+    adoption_timeout = cfg.adoptionTimeout;
+  };
   invalidExtraConfig = lib.filter
-    (key: builtins.elem key reservedConfigKeys)
+    (key: typedSettings ? ${key})
     (builtins.attrNames cfg.extraConfig);
   privilegedPorts = lib.filter (port: port < 1024) [
     cfg.httpPort
@@ -34,24 +35,7 @@
     cfg.httpsPort
   ];
 
-  settings = {
-    http_port = cfg.httpPort;
-    grpc_port = cfg.grpcPort;
-    https_port = cfg.httpsPort;
-    log_level = cfg.logLevel;
-    rate_limit_per_second = cfg.rateLimitPerSecond;
-    rate_limit_burst = cfg.rateLimitBurst;
-    cert_dir = "${stateDir}/certs";
-    acme_staging = cfg.acmeStaging;
-    adoption_timeout = cfg.adoptionTimeout;
-  }
-  // optionalAttrs (cfg.httpBindAddress != null) {
-    http_bind_address = cfg.httpBindAddress;
-  }
-  // optionalAttrs (cfg.grpcBindAddress != null) {
-    grpc_bind_address = cfg.grpcBindAddress;
-  }
-  // cfg.extraConfig;
+  settings = lib.filterAttrs (_: value: value != null) typedSettings // cfg.extraConfig;
 
   configFile = (pkgs.formats.toml {}).generate "defguard-edge.toml" settings;
   portCapability = optional cfg.allowPrivilegedPorts "CAP_NET_BIND_SERVICE";
@@ -80,7 +64,11 @@ in {
     httpsPort = mkOption {
       type = types.port;
       default = 8443;
-      description = "HTTPS port used when Core sends TLS certificates to the Edge.";
+      description = ''
+        HTTPS port used when Core sends TLS certificates to the Edge. The
+        binary defaults to 443; this module defaults to 8443 so the service
+        runs without CAP_NET_BIND_SERVICE.
+      '';
     };
 
     httpBindAddress = mkOption {
@@ -108,7 +96,7 @@ in {
     };
 
     rateLimitBurst = mkOption {
-      type = types.ints.between 0 4294967295;
+      type = types.ints.u32;
       default = 0;
       description = "Maximum burst size for the Edge rate limiter.";
     };

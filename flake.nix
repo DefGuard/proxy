@@ -12,16 +12,8 @@
     };
     crane.url = "github:ipetkov/crane";
 
-    # let git manage submodules
+    # include the proto and defguard-ui submodules in the flake source
     self.submodules = true;
-    proto = {
-      url = "path:proto";
-      flake = false;
-    };
-    defguard-ui = {
-      url = "path:web/src/shared/defguard-ui";
-      flake = false;
-    };
   };
 
   outputs = {
@@ -55,7 +47,7 @@
           --config imports_granularity=Crate,group_imports=StdExternalCrate
       '';
 
-      craneLib = crane.mkLib pkgs;
+      craneLib = (crane.mkLib pkgs).overrideToolchain (_: rustToolchain);
       defguard-proxy = pkgs.callPackage ./nix/package.nix {
         inherit pkgs craneLib;
         gitRev = if self ? rev then self.rev else "unknown";

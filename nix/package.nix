@@ -20,14 +20,36 @@
       || lib.hasInfix "/proto/" path;
   };
 
-  messageFormatPlugin = pkgs.fetchurl {
-    url = "https://cdn.jsdelivr.net/npm/@inlang/plugin-message-format@4/dist/index.js";
-    hash = "sha256-siz2DrKLPIw84ftjAGEaBVLxLQ2ZXTfE3SyW462AxkU=";
+  # project.inlang/settings.json loads these plugins from a CDN at build time,
+  # which the sandbox blocks. Each one is fetched at the exact version behind
+  # the floating major URL in settings.json, which is then patched to point at it.
+  inlangPluginUrl = name: version: "https://cdn.jsdelivr.net/npm/@inlang/${name}@${version}/dist/index.js";
+  inlangPlugin = {
+    name,
+    settingsVersion,
+    version,
+    hash,
+  }: {
+    settingsUrl = inlangPluginUrl name settingsVersion;
+    file = pkgs.fetchurl {
+      url = inlangPluginUrl name version;
+      inherit hash;
+    };
   };
-  mFunctionMatcherPlugin = pkgs.fetchurl {
-    url = "https://cdn.jsdelivr.net/npm/@inlang/plugin-m-function-matcher@2/dist/index.js";
-    hash = "sha256-hYYvYwV5O1a/2a/lNosJbmP7Kuqzi3eZwFFRe+NJnAs=";
-  };
+  inlangPlugins = map inlangPlugin [
+    {
+      name = "plugin-message-format";
+      settingsVersion = "4";
+      version = "4.4.5";
+      hash = "sha256-siz2DrKLPIw84ftjAGEaBVLxLQ2ZXTfE3SyW462AxkU=";
+    }
+    {
+      name = "plugin-m-function-matcher";
+      settingsVersion = "2";
+      version = "2.2.17";
+      hash = "sha256-hYYvYwV5O1a/2a/lNosJbmP7Kuqzi3eZwFFRe+NJnAs=";
+    }
+  ];
 
   webPnpmDeps = fetchPnpmDeps {
     pname = "${pname}-web";
@@ -50,9 +72,9 @@
     pnpmDeps = webPnpmDeps;
 
     postPatch = ''
-      substituteInPlace project.inlang/settings.json \
-        --replace-fail '"https://cdn.jsdelivr.net/npm/@inlang/plugin-message-format@4/dist/index.js"' '"${messageFormatPlugin}"' \
-        --replace-fail '"https://cdn.jsdelivr.net/npm/@inlang/plugin-m-function-matcher@2/dist/index.js"' '"${mFunctionMatcherPlugin}"'
+      substituteInPlace project.inlang/settings.json ${lib.concatMapStringsSep " " (plugin:
+        "--replace-fail '\"${plugin.settingsUrl}\"' '\"${plugin.file}\"'")
+      inlangPlugins}
     '';
 
     buildPhase = ''
@@ -67,47 +89,30 @@
     '';
   };
 
-  cargoNativeBuildInputs = with pkgs; [
-    cmake
-    pkg-config
-    protobuf
-  ];
-  cargoBuildInputs = with pkgs; [
-    openssl
-    systemd # provides libudev.pc required by hidapi
-  ];
-
-  cargoVendorDir = craneLib.vendorCargoDeps {
-    src = rootSrc;
-  };
-
-  cargoEnv = {
-    SQLX_OFFLINE = "true";
+  commonCargoArgs = {
+    inherit pname version;
+    src = cargoSrc;
+    cargoVendorDir = craneLib.vendorCargoDeps {
+      src = rootSrc;
+    };
+    nativeBuildInputs = with pkgs; [
+      cmake
+      pkg-config
+      protobuf
+    ];
+    buildInputs = with pkgs; [openssl];
+    preBuild = ''
+      mkdir -p web/dist
+      cp -r ${webDist}/. web/dist/
+    '';
     VERGEN_GIT_SHA = gitRev;
   };
 
-  cargoArtifacts = craneLib.buildDepsOnly ({
-      inherit pname version cargoSrc cargoVendorDir;
-      src = cargoSrc;
-      nativeBuildInputs = cargoNativeBuildInputs;
-      buildInputs = cargoBuildInputs;
-      preBuild = ''
-        mkdir -p web/dist
-        cp -r ${webDist}/. web/dist/
-      '';
-    }
-    // cargoEnv);
+  cargoArtifacts = craneLib.buildDepsOnly commonCargoArgs;
 in
-  craneLib.mkCargoDerivation ({
-      inherit pname version cargoArtifacts cargoVendorDir;
-      src = cargoSrc;
-      nativeBuildInputs = cargoNativeBuildInputs;
-      buildInputs = cargoBuildInputs;
-
-      preBuild = ''
-        mkdir -p web/dist
-        cp -r ${webDist}/. web/dist/
-      '';
+  craneLib.mkCargoDerivation (commonCargoArgs
+    // {
+      inherit cargoArtifacts;
 
       buildPhaseCargoCommand = "cargo build --release --locked";
 
@@ -124,5 +129,4 @@ in
         mainProgram = "defguard-proxy";
         platforms = platforms.linux;
       };
-    }
-    // cargoEnv)
+    })
