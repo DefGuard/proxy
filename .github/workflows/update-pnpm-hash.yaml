@@ -32,7 +32,7 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
         with:
           install_options: --no-daemon
           extra_nix_config: |
@@ -76,7 +76,7 @@ jobs:
 
       - name: Commit updated hash
         if: steps.hash.outputs.changed == 'true'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
