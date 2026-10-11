@@ -39,7 +39,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.vars.outputs.REF }}
           submodules: recursive
@@ -51,7 +51,7 @@ jobs:
           git checkout FETCH_HEAD -- .trivyignore.yaml || echo "Keeping tagged .trivyignore.yaml"
 
       - name: Create SBOM with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_SHOW_SUPPRESSED: 1
           TRIVY_IGNOREFILE: "./.trivyignore.yaml"
@@ -64,7 +64,7 @@ jobs:
           scanners: "vuln"
 
       - name: Create Docker image SBOM with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_SHOW_SUPPRESSED: 1
           TRIVY_IGNOREFILE: "./.trivyignore.yaml"
@@ -77,7 +77,7 @@ jobs:
           scanners: "vuln"
 
       - name: Create security advisory file with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_SHOW_SUPPRESSED: 1
           TRIVY_IGNOREFILE: "./.trivyignore.yaml"
@@ -90,7 +90,7 @@ jobs:
           scanners: "vuln"
 
       - name: Create Docker image security advisory file with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_SHOW_SUPPRESSED: 1
           TRIVY_IGNOREFILE: "./.trivyignore.yaml"
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload SBOMs and advisories to the release
         if: inputs.upload_url != ''
-        uses: shogo82148/actions-upload-release-asset@394b3c11c3cfc038b5396ad265c074065cf875c3 # v1.10.2
+        uses: shogo82148/actions-upload-release-asset@9ee13965a8a51926f330b424693f25fcff8f2ef6 # v1.10.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
