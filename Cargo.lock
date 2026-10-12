@@ -787,7 +787,7 @@ dependencies = [
 [[package]]
 name = "defguard_certs"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=d80302d6841e107e09825e9e21507bca515663e6#d80302d6841e107e09825e9e21507bca515663e6"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b4e93eaea127a49a9f8eb1123552011ad18e06f1#b4e93eaea127a49a9f8eb1123552011ad18e06f1"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -801,7 +801,7 @@ dependencies = [
 [[package]]
 name = "defguard_grpc_tls"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=bf77fd3c1cbdd962f4401efc15af557340b0626c#bf77fd3c1cbdd962f4401efc15af557340b0626c"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b4e93eaea127a49a9f8eb1123552011ad18e06f1#b4e93eaea127a49a9f8eb1123552011ad18e06f1"
 dependencies = [
  "http",
  "hyper-rustls",
@@ -817,7 +817,7 @@ dependencies = [
 [[package]]
 name = "defguard_version"
 version = "0.0.0"
-source = "git+https://github.com/DefGuard/defguard.git?rev=d80302d6841e107e09825e9e21507bca515663e6#d80302d6841e107e09825e9e21507bca515663e6"
+source = "git+https://github.com/DefGuard/defguard.git?rev=b4e93eaea127a49a9f8eb1123552011ad18e06f1#b4e93eaea127a49a9f8eb1123552011ad18e06f1"
 dependencies = [
  "axum",
  "http",
