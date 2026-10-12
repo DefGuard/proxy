@@ -123,6 +123,16 @@ in {
       '';
     };
 
+    openFirewall = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Open the HTTP, gRPC and HTTPS ports in the NixOS firewall, plus port 80
+        for the ACME HTTP-01 listener when allowPrivilegedPorts is set. Core
+        must reach the gRPC port to manage the Edge.
+      '';
+    };
+
     extraConfig = mkOption {
       type = types.attrsOf (types.oneOf [
         types.bool
@@ -151,6 +161,13 @@ in {
     ];
 
     environment.etc."defguard-edge/config.toml".source = configFile;
+
+    networking.firewall.allowedTCPPorts = mkIf cfg.openFirewall (lib.unique ([
+        cfg.httpPort
+        cfg.grpcPort
+        cfg.httpsPort
+      ]
+      ++ optional cfg.allowPrivilegedPorts 80));
 
     systemd.services.defguard-edge = {
       description = "Defguard Edge service";
