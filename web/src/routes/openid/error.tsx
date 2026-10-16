@@ -11,11 +11,13 @@ function RouteComponent() {
   const openIdError = useOpenidStore(
     (s) => s.error ?? m.openid_mfa_redirect_error_message(),
   );
+  const details = useOpenidStore((s) => s.details);
 
   return (
     <PageInfo
       title={m.openid_mfa_redirect_error_title()}
       subtitle={openIdError}
+      details={details}
       icon="disabled"
     />
   );

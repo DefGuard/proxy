@@ -87,7 +87,7 @@ async fn test_start_maps_posture_rejection_to_forbidden() {
     let (status, body) = post_json(&app, "/api/v1/mfa-flow/start", &request).await;
 
     assert_eq!(status, StatusCode::FORBIDDEN);
-    assert_eq!(body, json!({"error": "OS version"}));
+    assert_eq!(body, json!({"error": "OS version", "code": null}));
 }
 
 #[tokio::test]

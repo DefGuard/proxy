@@ -17,8 +17,11 @@ vi.mock('../../../shared/api/api', () => ({
 }));
 vi.mock('../../../paraglide/messages', () => ({
   m: {
-    openid_mfa_redirect_error_message: () => 'MFA callback error',
+    openid_mfa_callback_error: () => 'MFA callback error',
     openid_mfa_redirect_error_missing_args: () => 'Missing callback arguments',
+    api_error_oidc_account_mismatch: () => 'Wrong account',
+    api_error_oidc_verification_failed: () => 'Verification failed',
+    api_error_mfa_session_expired: () => 'Session expired',
   },
 }));
 vi.mock('../../../shared/components/PageInfo/PageInfo', () => ({
@@ -69,7 +72,10 @@ describe('OpenID MFA callback route', () => {
         to: '/openid/error',
       },
     });
-    expect(mocks.setError).toHaveBeenCalledWith({ error: 'MFA callback error' });
+    expect(mocks.setError).toHaveBeenCalledWith({
+      error: 'MFA callback error',
+      details: 'provider rejected',
+    });
   });
 
   it('uses the MFA error when the response has no error message', async () => {
@@ -84,7 +90,34 @@ describe('OpenID MFA callback route', () => {
         to: '/openid/error',
       },
     });
-    expect(mocks.setError).toHaveBeenCalledWith({ error: 'MFA callback error' });
+    expect(mocks.setError).toHaveBeenCalledWith({
+      error: 'MFA callback error',
+      details: undefined,
+    });
+  });
+
+  it('shows the message for the error code Core sent', async () => {
+    for (const [code, message] of [
+      ['oidc_account_mismatch', 'Wrong account'],
+      ['oidc_verification_failed', 'Verification failed'],
+      ['mfa_session_expired', 'Session expired'],
+      ['code_from_a_newer_core', 'MFA callback error'],
+      ['constructor', 'MFA callback error'],
+    ]) {
+      mocks.setError.mockClear();
+      mocks.callback.mockRejectedValue({
+        isAxiosError: true,
+        response: { data: { error: 'unauthorized', code } },
+      });
+
+      await expect(load({ code: 'code', state: 'state' })).rejects.toMatchObject({
+        options: { replace: true, to: '/openid/error' },
+      });
+      expect(mocks.setError).toHaveBeenCalledWith({
+        error: message,
+        details: 'unauthorized',
+      });
+    }
   });
 
   it('uses the MFA error for non-Axios callback failures', async () => {
@@ -96,6 +129,9 @@ describe('OpenID MFA callback route', () => {
         to: '/openid/error',
       },
     });
-    expect(mocks.setError).toHaveBeenCalledWith({ error: 'MFA callback error' });
+    expect(mocks.setError).toHaveBeenCalledWith({
+      error: 'MFA callback error',
+      details: undefined,
+    });
   });
 });
