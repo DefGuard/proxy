@@ -74,6 +74,7 @@ where
                 core_response::Payload::CoreError(CoreError {
                     status_code: tonic::Code::Internal as i32,
                     message: format!("fake Core panicked: {message}"),
+                    ..Default::default()
                 })
             });
             responder.resolve_test_response(request.id, response);

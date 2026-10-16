@@ -171,6 +171,7 @@ async fn test_mfa_config_core_error_maps_to_http_status() {
         core_response::Payload::CoreError(CoreError {
             status_code: tonic::Code::Unauthenticated as i32,
             message: "invalid token".into(),
+            ..Default::default()
         })
     });
 
@@ -186,6 +187,7 @@ async fn test_mfa_config_core_error_maps_to_http_status() {
         core_response::Payload::CoreError(CoreError {
             status_code: tonic::Code::FailedPrecondition as i32,
             message: "OIDC authentication not completed".into(),
+            ..Default::default()
         })
     });
 

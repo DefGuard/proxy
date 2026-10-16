@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
 import { m } from '../../paraglide/messages';
 import { api } from '../../shared/api/api';
+import { getApiErrorDetails } from '../../shared/api/apiErrorMessages';
 import { useEnrollmentStore } from '../../shared/hooks/useEnrollmentStore';
 import { useOpenidStore } from '../../shared/hooks/useOpenIdStore';
 
@@ -29,7 +30,8 @@ export const Route = createFileRoute('/openid/callback')({
       })
       .catch((e) => {
         useOpenidStore.setState({
-          error: e.response?.data?.error ?? m.openid_generic_error(),
+          error: m.openid_generic_error(),
+          details: getApiErrorDetails(e),
         });
         throw redirect({ to: '/openid/error', replace: true });
       });

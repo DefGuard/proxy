@@ -13,6 +13,7 @@ import { Page } from '../Page/Page';
 type Props = {
   title: string;
   subtitle: string;
+  details?: string;
   linkText?: string;
   link?: string;
   icon?: IconKindValue;
@@ -23,6 +24,7 @@ export const PageInfo = ({
   link,
   linkText,
   subtitle,
+  details,
   title,
   icon = 'check-circle',
   imageSrc,
@@ -38,6 +40,12 @@ export const PageInfo = ({
         <SizedBox height={ThemeSpacing.Xs} />
         <AppText as="p" font={TextStyle.TBodyPrimary400}>
           {subtitle}
+          {isPresent(details) && (
+            <>
+              <br />
+              {details}
+            </>
+          )}
         </AppText>
         {isPresent(linkText) && isPresent(link) && (
           <>
