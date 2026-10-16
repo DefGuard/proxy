@@ -40,13 +40,12 @@ export const PageInfo = ({
         <SizedBox height={ThemeSpacing.Xs} />
         <AppText as="p" font={TextStyle.TBodyPrimary400}>
           {subtitle}
-          {isPresent(details) && (
-            <>
-              <br />
-              {details}
-            </>
-          )}
         </AppText>
+        {isPresent(details) && (
+          <AppText as="p" font={TextStyle.TBodyPrimary400}>
+            {details}
+          </AppText>
+        )}
         {isPresent(linkText) && isPresent(link) && (
           <>
             <SizedBox height={ThemeSpacing.Xl3} />
