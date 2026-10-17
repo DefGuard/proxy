@@ -1,7 +1,10 @@
 use std::{
     env::temp_dir,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
-    sync::{Arc, RwLock},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -12,13 +15,15 @@ use defguard_certs::{
 use futures_util::stream;
 use rustls::crypto::aws_lc_rs;
 use tokio::{
-    net::TcpStream,
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    net::{TcpListener as AsyncTcpListener, TcpStream},
     spawn,
     sync::{Mutex, broadcast, mpsc, oneshot},
     time::{Instant, sleep},
 };
 use tonic::{
     Code, Request, Status,
+    service::Interceptor,
     transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity},
 };
 
@@ -132,12 +137,13 @@ fn init_crypto() {
 
 /// Spawn a configured `ProxyServer` on an OS-assigned port.
 ///
-/// Returns `(bound_addr, shutdown_tx)`. Drop / send `shutdown_tx` to stop the server.
+/// Returns `(bound_addr, shutdown_tx, connected)`. Send `shutdown_tx` to stop the server.
 ///
 /// Waits until the server is accepting TCP connections before returning, so
 /// callers do not need a fixed sleep to avoid startup races.
-async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>) {
+async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>, Arc<AtomicBool>) {
     let server = build_proxy_server();
+    let connected = Arc::clone(&server.connected);
     server.configure(make_tls_config(certs));
 
     // Find a free port, drop the listener, pass the addr to run().
@@ -171,7 +177,63 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
         sleep(Duration::from_millis(20)).await;
     }
 
-    (addr, shutdown_tx)
+    (addr, shutdown_tx, connected)
+}
+
+async fn relay_bytes<R, W>(
+    mut reader: R,
+    mut writer: W,
+    forward_bytes: Arc<AtomicBool>,
+) -> tokio::io::Result<()>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let mut buffer = [0; 8192];
+    loop {
+        let bytes_read = reader.read(&mut buffer).await?;
+        if bytes_read == 0 {
+            return Ok(());
+        }
+        if forward_bytes.load(Ordering::Relaxed) {
+            writer.write_all(&buffer[..bytes_read]).await?;
+        }
+    }
+}
+
+async fn spawn_test_relay(
+    target: SocketAddr,
+) -> (SocketAddr, Arc<AtomicBool>, tokio::task::JoinHandle<()>) {
+    let listener = AsyncTcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+        .await
+        .expect("Failed to bind test relay");
+    let addr = listener.local_addr().expect("Failed to get relay address");
+    let forward_bytes = Arc::new(AtomicBool::new(true));
+    let relay_forward_bytes = Arc::clone(&forward_bytes);
+    let relay_task = spawn(async move {
+        let (client, _) = listener
+            .accept()
+            .await
+            .expect("Failed to accept relay client");
+        let upstream = TcpStream::connect(target)
+            .await
+            .expect("Failed to connect relay to test server");
+        let (client_read, client_write) = client.into_split();
+        let (upstream_read, upstream_write) = upstream.into_split();
+        let client_to_server = relay_bytes(
+            client_read,
+            upstream_write,
+            Arc::clone(&relay_forward_bytes),
+        );
+        let server_to_client = relay_bytes(upstream_read, client_write, relay_forward_bytes);
+        let result = tokio::select! {
+            result = client_to_server => result,
+            result = server_to_client => result,
+        };
+        assert!(result.is_ok(), "TCP relay failed: {result:?}");
+    });
+
+    (addr, forward_bytes, relay_task)
 }
 
 /// Build a tonic `ProxyClient` using the given CA and optional client identity.
@@ -237,7 +299,7 @@ async fn run_errors_without_tls_config() {
 async fn valid_mtls_client_accepted() {
     init_crypto();
     let certs = TestCerts::generate();
-    let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
+    let (addr, shutdown_tx, _) = spawn_test_proxy(&certs).await;
 
     let mut client = connect(
         addr,
@@ -258,12 +320,54 @@ async fn valid_mtls_client_accepted() {
     let _ = shutdown_tx.send(());
 }
 
+#[tokio::test]
+async fn test_silent_bidi_connection_drop_is_detected_by_keepalive() {
+    init_crypto();
+    let certs = TestCerts::generate();
+    let (server_addr, shutdown_tx, connected) = spawn_test_proxy(&certs).await;
+    let (relay_addr, forward_bytes, relay_task) = spawn_test_relay(server_addr).await;
+    let mut client = connect(
+        relay_addr,
+        &certs.ca_cert_pem,
+        Some((&certs.core_client_cert_pem, &certs.core_client_key_pem)),
+    )
+    .await
+    .expect("TLS handshake should succeed with valid client cert");
+
+    let mut interceptor =
+        defguard_version::client::ClientVersionInterceptor::new(crate::MIN_CORE_VERSION.clone());
+    let version_headers = interceptor
+        .call(Request::new(()))
+        .expect("Core version headers should be valid");
+    let mut request = Request::new(stream::pending::<crate::proto::CoreResponse>());
+    *request.metadata_mut() = version_headers.metadata().clone();
+    let response = client
+        .bidi(request)
+        .await
+        .expect("valid Core client should open a bidi stream");
+    assert!(connected.load(Ordering::Relaxed));
+
+    forward_bytes.store(false, Ordering::Relaxed);
+    tokio::time::timeout(Duration::from_secs(35), async {
+        while connected.load(Ordering::Relaxed) {
+            sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("Edge did not detect the silently dropped Core within 35 seconds");
+
+    let _ = shutdown_tx.send(());
+    drop(response);
+    drop(client);
+    relay_task.await.expect("test relay task failed");
+}
+
 /// A client that presents no certificate must be rejected at the TLS layer.
 #[tokio::test]
 async fn no_client_cert_rejected() {
     init_crypto();
     let certs = TestCerts::generate();
-    let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
+    let (addr, shutdown_tx, _) = spawn_test_proxy(&certs).await;
 
     // spawn_test_proxy guarantees the server is ready, so a connect() failure
     // here is a genuine TLS rejection rather than a startup race.
@@ -292,7 +396,7 @@ async fn no_client_cert_rejected() {
 async fn wrong_serial_rejected() {
     init_crypto();
     let certs = TestCerts::generate();
-    let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
+    let (addr, shutdown_tx, _) = spawn_test_proxy(&certs).await;
 
     // This cert is valid (signed by the CA the server trusts) but has a different serial.
     let mut client = connect(
@@ -325,7 +429,7 @@ async fn wrong_serial_rejected() {
 async fn rogue_ca_client_rejected() {
     init_crypto();
     let certs = TestCerts::generate();
-    let (addr, shutdown_tx) = spawn_test_proxy(&certs).await;
+    let (addr, shutdown_tx, _) = spawn_test_proxy(&certs).await;
 
     // spawn_test_proxy guarantees the server is ready, so a connect() failure
     // here is a genuine TLS rejection rather than a startup race.

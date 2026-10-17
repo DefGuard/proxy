@@ -7,6 +7,7 @@ use std::{
         Arc, Mutex, RwLock,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
+    time::Duration,
 };
 
 use axum_extra::extract::cookie::Key;
@@ -40,6 +41,9 @@ use crate::{
 
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
+
+const HTTP2_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+const HTTP2_KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(20);
 
 // requests awaiting a `CoreResponse`, keyed by the id stamped into the outgoing `CoreRequest`
 type ResultMap = HashMap<u64, oneshot::Sender<core_response::Payload>>;
@@ -239,7 +243,10 @@ impl ProxyServer {
             &tls_config.grpc_key_pem,
             &tls_config.grpc_ca_cert_pem,
         )?;
-        let mut builder = Server::builder().tls_config(tls_config)?;
+        let mut builder = Server::builder()
+            .http2_keepalive_interval(Some(HTTP2_KEEPALIVE_INTERVAL))
+            .http2_keepalive_timeout(Some(HTTP2_KEEPALIVE_TIMEOUT))
+            .tls_config(tls_config)?;
 
         let own_version = Version::parse(VERSION)?;
         let versioned_service = ServiceBuilder::new()
