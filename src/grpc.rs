@@ -66,6 +66,20 @@ fn resolve_response(results: &RwLock<ResultMap>, id: u64, payload: core_response
     true
 }
 
+fn remove_disconnected_client(
+    clients: &RwLock<ClientMap>,
+    connected: &AtomicBool,
+    address: SocketAddr,
+) {
+    let mut clients = clients
+        .write()
+        .expect("Failed to acquire lock on clients hashmap when removing disconnected client");
+    clients.remove(&address);
+    if clients.is_empty() {
+        connected.store(false, Ordering::Relaxed);
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct PublicSettingsState {
     pub(crate) display_password_reset: Arc<AtomicBool>,
@@ -449,14 +463,7 @@ impl proxy_server::Proxy for ProxyServer {
                     }
                 }
                 info!("Defguard core client disconnected: {address}");
-                connected.store(false, Ordering::Relaxed);
-                clients
-                    .write()
-                    .expect(
-                        "Failed to acquire lock on clients hashmap when removing \
-                    disconnected client",
-                    )
-                    .remove(&address);
+                remove_disconnected_client(&clients, &connected, address);
             }
             .instrument(tracing::Span::current()),
         );
@@ -702,6 +709,29 @@ mod tests {
             instance: None,
             settings: None,
         })
+    }
+
+    #[test]
+    fn test_connected_stays_true_until_last_client_disconnects() {
+        let clients = RwLock::new(ClientMap::new());
+        let connected = AtomicBool::new(true);
+        let first_address = SocketAddr::from(([127, 0, 0, 1], 1));
+        let second_address = SocketAddr::from(([127, 0, 0, 1], 2));
+        let (first_tx, _first_rx) = mpsc::unbounded_channel();
+        let (second_tx, _second_rx) = mpsc::unbounded_channel();
+        {
+            let mut clients = clients.write().expect("clients lock poisoned");
+            clients.insert(first_address, first_tx);
+            clients.insert(second_address, second_tx);
+        }
+
+        remove_disconnected_client(&clients, &connected, first_address);
+        assert!(connected.load(Ordering::Relaxed));
+        assert_eq!(clients.read().expect("clients lock poisoned").len(), 1);
+
+        remove_disconnected_client(&clients, &connected, second_address);
+        assert!(!connected.load(Ordering::Relaxed));
+        assert!(clients.read().expect("clients lock poisoned").is_empty());
     }
 
     /// `send` must stamp the same id into the outgoing `CoreRequest` and into the `results` key,
