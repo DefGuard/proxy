@@ -321,6 +321,7 @@ async fn valid_mtls_client_accepted() {
 }
 
 #[tokio::test]
+#[ignore = "takes about 30 seconds; run explicitly for keepalive coverage"]
 async fn test_silent_bidi_connection_drop_is_detected_by_keepalive() {
     init_crypto();
     let certs = TestCerts::generate();
