@@ -28,9 +28,15 @@ use tonic::{
 };
 
 use crate::{
-    config::{DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS, DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS},
+    config::{
+        DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS, DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS, EnvConfig,
+    },
     grpc::{ProxyServer, TlsConfig},
-    proto::proxy_client::ProxyClient,
+    http::run_server,
+    proto::{
+        CoreResponse, EnrollmentStartResponse, InitialInfo, core_request, core_response,
+        proxy_client::ProxyClient,
+    },
 };
 
 struct TestCerts {
@@ -186,6 +192,39 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
     (addr, shutdown_tx, connected)
 }
 
+async fn wait_for_listener(addr: SocketAddr) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if TcpStream::connect(addr).await.is_ok() {
+            return;
+        }
+        assert!(Instant::now() < deadline, "server did not start on {addr}");
+        sleep(Duration::from_millis(20)).await;
+    }
+}
+
+async fn send_enrollment_request(addr: SocketAddr) -> Vec<u8> {
+    let mut stream = TcpStream::connect(addr)
+        .await
+        .expect("Failed to connect to HTTP server");
+    let body = r#"{"token":"shutdown-test"}"#;
+    let request = format!(
+        "POST /api/v1/enrollment/start HTTP/1.1\r\nHost: {addr}\r\nUser-Agent: shutdown-test\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    stream
+        .write_all(request.as_bytes())
+        .await
+        .expect("Failed to write enrollment request");
+
+    let mut response = Vec::new();
+    tokio::time::timeout(Duration::from_secs(10), stream.read_to_end(&mut response))
+        .await
+        .expect("HTTP request did not finish")
+        .expect("Failed to read HTTP response");
+    response
+}
+
 async fn relay_bytes<R, W>(
     mut reader: R,
     mut writer: W,
@@ -329,6 +368,169 @@ async fn valid_mtls_client_accepted() {
     );
 
     let _ = shutdown_tx.send(());
+}
+
+#[tokio::test]
+#[ignore = "takes about 6 seconds; run explicitly for shutdown timeout coverage"]
+async fn test_shutdown_drains_active_enrollment_request_and_bidi_stream() {
+    init_crypto();
+    let certs = TestCerts::generate();
+    let http_addr = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+        .unwrap()
+        .local_addr()
+        .unwrap();
+    let grpc_addr = loop {
+        let addr = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        if addr != http_addr {
+            break addr;
+        }
+    };
+    let mut env_config: EnvConfig = toml::from_str("").expect("default config should parse");
+    env_config.http_bind_address = Some(IpAddr::V4(Ipv4Addr::LOCALHOST));
+    env_config.grpc_bind_address = Some(IpAddr::V4(Ipv4Addr::LOCALHOST));
+    env_config.http_port = http_addr.port();
+    env_config.grpc_port = grpc_addr.port();
+    env_config.https_port = 0;
+    env_config.cert_dir = temp_dir();
+
+    let tls_config = make_tls_config(&certs);
+    let (_logs_tx, logs_rx) = mpsc::channel(10);
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let server = spawn(async move {
+        run_server(
+            env_config,
+            Some(tls_config),
+            Some(Arc::new(Mutex::new(logs_rx))),
+            async move { shutdown_rx.await.map_err(anyhow::Error::from) },
+        )
+        .await
+    });
+    wait_for_listener(http_addr).await;
+
+    let mut core_client = connect(
+        grpc_addr,
+        &certs.ca_cert_pem,
+        Some((&certs.core_client_cert_pem, &certs.core_client_key_pem)),
+    )
+    .await
+    .expect("Core should connect to the gRPC server");
+    let (core_tx, core_rx) = mpsc::unbounded_channel();
+    assert!(
+        core_tx
+            .send(CoreResponse {
+                id: 0,
+                payload: Some(core_response::Payload::InitialInfo(InitialInfo {
+                    private_cookies_key: vec![0; 64],
+                })),
+            })
+            .is_ok()
+    );
+    let mut request = Request::new(tokio_stream::wrappers::UnboundedReceiverStream::new(
+        core_rx,
+    ));
+    let mut interceptor =
+        defguard_version::client::ClientVersionInterceptor::new(crate::MIN_CORE_VERSION.clone());
+    let version_headers = interceptor
+        .call(Request::new(()))
+        .expect("Core version headers should be valid");
+    *request.metadata_mut() = version_headers.metadata().clone();
+    let response = core_client
+        .bidi(request)
+        .await
+        .expect("Core should open the bidi stream");
+    let mut core_stream = response.into_inner();
+
+    let mut http_response = tokio::spawn(send_enrollment_request(http_addr));
+    let core_request = match tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            tokio::select! {
+                response = core_stream.message() => {
+                    break response
+                        .expect("bidi stream should stay open")
+                        .expect("Core request should arrive");
+                }
+                response = &mut http_response => {
+                    let response = response.expect("HTTP request task should not panic");
+                    let status_line = response.split(|byte| *byte == b'\n').next().unwrap_or_default();
+                    assert!(
+                        status_line.starts_with(b"HTTP/1.1 503"),
+                        "expected setup middleware to respond until the cookie key arrives, got: {}",
+                        String::from_utf8_lossy(&response)
+                    );
+                    http_response = tokio::spawn(send_enrollment_request(http_addr));
+                }
+            }
+        }
+    })
+    .await
+    {
+        Ok(core_request) => core_request,
+        Err(_) => {
+            http_response.abort();
+            panic!("Core did not receive enrollment request after initial info");
+        }
+    };
+    assert!(matches!(
+        core_request.payload,
+        Some(core_request::Payload::EnrollmentStart(_))
+    ));
+
+    let shutdown_started = Instant::now();
+    let _ = shutdown_tx.send(());
+    sleep(Duration::from_millis(25)).await;
+    assert!(
+        !server.is_finished(),
+        "server should wait for the active HTTP request and bidi stream"
+    );
+    assert!(
+        !http_response.is_finished(),
+        "enrollment request should still be waiting on Core"
+    );
+
+    assert!(
+        core_tx
+            .send(CoreResponse {
+                id: core_request.id,
+                payload: Some(core_response::Payload::EnrollmentStart(
+                    EnrollmentStartResponse {
+                        deadline_timestamp: time::OffsetDateTime::now_utc().unix_timestamp() + 60,
+                        ..Default::default()
+                    },
+                )),
+            })
+            .is_ok()
+    );
+    let response = tokio::time::timeout(Duration::from_secs(3), &mut http_response)
+        .await
+        .expect("in-flight HTTP request should finish during shutdown")
+        .expect("HTTP request task should not panic");
+    assert!(
+        response.starts_with(b"HTTP/1.1 200"),
+        "expected enrollment response, got: {}",
+        String::from_utf8_lossy(&response)
+    );
+
+    sleep(Duration::from_millis(25)).await;
+    assert!(
+        !server.is_finished(),
+        "the open bidi stream should keep gRPC in its graceful-drain period"
+    );
+    tokio::time::timeout(Duration::from_secs(8), server)
+        .await
+        .expect("server should enforce a bounded shutdown for the open bidi stream")
+        .expect("server task should not panic")
+        .expect("run_server should shut down cleanly");
+    assert!(
+        shutdown_started.elapsed() >= Duration::from_secs(5),
+        "server should give the active bidi stream its grace period"
+    );
+
+    drop(core_tx);
+    drop(core_stream);
+    drop(core_client);
 }
 
 #[tokio::test]
