@@ -159,8 +159,8 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
         let _ = server
             .run(
                 addr,
-                Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS),
-                Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS),
+                Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS.get()),
+                Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS.get()),
                 async move {
                     let _ = shutdown_rx.await;
                 },
@@ -286,8 +286,8 @@ async fn run_errors_without_tls_config() {
     let result = server
         .run(
             addr,
-            Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS),
-            Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS),
+            Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS.get()),
+            Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS.get()),
             futures_util::future::pending::<()>(),
         )
         .await;

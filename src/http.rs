@@ -547,8 +547,10 @@ pub async fn run_server(
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
         let mut proxy_tls_config = tls_config;
-        let keepalive_interval = Duration::from_secs(env_config.grpc_keepalive_interval_seconds);
-        let keepalive_timeout = Duration::from_secs(env_config.grpc_keepalive_timeout_seconds);
+        let keepalive_interval =
+            Duration::from_secs(env_config.grpc_keepalive_interval_seconds.get());
+        let keepalive_timeout =
+            Duration::from_secs(env_config.grpc_keepalive_timeout_seconds.get());
 
         loop {
             let configuration = if let Some(conf) = proxy_tls_config.clone() {

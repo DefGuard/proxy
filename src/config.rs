@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, net::IpAddr, path::PathBuf, time::Duration};
+use std::{fs::read_to_string, net::IpAddr, num::NonZeroU64, path::PathBuf, time::Duration};
 
 use clap::Parser;
 use log::LevelFilter;
@@ -28,14 +28,14 @@ fn default_adoption_timeout() -> u64 {
     10
 }
 
-pub(crate) const DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS: u64 = 10;
-pub(crate) const DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS: u64 = 20;
+pub(crate) const DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS: NonZeroU64 = NonZeroU64::new(10).unwrap();
+pub(crate) const DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS: NonZeroU64 = NonZeroU64::new(20).unwrap();
 
-fn default_grpc_keepalive_interval_seconds() -> u64 {
+fn default_grpc_keepalive_interval_seconds() -> NonZeroU64 {
     DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS
 }
 
-fn default_grpc_keepalive_timeout_seconds() -> u64 {
+fn default_grpc_keepalive_timeout_seconds() -> NonZeroU64 {
     DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS
 }
 
@@ -72,7 +72,7 @@ pub struct EnvConfig {
         default_value_t = DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS
     )]
     #[serde(default = "default_grpc_keepalive_interval_seconds")]
-    pub grpc_keepalive_interval_seconds: u64,
+    pub grpc_keepalive_interval_seconds: NonZeroU64,
 
     /// Time to wait for an HTTP/2 keepalive ping acknowledgement, in seconds.
     #[arg(
@@ -81,7 +81,7 @@ pub struct EnvConfig {
         default_value_t = DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS
     )]
     #[serde(default = "default_grpc_keepalive_timeout_seconds")]
-    pub grpc_keepalive_timeout_seconds: u64,
+    pub grpc_keepalive_timeout_seconds: NonZeroU64,
 
     #[arg(long, env = "DEFGUARD_PROXY_LOG_LEVEL", default_value_t = LevelFilter::Info)]
     #[serde(default = "default_log_level")]
@@ -153,17 +153,6 @@ pub enum ConfigError {
     IoError(#[from] std::io::Error),
     #[error("Failed to parse config file")]
     ParseError(#[from] toml::de::Error),
-    #[error("gRPC keepalive interval and timeout must be greater than zero seconds")]
-    InvalidGrpcKeepalive,
-}
-
-impl EnvConfig {
-    fn validate(&self) -> Result<(), ConfigError> {
-        if self.grpc_keepalive_interval_seconds == 0 || self.grpc_keepalive_timeout_seconds == 0 {
-            return Err(ConfigError::InvalidGrpcKeepalive);
-        }
-        Ok(())
-    }
 }
 
 pub fn get_env_config() -> Result<EnvConfig, ConfigError> {
@@ -177,7 +166,6 @@ pub fn get_env_config() -> Result<EnvConfig, ConfigError> {
         cli_config
     };
 
-    config.validate()?;
     Ok(config)
 }
 
@@ -186,28 +174,27 @@ mod tests {
     use clap::Parser;
 
     use super::{
-        ConfigError, DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS,
-        DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS, EnvConfig,
+        DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS, DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS, EnvConfig,
     };
 
     #[test]
     fn keepalive_defaults_and_toml_values_parse() {
         let defaults: EnvConfig = toml::from_str("").expect("empty TOML should use defaults");
         assert_eq!(
-            defaults.grpc_keepalive_interval_seconds,
-            DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS
+            defaults.grpc_keepalive_interval_seconds.get(),
+            DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS.get()
         );
         assert_eq!(
-            defaults.grpc_keepalive_timeout_seconds,
-            DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS
+            defaults.grpc_keepalive_timeout_seconds.get(),
+            DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS.get()
         );
 
         let configured: EnvConfig = toml::from_str(
             "grpc_keepalive_interval_seconds = 15\ngrpc_keepalive_timeout_seconds = 30",
         )
         .expect("keepalive TOML values should parse");
-        assert_eq!(configured.grpc_keepalive_interval_seconds, 15);
-        assert_eq!(configured.grpc_keepalive_timeout_seconds, 30);
+        assert_eq!(configured.grpc_keepalive_interval_seconds.get(), 15);
+        assert_eq!(configured.grpc_keepalive_timeout_seconds.get(), 30);
     }
 
     #[test]
@@ -220,8 +207,8 @@ mod tests {
             "30",
         ])
         .expect("keepalive CLI options should parse");
-        assert_eq!(config.grpc_keepalive_interval_seconds, 15);
-        assert_eq!(config.grpc_keepalive_timeout_seconds, 30);
+        assert_eq!(config.grpc_keepalive_interval_seconds.get(), 15);
+        assert_eq!(config.grpc_keepalive_timeout_seconds.get(), 30);
     }
 
     #[test]
@@ -254,21 +241,24 @@ mod tests {
         }
 
         let config = EnvConfig::try_parse_from(["edge"]).expect("environment values should parse");
-        assert_eq!(config.grpc_keepalive_interval_seconds, 13);
-        assert_eq!(config.grpc_keepalive_timeout_seconds, 27);
+        assert_eq!(config.grpc_keepalive_interval_seconds.get(), 13);
+        assert_eq!(config.grpc_keepalive_timeout_seconds.get(), 27);
     }
 
     #[test]
-    fn keepalive_values_must_be_positive() {
+    fn keepalive_parsers_reject_zero() {
         for toml in [
             "grpc_keepalive_interval_seconds = 0",
             "grpc_keepalive_timeout_seconds = 0",
         ] {
-            let config: EnvConfig = toml::from_str(toml).expect("zero parses before validation");
-            assert!(matches!(
-                config.validate(),
-                Err(ConfigError::InvalidGrpcKeepalive)
-            ));
+            assert!(toml::from_str::<EnvConfig>(toml).is_err());
+        }
+
+        for args in [
+            ["edge", "--grpc-keepalive-interval-seconds", "0"],
+            ["edge", "--grpc-keepalive-timeout-seconds", "0"],
+        ] {
+            assert!(EnvConfig::try_parse_from(args).is_err());
         }
     }
 }
