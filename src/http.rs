@@ -90,7 +90,7 @@ enum ServerWaitOutcome {
     TimedOut,
 }
 
-async fn receive_http_update<T: Clone>(receiver: &mut broadcast::Receiver<T>) -> Option<T> {
+async fn receive_https_cert_update<T: Clone>(receiver: &mut broadcast::Receiver<T>) -> Option<T> {
     loop {
         match receiver.recv().await {
             Err(broadcast::error::RecvError::Lagged(_)) => {
@@ -804,7 +804,7 @@ pub async fn run_server(
                     result?;
                     break;
                 }
-                result = receive_http_update(&mut https_cert_rx) => {
+                result = receive_https_cert_update(&mut https_cert_rx) => {
                     match result {
                         Some(certs) => {
                             info!("Received new HTTPS certificates, restarting web server with TLS");
@@ -831,7 +831,7 @@ pub async fn run_server(
                         }
                     }
                 }
-                result = receive_http_update(&mut clear_https_rx) => {
+                result = receive_https_cert_update(&mut clear_https_rx) => {
                     match result {
                         Some(()) => {
                             info!("Received ClearHttpsCerts, restarting web server without TLS");
@@ -990,7 +990,7 @@ mod tests {
                 .map_err(anyhow::Error::from)
         });
         let (update_tx, mut update_rx) = broadcast::channel(1);
-        let mut update = Box::pin(receive_http_update(&mut update_rx));
+        let mut update = Box::pin(receive_https_cert_update(&mut update_rx));
         let mut request = tokio::spawn(async move {
             let mut stream = TcpStream::connect(addr).await?;
             stream

@@ -444,7 +444,7 @@ async fn test_shutdown_drains_active_enrollment_request_and_bidi_stream() {
     let mut core_stream = response.into_inner();
 
     let mut http_response = tokio::spawn(send_enrollment_request(http_addr));
-    let core_request = match tokio::time::timeout(Duration::from_secs(3), async {
+    let Ok(core_request) = tokio::time::timeout(Duration::from_secs(3), async {
         loop {
             tokio::select! {
                 response = core_stream.message() => {
@@ -466,12 +466,9 @@ async fn test_shutdown_drains_active_enrollment_request_and_bidi_stream() {
         }
     })
     .await
-    {
-        Ok(core_request) => core_request,
-        Err(_) => {
-            http_response.abort();
-            panic!("Core did not receive enrollment request after initial info");
-        }
+    else {
+        http_response.abort();
+        panic!("Core did not receive enrollment request after initial info");
     };
     assert!(matches!(
         core_request.payload,
