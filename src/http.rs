@@ -547,6 +547,8 @@ pub async fn run_server(
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
         let mut proxy_tls_config = tls_config;
+        let keepalive_interval = Duration::from_secs(env_config.grpc_keepalive_interval_seconds);
+        let keepalive_timeout = Duration::from_secs(env_config.grpc_keepalive_timeout_seconds);
 
         loop {
             let configuration = if let Some(conf) = proxy_tls_config.clone() {
@@ -572,7 +574,7 @@ pub async fn run_server(
             let mut shutdown_rx = reset_rx.resubscribe();
             let mut server_task = tokio::spawn(async move {
                 server_to_run
-                    .run(addr, async move {
+                    .run(addr, keepalive_interval, keepalive_timeout, async move {
                         let _ = shutdown_rx.recv().await;
                     })
                     .await

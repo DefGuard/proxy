@@ -42,9 +42,6 @@ use crate::{
 // connected clients
 type ClientMap = HashMap<SocketAddr, mpsc::UnboundedSender<Result<CoreRequest, Status>>>;
 
-const HTTP2_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
-const HTTP2_KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(20);
-
 // requests awaiting a `CoreResponse`, keyed by the id stamped into the outgoing `CoreRequest`
 type ResultMap = HashMap<u64, oneshot::Sender<core_response::Payload>>;
 
@@ -224,7 +221,13 @@ impl ProxyServer {
         lock.clone()
     }
 
-    pub(crate) async fn run<F>(self, addr: SocketAddr, shutdown: F) -> Result<(), anyhow::Error>
+    pub(crate) async fn run<F>(
+        self,
+        addr: SocketAddr,
+        keepalive_interval: Duration,
+        keepalive_timeout: Duration,
+        shutdown: F,
+    ) -> Result<(), anyhow::Error>
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -244,8 +247,8 @@ impl ProxyServer {
             &tls_config.grpc_ca_cert_pem,
         )?;
         let mut builder = Server::builder()
-            .http2_keepalive_interval(Some(HTTP2_KEEPALIVE_INTERVAL))
-            .http2_keepalive_timeout(Some(HTTP2_KEEPALIVE_TIMEOUT))
+            .http2_keepalive_interval(Some(keepalive_interval))
+            .http2_keepalive_timeout(Some(keepalive_timeout))
             .tls_config(tls_config)?;
 
         let own_version = Version::parse(VERSION)?;

@@ -28,6 +28,7 @@ use tonic::{
 };
 
 use crate::{
+    config::{DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS, DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS},
     grpc::{ProxyServer, TlsConfig},
     proto::proxy_client::ProxyClient,
 };
@@ -156,9 +157,14 @@ async fn spawn_test_proxy(certs: &TestCerts) -> (SocketAddr, oneshot::Sender<()>
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     spawn(async move {
         let _ = server
-            .run(addr, async move {
-                let _ = shutdown_rx.await;
-            })
+            .run(
+                addr,
+                Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS),
+                Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS),
+                async move {
+                    let _ = shutdown_rx.await;
+                },
+            )
             .await;
     });
 
@@ -278,7 +284,12 @@ async fn run_errors_without_tls_config() {
     // configure() is deliberately NOT called.
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
     let result = server
-        .run(addr, futures_util::future::pending::<()>())
+        .run(
+            addr,
+            Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_INTERVAL_SECONDS),
+            Duration::from_secs(DEFAULT_GRPC_KEEPALIVE_TIMEOUT_SECONDS),
+            futures_util::future::pending::<()>(),
+        )
         .await;
     assert!(result.is_err(), "expected Err, got Ok");
     assert!(
