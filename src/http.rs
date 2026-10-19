@@ -1,6 +1,7 @@
 #[cfg(unix)]
 use std::{fs::Permissions, os::unix::fs::PermissionsExt};
 use std::{
+    future::Future,
     io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -498,6 +499,7 @@ pub async fn run_server(
     env_config: EnvConfig,
     tls_config: Option<TlsConfig>,
     logs_rx: Option<LogsReceiver>,
+    shutdown_signal: impl Future<Output = anyhow::Result<()>>,
 ) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {env_config:?}");
@@ -769,10 +771,22 @@ pub async fn run_server(
         Ok(())
     });
 
-    // TODO: Possibly switch to using select! macro
     info!("Defguard Proxy HTTP server initialization complete");
-    while let Some(Ok(result)) = tasks.join_next().await {
-        result?;
+    tokio::pin!(shutdown_signal);
+    loop {
+        tokio::select! {
+            result = &mut shutdown_signal => {
+                info!("Shutdown signal received, stopping server tasks");
+                tasks.abort_all();
+                while tasks.join_next().await.is_some() {}
+                result?;
+                break;
+            }
+            result = tasks.join_next() => match result {
+                Some(Ok(result)) => result?,
+                Some(Err(_)) | None => break,
+            }
+        }
     }
 
     Ok(())
