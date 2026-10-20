@@ -125,7 +125,6 @@ in
       meta = with lib; {
         description = "Defguard Edge service";
         homepage = "https://github.com/DefGuard/proxy";
-        license = licenses.asl20;
         mainProgram = "defguard-proxy";
         platforms = platforms.linux;
       };
