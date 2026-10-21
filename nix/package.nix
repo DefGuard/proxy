@@ -56,7 +56,7 @@
     inherit version;
     src = webSrc;
     fetcherVersion = 4;
-    hash = "sha256-G3ob1OJDRcHQkFz/bc9K3xmYRNGIwNd//vBtgxF8GY8=";
+    hash = "sha256-OLyxjjnAR49gJ4cFlvpG+1shJ3ku3pCHYY6+INxuflk=";
   };
 
   webDist = pkgs.stdenv.mkDerivation {
@@ -72,9 +72,8 @@
     pnpmDeps = webPnpmDeps;
 
     postPatch = ''
-      substituteInPlace project.inlang/settings.json ${lib.concatMapStringsSep " " (plugin:
-        "--replace-fail '\"${plugin.settingsUrl}\"' '\"${plugin.file}\"'")
-      inlangPlugins}
+      substituteInPlace project.inlang/settings.json ${lib.concatMapStringsSep " " (plugin: "--replace-fail '\"${plugin.settingsUrl}\"' '\"${plugin.file}\"'")
+        inlangPlugins}
     '';
 
     buildPhase = ''
