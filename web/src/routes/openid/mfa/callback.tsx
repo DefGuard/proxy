@@ -2,6 +2,10 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import z from 'zod';
 import { m } from '../../../paraglide/messages';
 import { api } from '../../../shared/api/api';
+import {
+  getApiErrorDetails,
+  getApiErrorMessage,
+} from '../../../shared/api/apiErrorMessages';
 import { PageInfo } from '../../../shared/components/PageInfo/PageInfo';
 import { useOpenidStore } from '../../../shared/hooks/useOpenIdStore';
 
@@ -13,7 +17,10 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/openid/mfa/callback')({
   validateSearch: searchSchema,
   onError: () => {
-    useOpenidStore.setState({ error: m.openid_mfa_redirect_error_missing_args() });
+    useOpenidStore.setState({
+      error: m.openid_mfa_redirect_error_missing_args(),
+      details: undefined,
+    });
     throw redirect({ to: '/openid/error', replace: true });
   },
   loaderDeps: ({ search }) => ({ search }),
@@ -28,7 +35,10 @@ export const Route = createFileRoute('/openid/mfa/callback')({
       });
     } catch (e) {
       console.error('OIDC MFA callback failed', e);
-      useOpenidStore.setState({ error: m.openid_mfa_redirect_error_message() });
+      useOpenidStore.setState({
+        error: getApiErrorMessage(e, m.openid_mfa_callback_error()),
+        details: getApiErrorDetails(e),
+      });
       throw redirect({ to: '/openid/error', replace: true });
     }
   },

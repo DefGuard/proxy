@@ -6,7 +6,7 @@ use axum::{
 use serde_json::json;
 use tonic::{Code, Status, metadata::errors::InvalidMetadataValue};
 
-use crate::proto::CoreError;
+use crate::proto::{CoreError, CoreErrorCode};
 
 /// Core's message prefix for an OIDC MFA poll made before the browser round trip completes.
 const OIDC_NOT_COMPLETED: &str = "OIDC authentication not completed";
@@ -45,16 +45,13 @@ pub enum ApiError {
     PostureRejected(Vec<String>),
     #[error("Failed to get client IP address")]
     ClientIpError,
+    #[error("{0}")]
+    WithCode(Box<ApiError>, CoreErrorCode),
 }
 
-impl IntoResponse for ApiError {
-    fn into_response(self) -> Response {
-        if matches!(self, Self::OidcNotCompleted(_)) {
-            debug!("{self}");
-        } else {
-            error!("{self}");
-        }
-        let (status, error_message) = match self {
+impl ApiError {
+    fn status_and_message(self) -> (StatusCode, String) {
+        match self {
             Self::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::PermissionDenied(msg) => (StatusCode::FORBIDDEN, msg),
@@ -67,15 +64,36 @@ impl IntoResponse for ApiError {
             }
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             Self::PostureRejected(reasons) => (StatusCode::FORBIDDEN, reasons.join(", ")),
+            Self::WithCode(inner, _) => inner.status_and_message(),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
             ),
+        }
+    }
+}
+
+/// The web UI matches on the lowercase name without the enum prefix, e.g. `oidc_account_mismatch`.
+fn code_name(code: CoreErrorCode) -> String {
+    code.as_str_name()
+        .trim_start_matches("CORE_ERROR_CODE_")
+        .to_ascii_lowercase()
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        if matches!(self, Self::OidcNotCompleted(_)) {
+            debug!("{self}");
+        } else {
+            error!("{self}");
+        }
+        let code = match &self {
+            Self::WithCode(_, code) => Some(code_name(*code)),
+            _ => None,
         };
+        let (status, error_message) = self.status_and_message();
 
-        let body = Json(json!({"error": error_message}));
-
-        (status, body).into_response()
+        (status, Json(json!({"error": error_message, "code": code}))).into_response()
     }
 }
 
@@ -92,9 +110,10 @@ impl From<CoreError> for ApiError {
         if is_oidc_not_completed(&core_error) {
             return ApiError::OidcNotCompleted(core_error.message);
         }
+        let code = core_error.code();
         // convert to tonic::Status first
         let status = Status::new(Code::from(core_error.status_code), core_error.message);
-        match status.code() {
+        let error = match status.code() {
             Code::Unauthenticated => ApiError::Unauthorized(status.message().to_string()),
             Code::InvalidArgument => ApiError::BadRequest(status.message().to_string()),
             Code::PermissionDenied => ApiError::PermissionDenied(status.message().to_string()),
@@ -106,6 +125,10 @@ impl From<CoreError> for ApiError {
             Code::Unavailable => ApiError::CoreTimeout,
             Code::NotFound => ApiError::NotFound(status.to_string()),
             _ => ApiError::Unexpected(status.to_string()),
+        };
+        match code {
+            CoreErrorCode::Unspecified => error,
+            code => ApiError::WithCode(Box::new(error), code),
         }
     }
 }
@@ -118,8 +141,43 @@ mod tests {
         CoreError {
             status_code: Code::FailedPrecondition as i32,
             message: message.into(),
+            ..Default::default()
         }
         .into()
+    }
+
+    async fn response_json(error: ApiError) -> (StatusCode, serde_json::Value) {
+        let response = error.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    #[tokio::test]
+    async fn test_core_error_code_reaches_response_body() {
+        let coded = CoreError {
+            status_code: Code::Unauthenticated as i32,
+            message: "unauthorized".into(),
+            code: CoreErrorCode::OidcAccountMismatch.into(),
+        };
+        let (status, body) = response_json(coded.into()).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            body,
+            json!({"error": "unauthorized", "code": "oidc_account_mismatch"})
+        );
+
+        // Older Core versions send no code.
+        let uncoded = CoreError {
+            status_code: Code::InvalidArgument as i32,
+            message: "invalid state data".into(),
+            ..Default::default()
+        };
+        let (status, body) = response_json(uncoded.into()).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body, json!({"error": "invalid state data", "code": null}));
     }
 
     #[test]
