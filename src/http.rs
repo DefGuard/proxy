@@ -1,6 +1,7 @@
 #[cfg(unix)]
 use std::{fs::Permissions, os::unix::fs::PermissionsExt};
 use std::{
+    future::Future,
     io::ErrorKind,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -31,7 +32,7 @@ use cookie::CookieBuilder;
 use defguard_version::{Version, server::DefguardVersionLayer};
 use serde::Serialize;
 use tokio::{
-    sync::{broadcast, mpsc, oneshot},
+    sync::{broadcast, mpsc, oneshot, watch},
     task::JoinSet,
 };
 use tower_governor::{
@@ -62,9 +63,70 @@ pub(crate) const PASSWORD_RESET_COOKIE_PATH: &str = "/api/v1/password-reset";
 const DEFGUARD_CORE_CONNECTED_HEADER: &str = "defguard-core-connected";
 const DEFGUARD_CORE_VERSION_HEADER: &str = "defguard-core-version";
 const RATE_LIMITER_CLEANUP_PERIOD: Duration = Duration::from_secs(60);
+// Drain active work within Docker's default 10-second stop window.
+const SERVER_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(5);
+const SERVER_SHUTDOWN_FORCE_TIMEOUT: Duration = Duration::from_secs(6);
+const SERVER_SHUTDOWN_DEADLINE: Duration = Duration::from_secs(7);
 const X_FORWARDED_FOR: &str = "x-forwarded-for";
 /// Default request body size limit applied globally to every route.
 const REQUEST_BODY_LIMIT: usize = 256 * 1024; // 256 KB
+
+async fn wait_for_server<F>(server: &mut F, timeout: Duration) -> anyhow::Result<bool>
+where
+    F: Future<Output = anyhow::Result<()>> + Unpin,
+{
+    match tokio::time::timeout(timeout, server).await {
+        Ok(result) => {
+            result?;
+            Ok(true)
+        }
+        Err(_) => Ok(false),
+    }
+}
+
+enum ServerWaitOutcome {
+    Finished,
+    Shutdown,
+    TimedOut,
+}
+
+async fn receive_https_cert_update<T: Clone>(receiver: &mut broadcast::Receiver<T>) -> Option<T> {
+    loop {
+        match receiver.recv().await {
+            Err(broadcast::error::RecvError::Lagged(_)) => {
+                warn!("Missed HTTP server update; waiting for the latest one");
+            }
+            Ok(update) => return Some(update),
+            Err(broadcast::error::RecvError::Closed) => return None,
+        }
+    }
+}
+
+async fn wait_for_server_or_shutdown<F>(
+    server: &mut F,
+    shutdown_rx: &mut watch::Receiver<bool>,
+    restart_timeout: Duration,
+) -> anyhow::Result<ServerWaitOutcome>
+where
+    F: Future<Output = anyhow::Result<()>> + Unpin,
+{
+    tokio::select! {
+        result = &mut *server => {
+            result?;
+            Ok(ServerWaitOutcome::Finished)
+        }
+        _ = shutdown_rx.changed() => {
+            if !wait_for_server(server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                warn!("Server did not stop before the shutdown deadline");
+            }
+            Ok(ServerWaitOutcome::Shutdown)
+        }
+        _ = tokio::time::sleep(restart_timeout) => {
+            warn!("Server did not stop before the restart deadline");
+            Ok(ServerWaitOutcome::TimedOut)
+        }
+    }
+}
 
 /// Maximum time a single request may take before the server returns 408.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -504,11 +566,13 @@ pub async fn run_server(
     env_config: EnvConfig,
     tls_config: Option<TlsConfig>,
     logs_rx: Option<LogsReceiver>,
+    shutdown_signal: impl Future<Output = anyhow::Result<()>>,
 ) -> anyhow::Result<()> {
     info!("Starting Defguard Proxy server");
     debug!("Using config: {env_config:?}");
 
     let mut tasks = JoinSet::new();
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let cookie_key = Arc::default();
     let (reset_tx, mut reset_rx) = tokio::sync::broadcast::channel(1);
     let (https_cert_tx, https_cert_rx) = broadcast::channel::<(String, String)>(1);
@@ -548,25 +612,39 @@ pub async fn run_server(
 
     let server_clone = grpc_server.clone();
     let env_config_clone = env_config.clone();
+    let mut grpc_shutdown_rx = shutdown_rx.clone();
 
     // Start gRPC server.
     debug!("Spawning gRPC server task");
     tasks.spawn(async move {
         let mut proxy_tls_config = tls_config;
+        let keepalive_interval =
+            Duration::from_secs(env_config.grpc_keepalive_interval_seconds.get());
+        let keepalive_timeout =
+            Duration::from_secs(env_config.grpc_keepalive_timeout_seconds.get());
 
         loop {
+            if *grpc_shutdown_rx.borrow() {
+                break;
+            }
+
             let configuration = if let Some(conf) = proxy_tls_config.clone() {
                 debug!("Using existing gRPC certificates, skipping setup process");
                 conf
             } else {
                 info!("gRPC certificates not found, running setup process");
-                let conf = run_setup(&env_config_clone, Arc::clone(&logs_rx)).await?;
+                let setup = run_setup(&env_config_clone, Arc::clone(&logs_rx));
+                tokio::pin!(setup);
+                let configuration = tokio::select! {
+                    result = &mut setup => result?,
+                    _ = grpc_shutdown_rx.changed() => return Ok(()),
+                };
                 info!("Setup process completed successfully");
-                proxy_tls_config = Some(conf.clone());
-                conf
+                configuration
             };
-
+            proxy_tls_config = Some(configuration.clone());
             server_clone.configure(configuration);
+
             info!("Starting gRPC server...");
             let server_to_run = server_clone.clone();
             let addr = SocketAddr::new(
@@ -575,21 +653,21 @@ pub async fn run_server(
                     .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
                 env_config.grpc_port,
             );
-            let mut shutdown_rx = reset_rx.resubscribe();
-            let mut server_task = tokio::spawn(async move {
-                server_to_run
-                    .run(addr, async move {
-                        let _ = shutdown_rx.recv().await;
-                    })
-                    .await
-            });
+            let mut reset_server_rx = reset_rx.resubscribe();
+            let mut shutdown_server_rx = grpc_shutdown_rx.clone();
+            let server =
+                server_to_run.run(addr, keepalive_interval, keepalive_timeout, async move {
+                    tokio::select! {
+                        _ = reset_server_rx.recv() => {},
+                        _ = shutdown_server_rx.changed() => {},
+                    }
+                });
+            tokio::pin!(server);
 
             tokio::select! {
-                result = &mut server_task => {
-                    match result {
-                        Ok(Ok(())) => {}
-                        Ok(Err(err)) => error!("gRPC server error: {err:?}, restarting..."),
-                        Err(err) => error!("gRPC server task error: {err:?}, restarting..."),
+                result = &mut server => {
+                    if let Err(err) = result {
+                        error!("gRPC server error: {err:?}, restarting...");
                     }
                 }
                 result = reset_rx.recv() => {
@@ -599,10 +677,25 @@ pub async fn run_server(
                     } else {
                         error!("Reset channel closed; gRPC server will keep running");
                     }
-                    let _ = server_task.await;
+                    if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                        warn!("gRPC server did not stop after reset; dropping it");
+                    }
+                }
+                _ = grpc_shutdown_rx.changed() => {
+                    info!("Shutdown signal received, draining gRPC server");
+                    if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                        warn!("gRPC server did not drain before the shutdown deadline");
+                    }
+                    return Ok(());
                 }
             }
+
+            if *grpc_shutdown_rx.borrow() {
+                return Ok(());
+            }
         }
+
+        Ok(())
     });
 
     // build application
@@ -625,15 +718,21 @@ pub async fn run_server(
         let governor_limiter = conf.limiter().clone();
 
         // Start background task to cleanup rate-limiter data
-        tokio::spawn(async move {
+        let mut rate_limit_shutdown_rx = shutdown_rx.clone();
+        tasks.spawn(async move {
             loop {
-                tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD).await;
-                debug!(
-                    "Cleaning-up rate limiter storage, current size: {}",
-                    governor_limiter.len()
-                );
-                governor_limiter.retain_recent();
+                tokio::select! {
+                    _ = rate_limit_shutdown_rx.changed() => break,
+                    _ = tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD) => {
+                        debug!(
+                            "Cleaning-up rate limiter storage, current size: {}",
+                            governor_limiter.len()
+                        );
+                        governor_limiter.retain_recent();
+                    }
+                }
             }
+            Ok(())
         });
         info!(
             "Configured rate limiter, per_second: {}, burst: {}",
@@ -656,6 +755,7 @@ pub async fn run_server(
 
     // Start web server.
     debug!("Spawning API web server");
+    let mut http_shutdown_rx = shutdown_rx.clone();
     tasks.spawn(async move {
         let http_addr = SocketAddr::new(
             env_config
@@ -675,13 +775,17 @@ pub async fn run_server(
         let mut port80_pause_rx = port80_pause_rx;
 
         loop {
+            if *http_shutdown_rx.borrow() {
+                break;
+            }
+
             let handle = axum_server::Handle::new();
             let handle_clone = handle.clone();
             tls_active.store(current_tls.is_some(), Ordering::Relaxed);
             let app_service = app.clone().into_make_service_with_connect_info::<SocketAddr>();
             let tls_certs = current_tls.clone();
 
-            let mut server_task = tokio::spawn(async move {
+            let server = async move {
                 if let Some((cert_pem, key_pem)) = tls_certs {
                     let tls_config = build_tls_config(&cert_pem, &key_pem).await?;
                     info!("API web server is listening on https://{https_addr}");
@@ -698,50 +802,65 @@ pub async fn run_server(
                         .await
                         .context("Error running HTTP server")
                 }
-            });
+            };
+            tokio::pin!(server);
 
             tokio::select! {
-                result = &mut server_task => {
-                    match result {
-                        Ok(Ok(())) => {}
-                        Ok(Err(err)) => return Err(err),
-                        Err(join_err) => {
-                            return Err(anyhow::anyhow!("Web server task panicked: {join_err}"));
-                        }
-                    }
+                result = &mut server => {
+                    result?;
                     break;
                 }
-                result = https_cert_rx.recv() => {
+                result = receive_https_cert_update(&mut https_cert_rx) => {
                     match result {
-                        Ok(certs) => {
+                        Some(certs) => {
                             info!("Received new HTTPS certificates, restarting web server with TLS");
-                            current_tls = Some(certs);
                             handle.graceful_shutdown(Some(Duration::from_secs(30)));
-                            let _ = server_task.await;
+                            if matches!(
+                                wait_for_server_or_shutdown(
+                                    &mut server,
+                                    &mut http_shutdown_rx,
+                                    Duration::from_secs(31),
+                                ).await?,
+                                ServerWaitOutcome::Shutdown
+                            ) {
+                                return Ok(());
+                            }
+                            current_tls = Some(certs);
                         }
-                        Err(broadcast::error::RecvError::Lagged(_)) => {
-                            warn!("Missed HTTPS certificate update; will apply next one");
-                        }
-                        Err(broadcast::error::RecvError::Closed) => {
+                        None => {
                             error!("HTTPS certificate channel closed unexpectedly");
-                            break;
+                            handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
+                            if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                                warn!("HTTP server did not drain after certificate channel closed");
+                            }
+                            return Ok(());
                         }
                     }
                 }
-                result = clear_https_rx.recv() => {
+                result = receive_https_cert_update(&mut clear_https_rx) => {
                     match result {
-                        Ok(()) => {
+                        Some(()) => {
                             info!("Received ClearHttpsCerts, restarting web server without TLS");
-                            current_tls = None;
                             handle.graceful_shutdown(Some(Duration::from_secs(30)));
-                            let _ = server_task.await;
+                            if matches!(
+                                wait_for_server_or_shutdown(
+                                    &mut server,
+                                    &mut http_shutdown_rx,
+                                    Duration::from_secs(31),
+                                ).await?,
+                                ServerWaitOutcome::Shutdown
+                            ) {
+                                return Ok(());
+                            }
+                            current_tls = None;
                         }
-                        Err(broadcast::error::RecvError::Lagged(_)) => {
-                            warn!("Missed ClearHttpsCerts update; will apply next one");
-                        }
-                        Err(broadcast::error::RecvError::Closed) => {
+                        None => {
                             error!("ClearHttpsCerts channel closed unexpectedly");
-                            break;
+                            handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
+                            if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                                warn!("HTTP server did not drain after certificate channel closed");
+                            }
+                            return Ok(());
                         }
                     }
                 }
@@ -757,13 +876,37 @@ pub async fn run_server(
                 } => {
                     info!("ACME task requested port 80; pausing HTTP server");
                     handle.graceful_shutdown(Some(Duration::from_secs(10)));
-                    let _ = server_task.await;
-                    // Port 80 is now free - tell the ACME task to proceed.
+                    match wait_for_server_or_shutdown(
+                        &mut server,
+                        &mut http_shutdown_rx,
+                        Duration::from_secs(11),
+                    ).await? {
+                        ServerWaitOutcome::Finished => {}
+                        ServerWaitOutcome::Shutdown => return Ok(()),
+                        ServerWaitOutcome::TimedOut => {
+                            return Err(anyhow::anyhow!("HTTP server did not stop for ACME hand-off"));
+                        }
+                    }
+                    if *http_shutdown_rx.borrow() {
+                        return Ok(());
+                    }
                     let _ = ready_tx.send(());
-                    // Wait for the ACME task to finish with port 80.
-                    let _ = done_rx.await;
+                    tokio::select! {
+                        _ = done_rx => {},
+                        _ = http_shutdown_rx.changed() => return Ok(()),
+                    }
+                    if *http_shutdown_rx.borrow() {
+                        return Ok(());
+                    }
                     info!("ACME task released port 80; restarting HTTP server");
-                    // Loop will restart the server automatically.
+                }
+                _ = http_shutdown_rx.changed() => {
+                    info!("Shutdown signal received, draining HTTP server");
+                    handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
+                    if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                        warn!("HTTP server did not drain before the shutdown deadline");
+                    }
+                    return Ok(());
                 }
             }
         }
@@ -771,10 +914,41 @@ pub async fn run_server(
         Ok(())
     });
 
-    // TODO: Possibly switch to using select! macro
     info!("Defguard Proxy HTTP server initialization complete");
-    while let Some(Ok(result)) = tasks.join_next().await {
-        result?;
+    tokio::pin!(shutdown_signal);
+    loop {
+        tokio::select! {
+            result = &mut shutdown_signal => {
+                info!("Shutdown signal received, draining server tasks");
+                let _ = shutdown_tx.send(true);
+                let all_tasks_stopped = tokio::time::timeout(
+                    SERVER_SHUTDOWN_DEADLINE,
+                    async {
+                        while let Some(result) = tasks.join_next().await {
+                            match result {
+                                Ok(Ok(())) => {}
+                                Ok(Err(err)) => error!("Server task failed during shutdown: {err:?}"),
+                                Err(err) if err.is_cancelled() => {},
+                                Err(err) => error!("Server task join failed during shutdown: {err}"),
+                            }
+                        }
+                    },
+                )
+                .await
+                .is_ok();
+                if !all_tasks_stopped {
+                    warn!("Server tasks exceeded the shutdown deadline; aborting remaining tasks");
+                    tasks.abort_all();
+                    while tasks.join_next().await.is_some() {}
+                }
+                result?;
+                break;
+            }
+            result = tasks.join_next() => match result {
+                Some(Ok(result)) => result?,
+                Some(Err(_)) | None => break,
+            }
+        }
     }
 
     Ok(())
@@ -783,6 +957,98 @@ pub async fn run_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpStream,
+    };
+
+    #[tokio::test]
+    async fn test_lagged_update_drains_active_http_request() {
+        let addr = std::net::TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        let request_started = Arc::new(tokio::sync::Notify::new());
+        let release_request = Arc::new(tokio::sync::Notify::new());
+        let app = Router::new().route(
+            "/",
+            get({
+                let request_started = Arc::clone(&request_started);
+                let release_request = Arc::clone(&release_request);
+                move || {
+                    let request_started = Arc::clone(&request_started);
+                    let release_request = Arc::clone(&release_request);
+                    async move {
+                        request_started.notify_one();
+                        release_request.notified().await;
+                        "request drained"
+                    }
+                }
+            }),
+        );
+        let handle = axum_server::Handle::new();
+        let server_handle = handle.clone();
+        let mut server = Box::pin(async move {
+            axum_server::bind(addr)
+                .handle(server_handle)
+                .serve(app.into_make_service())
+                .await
+                .map_err(anyhow::Error::from)
+        });
+        let (update_tx, mut update_rx) = broadcast::channel(1);
+        let mut update = Box::pin(receive_https_cert_update(&mut update_rx));
+        let mut request = tokio::spawn(async move {
+            let mut stream = TcpStream::connect(addr).await?;
+            stream
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                .await?;
+            let mut response = Vec::new();
+            stream.read_to_end(&mut response).await?;
+            Ok::<_, std::io::Error>(response)
+        });
+
+        tokio::select! {
+            _ = request_started.notified() => {},
+            result = &mut server => panic!("HTTP server stopped before the request started: {result:?}"),
+            _ = &mut update => panic!("update arrived before the test sent one"),
+            _ = tokio::time::sleep(Duration::from_secs(3)) => panic!("HTTP request did not start"),
+        }
+        assert!(!request.is_finished(), "handler should still be waiting");
+
+        update_tx
+            .send(("old cert".to_owned(), "old key".to_owned()))
+            .unwrap();
+        update_tx
+            .send(("latest cert".to_owned(), "latest key".to_owned()))
+            .unwrap();
+        let latest = tokio::select! {
+            result = &mut server => panic!("HTTP server stopped while the request was active: {result:?}"),
+            update = &mut update => update.expect("latest certificate update should arrive"),
+        };
+        assert_eq!(latest.0, "latest cert");
+        assert!(
+            !request.is_finished(),
+            "lagged update must not cancel the handler"
+        );
+
+        handle.graceful_shutdown(Some(Duration::from_secs(2)));
+        release_request.notify_one();
+        assert!(
+            tokio::time::timeout(
+                Duration::from_secs(3),
+                wait_for_server(&mut server, Duration::from_secs(2))
+            )
+            .await
+            .expect("server should finish after the handler drains")
+            .expect("server should stop cleanly")
+        );
+        let response = tokio::time::timeout(Duration::from_secs(2), &mut request)
+            .await
+            .expect("HTTP response should finish")
+            .expect("request task should not panic")
+            .expect("HTTP request should succeed");
+        assert!(response.starts_with(b"HTTP/1.1 200"));
+    }
 
     #[test]
     fn test_session_cookie_sets_security_attributes_in_both_modes() {

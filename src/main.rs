@@ -64,6 +64,23 @@ fn load_tls_config(cert_dir: &Path) -> anyhow::Result<Option<TlsConfig>> {
     }
 }
 
+async fn shutdown_signal() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut terminate = signal(SignalKind::terminate())?;
+        tokio::select! {
+            result = tokio::signal::ctrl_c() => result?,
+            _ = terminate.recv() => {}
+        }
+    }
+    #[cfg(not(unix))]
+    tokio::signal::ctrl_c().await?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Install the aws-lc-rs CryptoProvider as the process-wide default for rustls.
@@ -98,6 +115,7 @@ async fn main() -> anyhow::Result<()> {
         env_config,
         maybe_tls_config,
         logs_rx.map(|r| Arc::new(Mutex::new(r))),
+        shutdown_signal(),
     )
     .await?;
 
