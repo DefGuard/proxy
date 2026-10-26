@@ -14,7 +14,8 @@ use crate::{
         MfaFlowStartResponse, MfaFlowStepFinishRequest, MfaFlowStepFinishResponse,
         MfaFlowStepStartRequest, MfaFlowStepStartResponse, MfaMethod, MfaMobileApprovalProof,
         MfaSignatureChallenge, MfaStepResult, MfaStepStarted, core_request, core_response,
-        mfa_flow_start_response, mfa_flow_step_finish_request, mfa_step_result, mfa_step_started,
+        mfa_flow_remote_response, mfa_flow_start_response, mfa_flow_step_finish_request,
+        mfa_step_result, mfa_step_started,
     },
     tests::support::{app_with_fake_core, cookie_key, post_json, test_proxy_server},
 };
@@ -223,11 +224,11 @@ async fn test_remote_dispatches_to_mfa_flow_remote() {
     server.resolve_test_response(
         request_id,
         core_response::Payload::MfaFlowRemote(MfaFlowRemoteResponse {
-            result: Some(MfaStepResult {
+            outcome: Some(mfa_flow_remote_response::Outcome::Result(MfaStepResult {
                 outcome: Some(mfa_step_result::Outcome::Advanced(MfaAdvanced {
                     next_step: 1,
                 })),
-            }),
+            })),
         }),
     );
 

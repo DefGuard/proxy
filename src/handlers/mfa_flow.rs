@@ -19,10 +19,11 @@ use crate::{
     handlers::get_core_response,
     http::AppState,
     proto::{
-        DeviceInfo, MfaFlowApproveRequest, MfaFlowRemoteRequest, MfaFlowRemoteResponse,
-        MfaFlowStartRequest, MfaFlowStartResponse, MfaFlowStepFinishRequest,
+        DeviceInfo, MfaFlowApproveRequest, MfaFlowRemoteRejected, MfaFlowRemoteRequest,
+        MfaFlowRemoteResponse, MfaFlowStartRequest, MfaFlowStartResponse, MfaFlowStepFinishRequest,
         MfaFlowStepFinishResponse, MfaFlowStepStartRequest, MfaFlowStepStartResponse,
-        MfaStepResult, core_request, core_response::Payload, mfa_step_result,
+        MfaStepResult, core_request, core_response::Payload, mfa_flow_remote_response,
+        mfa_step_result,
     },
 };
 
@@ -45,17 +46,24 @@ pub(crate) struct RemoteMfaRequestQuery {
 }
 
 #[derive(Serialize)]
-#[serde(tag = "type", rename = "mfa_result")]
-struct MfaFlowSocketResponse<'a> {
-    result: &'a MfaStepResult,
+#[serde(tag = "type", rename_all = "snake_case")]
+enum MfaFlowSocketResponse<'a> {
+    MfaResult { result: &'a MfaStepResult },
+    MfaRejected { rejected: &'a MfaFlowRemoteRejected },
 }
 
 fn mfa_flow_socket_response(response: &MfaFlowRemoteResponse) -> Option<MfaFlowSocketResponse<'_>> {
-    let result = response.result.as_ref()?;
-    match result.outcome.as_ref() {
-        Some(mfa_step_result::Outcome::Advanced(_))
-        | Some(mfa_step_result::Outcome::Completed(_)) => Some(MfaFlowSocketResponse { result }),
-        Some(mfa_step_result::Outcome::AwaitingExternal(_)) | None => None,
+    match response.outcome.as_ref()? {
+        mfa_flow_remote_response::Outcome::Result(result) => match result.outcome.as_ref() {
+            Some(mfa_step_result::Outcome::Advanced(_))
+            | Some(mfa_step_result::Outcome::Completed(_)) => {
+                Some(MfaFlowSocketResponse::MfaResult { result })
+            }
+            Some(mfa_step_result::Outcome::AwaitingExternal(_)) | None => None,
+        },
+        mfa_flow_remote_response::Outcome::Rejected(rejected) => {
+            Some(MfaFlowSocketResponse::MfaRejected { rejected })
+        }
     }
 }
 
@@ -211,13 +219,13 @@ async fn handle_remote_mfa_flow_socket(socket: WebSocket, rx: Receiver<Payload>)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proto::{MfaAdvanced, MfaCompleted, mfa_step_result};
+    use crate::proto::{MfaAdvanced, MfaCompleted, MfaRemoteRejectionReason, mfa_step_result};
 
     fn response(outcome: mfa_step_result::Outcome) -> MfaFlowRemoteResponse {
         MfaFlowRemoteResponse {
-            result: Some(MfaStepResult {
+            outcome: Some(mfa_flow_remote_response::Outcome::Result(MfaStepResult {
                 outcome: Some(outcome),
-            }),
+            })),
         }
     }
 
@@ -262,14 +270,29 @@ mod tests {
     }
 
     #[test]
-    fn test_awaiting_external_is_not_a_remote_result() {
+    fn test_outdated_mobile_client_serializes_as_mfa_rejected() {
         let response = MfaFlowRemoteResponse {
-            result: Some(MfaStepResult {
-                outcome: Some(mfa_step_result::Outcome::AwaitingExternal(
-                    crate::proto::MfaAwaitingExternal {},
-                )),
-            }),
+            outcome: Some(mfa_flow_remote_response::Outcome::Rejected(
+                MfaFlowRemoteRejected {
+                    reason: MfaRemoteRejectionReason::MfaRemoteRejectionMobileClientOutdated.into(),
+                },
+            )),
         };
+
+        assert_eq!(
+            serialized(&response),
+            serde_json::json!({
+                "type": "mfa_rejected",
+                "rejected": {"reason": 1}
+            })
+        );
+    }
+
+    #[test]
+    fn test_awaiting_external_is_not_a_remote_result() {
+        let response = response(mfa_step_result::Outcome::AwaitingExternal(
+            crate::proto::MfaAwaitingExternal {},
+        ));
 
         assert!(mfa_flow_socket_response(&response).is_none());
     }
