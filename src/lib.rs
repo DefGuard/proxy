@@ -41,6 +41,12 @@ pub(crate) mod generated {
             }
         }
 
+        pub(crate) mod device_identity {
+            pub(crate) mod v1 {
+                tonic::include_proto!("defguard.device_identity.v1");
+            }
+        }
+
         pub mod client_types {
             tonic::include_proto!("defguard.client_types");
         }

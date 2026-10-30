@@ -89,6 +89,7 @@ fn enrollment_response() -> core_response::Payload {
         final_page_content: String::new(),
         instance: None,
         settings: None,
+        attestation_request: None,
     })
 }
 
