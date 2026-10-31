@@ -9,7 +9,7 @@ importers:
   .:
     devDependencies:
       '@tanstack/devtools-vite':
-        specifier: ^0.3.12
+        specifier: 0.3.12
         version: 0.3.12(vite@7.1.12)
 
 packages:
