@@ -1,6 +1,6 @@
 {
-	"packageManager": "pnpm@11.11.0",
+	"packageManager": "pnpm@11.28.8",
 	"devDependencies": {
-		"@tanstack/devtools-vite": "^0.3.12"
+		"@tanstack/devtools-vite": "0.3.12"
 	}
 }
