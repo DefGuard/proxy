@@ -93,13 +93,11 @@ allow = [
     "MPL-2.0",
     "BSD-3-Clause",
     "Unicode-3.0",
-    "Unicode-DFS-2016",               # unicode-ident
     "Zlib",
     "ISC",
     "BSL-1.0",
     "0BSD",
     "CC0-1.0",
-    "OpenSSL",
     "CDLA-Permissive-2.0",
 ]
 # The confidence threshold for detecting a license from license text.
@@ -250,7 +248,7 @@ unknown-git = "warn"
 # if not specified. If it is specified but empty, no registries are allowed.
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
-allow-git = []
+allow-git = ["https://github.com/DefGuard/defguard.git"]
 
 [sources.allow-org]
 # github.com organizations to allow git sources for
