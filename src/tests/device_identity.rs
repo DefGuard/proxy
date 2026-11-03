@@ -64,7 +64,7 @@ async fn test_device_identity_enrollment_start_forwarding() {
         };
         let request = EnrollmentStartRequest {
             token: "enrollment-token".into(),
-            proposed_wireguard_pubkey: Some("wireguard-key".into()),
+            wireguard_key: Some("wireguard-key".into()),
             device_identity: Some(
                 enrollment_start_request::DeviceIdentity::AttestationIdentity(
                     AttestationIdentity {

@@ -761,7 +761,7 @@ mod tests {
             .send(
                 core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
                     token: "enrollment-token".to_owned(),
-                    proposed_wireguard_pubkey: None,
+                    wireguard_key: None,
                     device_identity: None,
                 }),
                 test_device_info(),
@@ -797,7 +797,7 @@ mod tests {
         let result = server.send(
             core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
                 token: "enrollment-token".to_owned(),
-                proposed_wireguard_pubkey: None,
+                wireguard_key: None,
                 device_identity: None,
             }),
             test_device_info(),
