@@ -39,7 +39,7 @@ COPY proto proto
 RUN cargo install --locked --path . --root /build
 
 # run
-FROM debian:13-slim AS runtime
+FROM debian:13-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS runtime
 # Bust the cache for the layer below on every build so OS security updates are always applied.
 ARG CACHEBUST=0
 RUN echo "cachebust=${CACHEBUST}" && apt-get update -y && apt-get upgrade -y && \
