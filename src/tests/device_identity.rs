@@ -3,7 +3,7 @@ use prost::Message;
 
 use super::support::{app_with_fake_core, post_json};
 use crate::{
-    generated::defguard::device_identity::v1::{
+    generated::defguard::device_identity::v2::{
         AppleAssertion, AppleAttestationIdentity, AppleEvidence, AttestationIdentity,
         AttestationRequest, AttestationResponse, AttestationStatus, CredentialChallenge,
         IdentityErrorCode, IdentityState, PossessionChallenge, PossessionResponse, Signature,
