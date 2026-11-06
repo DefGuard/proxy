@@ -2,7 +2,7 @@
   "name": "web",
   "private": true,
   "version": "2.0.2",
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.11.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
