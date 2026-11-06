@@ -20,11 +20,11 @@ fn assert_wire_equal<T: Message>(actual: &T, expected: &T) {
     assert_eq!(actual.encode_to_vec(), expected.encode_to_vec());
 }
 
-fn device_config() -> DeviceConfigResponse {
+fn device_config(attestation_status: AttestationStatus) -> DeviceConfigResponse {
     DeviceConfigResponse {
         identity_state: Some(IdentityState {
             identity_id: "identity".into(),
-            attestation_status: AttestationStatus::Attested as i32,
+            attestation_status: attestation_status as i32,
             key_fingerprint: vec![0, 255, 1],
             attested_at: Some(1_800_000_000),
             last_possession_verified_at: Some(1_800_000_030),
@@ -132,7 +132,7 @@ async fn test_device_identity_create_device_forwarding() {
             }),
         };
         let expected_request = request.clone();
-        let response = device_config();
+        let response = device_config(AttestationStatus::Attested);
         let expected_response = response.clone();
         let app = app_with_fake_core(move |payload| {
             let core_request::Payload::NewDevice(received) = payload else {
@@ -176,7 +176,7 @@ async fn test_device_identity_poll_forwarding_and_challenge_recovery() {
         };
         let expected_request = request.clone();
         let response = InstanceInfoResponse {
-            device_config: Some(device_config()),
+            device_config: Some(device_config(AttestationStatus::AttestationFailed)),
         };
         let expected_response = response.clone();
         let app = app_with_fake_core(move |payload| {
