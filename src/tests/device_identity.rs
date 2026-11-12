@@ -1,19 +1,29 @@
-use axum::http::StatusCode;
+use axum::{
+    Router,
+    body::{Body, to_bytes},
+    http::{Request, StatusCode, header},
+};
 use prost::Message;
+use serde::Serialize;
+use serde_json::{Value, json};
+use tower::ServiceExt;
 
 use super::support::{app_with_fake_core, post_json};
 use crate::{
     generated::defguard::device_identity::v2::{
-        AppleAssertion, AppleAttestationIdentity, AppleEvidence, AttestationIdentity,
-        AttestationRequest, AttestationResponse, AttestationStatus, CredentialChallenge,
+        AppleAssertion, AppleAttestationIdentity, AppleEvidence, AttestationChallenge,
+        AttestationChallengeSolution, AttestationIdentity, AttestationStatus, CredentialChallenge,
         IdentityErrorCode, IdentityState, PossessionChallenge, PossessionChallengeSolution,
         Signature, SignatureAlgorithm, TpmAttestationIdentity, TpmAttestationResponse, TpmEvidence,
-        attestation_identity, attestation_request, attestation_response,
+        attestation_challenge, attestation_challenge_solution, attestation_identity,
         possession_challenge_solution,
     },
+    http::ENROLLMENT_COOKIE_NAME,
     proto::{
-        DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse, InstanceInfoRequest,
-        InstanceInfoResponse, NewDevice, core_request, core_response, enrollment_start_request,
+        AttestationFinishRequest, AttestationFinishResponse, AttestationStartRequest,
+        AttestationStartResponse, CoreError, DeviceConfigResponse, EnrollmentStartResponse,
+        InstanceInfoRequest, InstanceInfoResponse, attestation_start_request, core_request,
+        core_response,
     },
 };
 
@@ -40,8 +50,73 @@ fn device_config(attestation_status: AttestationStatus) -> DeviceConfigResponse 
     }
 }
 
+fn app_with_enrollment<F>(core: F) -> Router
+where
+    F: Fn(core_request::Payload) -> core_response::Payload + Send + 'static,
+{
+    app_with_fake_core(move |payload| match payload {
+        core_request::Payload::EnrollmentStart(request) => {
+            assert_eq!(request.token, "enrollment-token");
+            core_response::Payload::EnrollmentStart(EnrollmentStartResponse {
+                deadline_timestamp: 4_000_000_000,
+                ..Default::default()
+            })
+        }
+        payload => core(payload),
+    })
+}
+
+async fn enrollment_cookie(app: &Router) -> String {
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/enrollment/start")
+                .header(header::CONTENT_TYPE, "application/json")
+                .header("X-Forwarded-For", "10.0.0.1")
+                .body(Body::from(r#"{"token":"enrollment-token"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    response.headers()[header::SET_COOKIE]
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .into()
+}
+
+async fn post_with_cookie<T: Serialize>(
+    app: &Router,
+    path: &str,
+    cookie: &str,
+    body: &T,
+) -> (StatusCode, Value) {
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(path)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::COOKIE, cookie)
+                .header("X-Forwarded-For", "10.0.0.1")
+                .body(Body::from(serde_json::to_vec(body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    (status, serde_json::from_slice(&bytes).unwrap())
+}
+
 #[tokio::test]
-async fn test_device_identity_enrollment_start_forwarding() {
+async fn test_device_identity_attestation_start_forwarding() {
     for backend in [
         attestation_identity::Backend::Tpm(TpmAttestationIdentity {
             ek_public: vec![0, 255],
@@ -54,57 +129,63 @@ async fn test_device_identity_enrollment_start_forwarding() {
     ] {
         let challenge = match &backend {
             attestation_identity::Backend::Tpm(_) => {
-                attestation_request::Challenge::Tpm(CredentialChallenge {
+                attestation_challenge::Challenge::Tpm(CredentialChallenge {
                     credential_blob: vec![0, 255],
                     encrypted_secret: vec![128, 1],
                 })
             }
             attestation_identity::Backend::AppleAppAttest(_) => {
-                attestation_request::Challenge::AppleAppAttest(())
+                attestation_challenge::Challenge::AppleAppAttest(())
             }
         };
-        let request = EnrollmentStartRequest {
-            token: "enrollment-token".into(),
-            wireguard_key: Some("wireguard-key".into()),
+        let request = AttestationStartRequest {
+            token: "body-token-must-be-ignored".into(),
+            device_id: 7,
             device_identity: Some(
-                enrollment_start_request::DeviceIdentity::AttestationIdentity(
+                attestation_start_request::DeviceIdentity::AttestationIdentity(
                     AttestationIdentity {
                         backend: Some(backend),
                     },
                 ),
             ),
         };
-        let response = EnrollmentStartResponse {
-            deadline_timestamp: 4_000_000_000,
-            attestation_request: Some(AttestationRequest {
+        let response = AttestationStartResponse {
+            challenge: Some(AttestationChallenge {
                 session_id: "attestation-session".into(),
                 data: vec![0, 255, 128, 1],
                 challenge: Some(challenge),
                 expires_at: 1_800_000_300,
             }),
-            ..Default::default()
         };
-        let expected_request = request.clone();
+        let mut expected_request = request.clone();
+        expected_request.token = "enrollment-token".into();
         let expected_response = response.clone();
-        let app = app_with_fake_core(move |payload| {
-            let core_request::Payload::EnrollmentStart(received) = payload else {
-                panic!("expected enrollment start");
+        let app = app_with_enrollment(move |payload| {
+            let core_request::Payload::AttestationStart(received) = payload else {
+                panic!("expected attestation start");
             };
             assert_wire_equal(&received, &expected_request);
-            core_response::Payload::EnrollmentStart(expected_response.clone())
+            core_response::Payload::AttestationStart(expected_response.clone())
         });
 
-        let (status, body) = post_json(&app, "/api/v1/enrollment/start", &request).await;
+        let cookie = enrollment_cookie(&app).await;
+        let (status, body) = post_with_cookie(
+            &app,
+            "/api/v1/enrollment/attestation/start",
+            &cookie,
+            &request,
+        )
+        .await;
         assert_eq!(status, StatusCode::OK);
-        let received: EnrollmentStartResponse = serde_json::from_value(body).unwrap();
+        let received: AttestationStartResponse = serde_json::from_value(body).unwrap();
         assert_wire_equal(&received, &response);
     }
 }
 
 #[tokio::test]
-async fn test_device_identity_create_device_forwarding() {
+async fn test_device_identity_attestation_finish_forwarding() {
     for result in [
-        attestation_response::Result::Tpm(TpmAttestationResponse {
+        attestation_challenge_solution::Result::Tpm(TpmAttestationResponse {
             activation_secret: vec![0, 255, 128],
             evidence: Some(TpmEvidence {
                 ek_public: vec![1, 255],
@@ -118,34 +199,48 @@ async fn test_device_identity_create_device_forwarding() {
                 }),
             }),
         }),
-        attestation_response::Result::AppleAppAttest(AppleEvidence {
+        attestation_challenge_solution::Result::AppleAppAttest(AppleEvidence {
             attestation_object: vec![0, 255, 128],
         }),
-        attestation_response::Result::Error(IdentityErrorCode::Unavailable as i32),
+        attestation_challenge_solution::Result::Error(IdentityErrorCode::Unavailable as i32),
     ] {
-        let request = NewDevice {
-            name: "device".into(),
-            pubkey: "wireguard-key".into(),
-            token: None,
-            attestation_response: Some(AttestationResponse {
+        let status = if matches!(&result, attestation_challenge_solution::Result::Error(_)) {
+            AttestationStatus::AttestationFailed
+        } else {
+            AttestationStatus::Attested
+        };
+        let request = AttestationFinishRequest {
+            token: "body-token-must-be-ignored".into(),
+            device_id: 7,
+            solution: Some(AttestationChallengeSolution {
                 session_id: "attestation-session".into(),
                 result: Some(result),
             }),
         };
-        let expected_request = request.clone();
-        let response = device_config(AttestationStatus::Attested);
+        let mut expected_request = request.clone();
+        expected_request.token = "enrollment-token".into();
+        let response = AttestationFinishResponse {
+            identity_state: device_config(status).identity_state,
+        };
         let expected_response = response.clone();
-        let app = app_with_fake_core(move |payload| {
-            let core_request::Payload::NewDevice(received) = payload else {
-                panic!("expected new device");
+        let app = app_with_enrollment(move |payload| {
+            let core_request::Payload::AttestationFinish(received) = payload else {
+                panic!("expected attestation finish");
             };
             assert_wire_equal(&received, &expected_request);
-            core_response::Payload::DeviceConfig(expected_response.clone())
+            core_response::Payload::AttestationFinish(expected_response.clone())
         });
 
-        let (status, body) = post_json(&app, "/api/v1/enrollment/create_device", &request).await;
+        let cookie = enrollment_cookie(&app).await;
+        let (status, body) = post_with_cookie(
+            &app,
+            "/api/v1/enrollment/attestation/finish",
+            &cookie,
+            &request,
+        )
+        .await;
         assert_eq!(status, StatusCode::OK);
-        let received: DeviceConfigResponse = serde_json::from_value(body).unwrap();
+        let received: AttestationFinishResponse = serde_json::from_value(body).unwrap();
         assert_wire_equal(&received, &response);
     }
 }
@@ -198,27 +293,83 @@ async fn test_device_identity_poll_forwarding_and_challenge_recovery() {
 }
 
 #[tokio::test]
-async fn test_device_identity_enrollment_failure_forwarding() {
-    let request = EnrollmentStartRequest {
-        token: "enrollment-token".into(),
-        device_identity: Some(enrollment_start_request::DeviceIdentity::IdentityError(
+async fn test_device_identity_failure_reporting_uses_attestation_start() {
+    let request = AttestationStartRequest {
+        token: "ignored-body-token".into(),
+        device_id: 7,
+        device_identity: Some(attestation_start_request::DeviceIdentity::IdentityError(
             IdentityErrorCode::Unavailable as i32,
         )),
-        ..Default::default()
     };
-    let expected_request = request.clone();
-    let app = app_with_fake_core(move |payload| {
-        let core_request::Payload::EnrollmentStart(received) = payload else {
-            panic!("expected enrollment start");
+    let mut expected = request.clone();
+    expected.token = "enrollment-token".into();
+    let app = app_with_enrollment(move |payload| {
+        let core_request::Payload::AttestationStart(received) = payload else {
+            panic!("expected attestation start")
         };
-        assert_wire_equal(&received, &expected_request);
-        core_response::Payload::EnrollmentStart(EnrollmentStartResponse {
-            deadline_timestamp: 4_000_000_000,
+        assert_wire_equal(&received, &expected);
+        core_response::Payload::CoreError(CoreError {
+            status_code: tonic::Code::Unimplemented.into(),
+            message: "attestation is not implemented".into(),
             ..Default::default()
         })
     });
-    let (status, body) = post_json(&app, "/api/v1/enrollment/start", &request).await;
-    assert_eq!(status, StatusCode::OK);
-    let response: EnrollmentStartResponse = serde_json::from_value(body).unwrap();
-    assert!(response.attestation_request.is_none());
+    let cookie = enrollment_cookie(&app).await;
+    let (status, _) = post_with_cookie(
+        &app,
+        "/api/v1/enrollment/attestation/start",
+        &cookie,
+        &request,
+    )
+    .await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn test_attestation_requires_a_private_enrollment_cookie() {
+    let app = app_with_fake_core(|_| panic!("unauthenticated request reached Core"));
+    for path in [
+        "/api/v1/enrollment/attestation/start",
+        "/api/v1/enrollment/attestation/finish",
+    ] {
+        let body = json!({"device_id": 7, "token": "body-token"});
+        let (status, _) = post_json(&app, path, &body).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        let (status, _) = post_with_cookie(
+            &app,
+            path,
+            &format!("{ENROLLMENT_COOKIE_NAME}=unencrypted-token"),
+            &body,
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+}
+
+#[tokio::test]
+async fn test_attestation_forwards_core_denials_and_rejects_unexpected_responses() {
+    for (payload, expected_status) in [
+        (
+            core_response::Payload::CoreError(CoreError {
+                status_code: tonic::Code::PermissionDenied.into(),
+                message: "device belongs to another user".into(),
+                ..Default::default()
+            }),
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            core_response::Payload::Empty(()),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ),
+    ] {
+        let app = app_with_enrollment(move |_| payload.clone());
+        let cookie = enrollment_cookie(&app).await;
+        for path in [
+            "/api/v1/enrollment/attestation/start",
+            "/api/v1/enrollment/attestation/finish",
+        ] {
+            let (status, _) = post_with_cookie(&app, path, &cookie, &json!({"device_id":7})).await;
+            assert_eq!(status, expected_status);
+        }
+    }
 }

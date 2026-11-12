@@ -19,6 +19,7 @@ use crate::{
     proto::core_response::Payload,
 };
 
+mod attestation;
 pub(crate) mod desktop_client_mfa;
 pub(crate) mod enrollment;
 pub(crate) mod mfa_config;

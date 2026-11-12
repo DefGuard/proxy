@@ -9,6 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // These types contain sensitive data.
         .skip_debug([
             "ActivateUserRequest",
+            "AttestationFinishRequest",
+            "AttestationStartRequest",
+            "AttestationStartResponse",
             "AuthInfoResponse",
             "AuthenticateRequest",
             "AuthenticateResponse",

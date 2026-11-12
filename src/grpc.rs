@@ -723,7 +723,6 @@ mod tests {
             final_page_content: String::new(),
             instance: None,
             settings: None,
-            attestation_request: None,
         })
     }
 
@@ -761,8 +760,6 @@ mod tests {
             .send(
                 core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
                     token: "enrollment-token".to_owned(),
-                    wireguard_key: None,
-                    device_identity: None,
                 }),
                 test_device_info(),
             )
@@ -797,8 +794,6 @@ mod tests {
         let result = server.send(
             core_request::Payload::EnrollmentStart(EnrollmentStartRequest {
                 token: "enrollment-token".to_owned(),
-                wireguard_key: None,
-                device_identity: None,
             }),
             test_device_info(),
         );
