@@ -6,9 +6,10 @@ use crate::{
     generated::defguard::device_identity::v2::{
         AppleAssertion, AppleAttestationIdentity, AppleEvidence, AttestationIdentity,
         AttestationRequest, AttestationResponse, AttestationStatus, CredentialChallenge,
-        IdentityErrorCode, IdentityState, PossessionChallenge, PossessionResponse, Signature,
-        SignatureAlgorithm, TpmAttestationIdentity, TpmAttestationResponse, TpmEvidence,
-        attestation_identity, attestation_request, attestation_response, possession_response,
+        IdentityErrorCode, IdentityState, PossessionChallenge, PossessionChallengeSolution,
+        Signature, SignatureAlgorithm, TpmAttestationIdentity, TpmAttestationResponse, TpmEvidence,
+        attestation_identity, attestation_request, attestation_response,
+        possession_challenge_solution,
     },
     proto::{
         DeviceConfigResponse, EnrollmentStartRequest, EnrollmentStartResponse, InstanceInfoRequest,
@@ -152,23 +153,25 @@ async fn test_device_identity_create_device_forwarding() {
 #[tokio::test]
 async fn test_device_identity_poll_forwarding_and_challenge_recovery() {
     for proof in [
-        Some(possession_response::Result::Signature(Signature {
-            algorithm: SignatureAlgorithm::EcdsaSha256 as i32,
-            signature: vec![0, 255, 128],
-        })),
-        Some(possession_response::Result::AppleAppAttest(
+        Some(possession_challenge_solution::Result::Signature(
+            Signature {
+                algorithm: SignatureAlgorithm::EcdsaSha256 as i32,
+                signature: vec![0, 255, 128],
+            },
+        )),
+        Some(possession_challenge_solution::Result::AppleAppAttest(
             AppleAssertion {
                 assertion_object: vec![0, 255, 128],
             },
         )),
-        Some(possession_response::Result::Error(
+        Some(possession_challenge_solution::Result::Error(
             IdentityErrorCode::IdentityLost as i32,
         )),
         None,
     ] {
         let request = InstanceInfoRequest {
             token: "polling-token".into(),
-            possession_response: proof.map(|result| PossessionResponse {
+            possession_challenge_solution: proof.map(|result| PossessionChallengeSolution {
                 identity_id: "identity".into(),
                 challenge_id: "previous-challenge".into(),
                 result: Some(result),
