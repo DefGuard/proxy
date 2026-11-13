@@ -13,7 +13,8 @@ use crate::{
     grpc::ProxyServer,
     http::{AppState, ENROLLMENT_COOKIE_NAME, PASSWORD_RESET_COOKIE_NAME, build_router},
     proto::{
-        AuthInfoResponse, CoreRequest, EnrollmentStartResponse, OpenIdProviderKind,
+        AttestationFinishResponse, AttestationStartResponse, AuthInfoResponse, CoreRequest, Device,
+        DeviceConfigResponse, EnrollmentStartResponse, OpenIdProviderKind,
         PasswordResetStartResponse, core_response,
     },
     tests::support::{cookie_key, test_proxy_server, test_public_settings},
@@ -327,33 +328,120 @@ async fn test_oidc_cookies_remain_secure_over_http() {
 }
 
 #[tokio::test]
-async fn test_enrollment_cookie_removal_attributes_follow_core_public_url() {
+async fn test_enrollment_cookie_is_kept_for_attestation_and_removed_after_activation() {
     for (public_url, secure) in [
         ("https://proxy.example.com", true),
         ("http://proxy.example.com", false),
     ] {
-        let cookies = request_cookie_removal(
-            public_url,
-            Step::new(
-                "/api/v1/enrollment/start",
-                r#"{"token":"test-token"}"#,
-                enrollment_response(),
-            ),
-            Step::new(
-                "/api/v1/enrollment/activate_user",
-                r#"{"password":"test-password"}"#,
-                core_response::Payload::Empty(()),
-            ),
+        let TestApp {
+            app,
+            mut core_requests,
+            response_server,
+        } = test_app(Some(public_url));
+        let start = Step::new(
+            "/api/v1/enrollment/start",
+            r#"{"token":"test-token"}"#,
+            enrollment_response(),
+        );
+        let response = request_with_core_response(
+            &app,
+            &mut core_requests,
+            &response_server,
+            start.request(None),
+            start.payload,
         )
         .await;
-
+        let cookies = parse_set_cookies(&response);
         assert_eq!(cookies.len(), 1);
-        assert_removed_cookie(
+        assert_cookie(
             &cookies[0],
             ENROLLMENT_COOKIE_NAME,
             "/api/v1/enrollment",
             secure,
         );
+        assert_eq!(
+            cookies[0].expires_datetime().unwrap().unix_timestamp(),
+            4_000_000_000
+        );
+
+        for step in [
+            Step::new(
+                "/api/v1/enrollment/create_device",
+                r#"{"name":"device","pubkey":"wireguard-key"}"#,
+                core_response::Payload::DeviceConfig(DeviceConfigResponse {
+                    device: Some(Device {
+                        id: 7,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+            ),
+            Step::new(
+                "/api/v1/enrollment/attestation/start",
+                r#"{"device_id":7}"#,
+                core_response::Payload::AttestationStart(AttestationStartResponse::default()),
+            ),
+            Step::new(
+                "/api/v1/enrollment/attestation/finish",
+                r#"{"device_id":7}"#,
+                core_response::Payload::AttestationFinish(AttestationFinishResponse::default()),
+            ),
+        ] {
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(10),
+                request_with_core_response(
+                    &app,
+                    &mut core_requests,
+                    &response_server,
+                    step.request(Some(&cookies)),
+                    step.payload,
+                ),
+            )
+            .await
+            .expect("enrollment step did not reach Core");
+            assert!(
+                parse_set_cookies(&response).is_empty(),
+                "session cookie must not be removed or refreshed"
+            );
+        }
+        let activate = Step::new(
+            "/api/v1/enrollment/activate_user",
+            r#"{"password":"test-password"}"#,
+            core_response::Payload::Empty(()),
+        );
+        let response = request_with_core_response(
+            &app,
+            &mut core_requests,
+            &response_server,
+            activate.request(Some(&cookies)),
+            activate.payload,
+        )
+        .await;
+        let removed = parse_set_cookies(&response);
+        assert_eq!(removed.len(), 1);
+        assert_removed_cookie(
+            &removed[0],
+            ENROLLMENT_COOKIE_NAME,
+            "/api/v1/enrollment",
+            secure,
+        );
+
+        for path in [
+            "/api/v1/enrollment/attestation/start",
+            "/api/v1/enrollment/attestation/finish",
+        ] {
+            let request = Step::new(
+                path,
+                r#"{"device_id":7}"#,
+                core_response::Payload::Empty(()),
+            );
+            let response = app.clone().oneshot(request.request(None)).await.unwrap();
+            assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        }
+        assert!(matches!(
+            core_requests.try_recv(),
+            Err(mpsc::error::TryRecvError::Empty)
+        ));
     }
 }
 
