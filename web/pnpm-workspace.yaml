@@ -8,5 +8,3 @@ onlyBuiltDependencies:
   - "@swc/core"
   - esbuild
   - sharp
-overrides:
-  seroval: 1.6.3
