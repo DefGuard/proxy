@@ -4,13 +4,12 @@ use serde::Deserialize;
 
 use crate::{
     error::ApiError,
-    generated::defguard::device_identity::v2::AttestationChallengeSolution,
+    generated::defguard::device_identity::v2::{AttestationChallengeSolution, AttestationIdentity},
     handlers::{enrollment_token, get_core_response},
     http::AppState,
     proto::{
         AttestationFinishRequest, AttestationFinishResponse, AttestationStartRequest,
-        AttestationStartResponse, DeviceInfo, attestation_start_request, core_request,
-        core_response,
+        AttestationStartResponse, DeviceInfo, core_request, core_response,
     },
 };
 
@@ -23,7 +22,7 @@ pub(crate) fn router() -> Router<AppState> {
 #[derive(Deserialize)]
 struct AttestationStartBody {
     device_id: i64,
-    device_identity: Option<attestation_start_request::DeviceIdentity>,
+    attestation_identity: Option<AttestationIdentity>,
 }
 
 #[derive(Deserialize)]
@@ -44,7 +43,7 @@ async fn start(
         core_request::Payload::AttestationStart(AttestationStartRequest {
             token,
             device_id: req.device_id,
-            device_identity: req.device_identity,
+            attestation_identity: req.attestation_identity,
         }),
         device_info,
     )?;

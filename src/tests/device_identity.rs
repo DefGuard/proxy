@@ -22,8 +22,7 @@ use crate::{
     proto::{
         AttestationFinishRequest, AttestationFinishResponse, AttestationStartRequest,
         AttestationStartResponse, CoreError, DeviceConfigResponse, EnrollmentStartResponse,
-        InstanceInfoRequest, InstanceInfoResponse, attestation_start_request, core_request,
-        core_response,
+        InstanceInfoRequest, InstanceInfoResponse, core_request, core_response,
     },
 };
 
@@ -141,13 +140,9 @@ async fn test_device_identity_attestation_start_forwarding() {
         let request = AttestationStartRequest {
             token: "body-token-must-be-ignored".into(),
             device_id: 7,
-            device_identity: Some(
-                attestation_start_request::DeviceIdentity::AttestationIdentity(
-                    AttestationIdentity {
-                        backend: Some(backend),
-                    },
-                ),
-            ),
+            attestation_identity: Some(AttestationIdentity {
+                backend: Some(backend),
+            }),
         };
         let response = AttestationStartResponse {
             challenge: Some(AttestationChallenge {
@@ -290,39 +285,6 @@ async fn test_device_identity_poll_forwarding_and_challenge_recovery() {
         let received: InstanceInfoResponse = serde_json::from_value(body).unwrap();
         assert_wire_equal(&received, &response);
     }
-}
-
-#[tokio::test]
-async fn test_device_identity_failure_reporting_uses_attestation_start() {
-    let request = AttestationStartRequest {
-        token: "ignored-body-token".into(),
-        device_id: 7,
-        device_identity: Some(attestation_start_request::DeviceIdentity::IdentityError(
-            IdentityErrorCode::Unavailable as i32,
-        )),
-    };
-    let mut expected = request.clone();
-    expected.token = "enrollment-token".into();
-    let app = app_with_enrollment(move |payload| {
-        let core_request::Payload::AttestationStart(received) = payload else {
-            panic!("expected attestation start")
-        };
-        assert_wire_equal(&received, &expected);
-        core_response::Payload::CoreError(CoreError {
-            status_code: tonic::Code::Unimplemented.into(),
-            message: "attestation is not implemented".into(),
-            ..Default::default()
-        })
-    });
-    let cookie = enrollment_cookie(&app).await;
-    let (status, _) = post_with_cookie(
-        &app,
-        "/api/v1/enrollment/attestation/start",
-        &cookie,
-        &request,
-    )
-    .await;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
