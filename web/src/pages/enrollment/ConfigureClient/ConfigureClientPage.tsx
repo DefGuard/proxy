@@ -253,7 +253,9 @@ export const ConfigureClientPage = () => {
       )}
       <footer>
         <p className="finish">{m.client_setup_footer_extra()}</p>
-        <ContactFooter email={pageData.enrollmentData.admin.email} />
+        {pageData.enrollmentData.admin.email !== pageData.enrollmentData.user.email && (
+          <ContactFooter email={pageData.enrollmentData.admin.email} />
+        )}
       </footer>
       <Suspense fallback={null}>
         <AppleHelpModal
