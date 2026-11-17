@@ -60,9 +60,9 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "ammonia"
-version = "4.2.4"
+version = "4.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f45dfa685e1ec33b1bf1a3b93b8047cbdbef41b6040deebbe6bea7720a45574"
+checksum = "b34ca49e407c06daac53f0c4debe8ff5df9cc2a4e9369d164a5d86ef8c219319"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -756,6 +756,7 @@ dependencies = [
  "defguard_version",
  "dotenvy",
  "futures-util",
+ "hyper-util",
  "instant-acme",
  "log",
  "mime_guess",
@@ -767,6 +768,7 @@ dependencies = [
  "rustls-webpki",
  "serde",
  "serde_json",
+ "socket2",
  "thiserror 2.0.21",
  "time",
  "tokio",

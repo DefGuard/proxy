@@ -26,7 +26,7 @@ use axum_extra::extract::{
     PrivateCookieJar,
     cookie::{Cookie, Key, SameSite},
 };
-use axum_server::tls_rustls::RustlsConfig;
+use axum_server::tls_rustls::{RustlsAcceptor, RustlsConfig};
 use clap::crate_version;
 use cookie::CookieBuilder;
 use defguard_version::{Version, server::DefguardVersionLayer};
@@ -52,6 +52,7 @@ use crate::{
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
     handlers::{desktop_client_mfa, enrollment, mfa_config, mfa_flow, password_reset, polling},
+    listener::{ConnectionTimeouts, KeepaliveAcceptor, configure_http_builder},
     setup::ProxySetupServer,
 };
 
@@ -789,15 +790,21 @@ pub async fn run_server(
                 if let Some((cert_pem, key_pem)) = tls_certs {
                     let tls_config = build_tls_config(&cert_pem, &key_pem).await?;
                     info!("API web server is listening on https://{https_addr}");
-                    axum_server::bind_rustls(https_addr, tls_config)
-                        .handle(handle_clone)
+                    let mut server = axum_server::bind(https_addr)
+                        .acceptor(RustlsAcceptor::new(tls_config).acceptor(KeepaliveAcceptor))
+                        .handle(handle_clone);
+                    configure_http_builder(server.http_builder(), ConnectionTimeouts::default());
+                    server
                         .serve(app_service)
                         .await
                         .context("Error running HTTPS server")
                 } else {
                     info!("API web server is listening on http://{http_addr}");
-                    axum_server::bind(http_addr)
-                        .handle(handle_clone)
+                    let mut server = axum_server::bind(http_addr)
+                        .acceptor(KeepaliveAcceptor)
+                        .handle(handle_clone);
+                    configure_http_builder(server.http_builder(), ConnectionTimeouts::default());
+                    server
                         .serve(app_service)
                         .await
                         .context("Error running HTTP server")
