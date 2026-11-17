@@ -1,3 +1,4 @@
+mod connections;
 mod cookies;
 mod mfa_config;
 mod mfa_flow;
