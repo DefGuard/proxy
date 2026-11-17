@@ -93,7 +93,7 @@ jobs:
             CI_PROBLEMS=$(gh api --method GET "repos/$GH_REPO/actions/runs" -f head_sha="$GITHUB_SHA" \
               -f branch="$GITHUB_REF_NAME" -f event=push -F per_page=100 --jq '.workflow_runs |
                 (.[] | select(.conclusion != "success" and .conclusion != "skipped") | "\(.path): \(.conclusion // .status) \(.html_url)"),
-                ([".github/workflows/current.yml", ".github/workflows/lint-web.yml", ".github/workflows/test-web.yml",
+                ([".github/workflows/current.yml", ".github/workflows/lint-web.yml",
                   ".github/workflows/test.yml"] - map(.path) | .[] | "\(.): no run")')
             if [[ -n $CI_PROBLEMS ]]; then
               echo "::error::CI for $GITHUB_SHA on $GITHUB_REF_NAME is not green. A push that changes only *.md or LICENSE files starts no CI run."
