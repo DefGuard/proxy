@@ -3,7 +3,6 @@ name = "defguard-proxy"
 version = "2.2.0"
 edition = "2024"
 license = "Apache-2.0"
-homepage = "https://github.com/DefGuard/proxy"
 repository = "https://github.com/DefGuard/proxy"
 
 [dependencies]

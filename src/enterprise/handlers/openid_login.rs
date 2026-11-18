@@ -40,6 +40,7 @@ enum ProviderKind {
     Microsoft,
     Okta,
     JumpCloud,
+    Keycloak,
 }
 
 impl ProviderKind {
@@ -51,6 +52,7 @@ impl ProviderKind {
             OpenIdProviderKind::Microsoft => Self::Microsoft,
             OpenIdProviderKind::Okta => Self::Okta,
             OpenIdProviderKind::Jumpcloud => Self::JumpCloud,
+            OpenIdProviderKind::Keycloak => Self::Keycloak,
         }
     }
 

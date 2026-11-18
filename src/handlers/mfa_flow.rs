@@ -55,10 +55,9 @@ enum MfaFlowSocketResponse<'a> {
 fn mfa_flow_socket_response(response: &MfaFlowRemoteResponse) -> Option<MfaFlowSocketResponse<'_>> {
     match response.outcome.as_ref()? {
         mfa_flow_remote_response::Outcome::Result(result) => match result.outcome.as_ref() {
-            Some(mfa_step_result::Outcome::Advanced(_))
-            | Some(mfa_step_result::Outcome::Completed(_)) => {
-                Some(MfaFlowSocketResponse::MfaResult { result })
-            }
+            Some(
+                mfa_step_result::Outcome::Advanced(_) | mfa_step_result::Outcome::Completed(_),
+            ) => Some(MfaFlowSocketResponse::MfaResult { result }),
             Some(mfa_step_result::Outcome::AwaitingExternal(_)) | None => None,
         },
         mfa_flow_remote_response::Outcome::Rejected(rejected) => {
@@ -180,13 +179,12 @@ async fn handle_remote_mfa_flow_socket(socket: WebSocket, rx: Receiver<Payload>)
         match get_core_response(rx, Some(REMOTE_AUTH_TIMEOUT)).await {
             Ok(Payload::MfaFlowRemote(response)) => {
                 if let Some(ws_response) = mfa_flow_socket_response(&response) {
-                    match serde_json::to_string(&ws_response) {
-                        Ok(serialized) => {
-                            if ws_tx.send(Message::Text(serialized.into())).await.is_err() {
-                                error!("Failed to send MFA flow result via WebSocket");
-                            }
+                    if let Ok(serialized) = serde_json::to_string(&ws_response) {
+                        if ws_tx.send(Message::Text(serialized.into())).await.is_err() {
+                            error!("Failed to send MFA flow result via WebSocket");
                         }
-                        Err(_) => error!("Failed to serialize MFA flow result for WebSocket"),
+                    } else {
+                        error!("Failed to serialize MFA flow result for WebSocket")
                     }
                 } else {
                     error!("Received invalid MFA flow remote result from Core");
