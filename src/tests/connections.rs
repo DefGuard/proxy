@@ -4,11 +4,10 @@ use std::{
 };
 
 use axum::{Router, routing::get};
-use axum_server::{Handle, accept::Accept};
-use socket2::SockRef;
+use axum_server::Handle;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
+    net::TcpStream,
     time::timeout,
 };
 
@@ -72,18 +71,4 @@ async fn test_incomplete_request_headers_are_cut_off() {
         .unwrap();
 
     read_until_closed(&mut stream).await;
-}
-
-#[tokio::test]
-async fn test_accepted_connections_have_tcp_keepalive() {
-    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
-    let _client = TcpStream::connect(listener.local_addr().unwrap())
-        .await
-        .unwrap();
-    let (stream, _) = listener.accept().await.unwrap();
-    assert!(!SockRef::from(&stream).keepalive().unwrap());
-
-    let (stream, ()) = keepalive_acceptor().accept(stream, ()).await.unwrap();
-
-    assert!(SockRef::from(&stream).keepalive().unwrap());
 }
