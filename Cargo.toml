@@ -19,9 +19,7 @@ axum-extra = { version = "0.12", features = [
     "cookie-private",
     "typed-header",
 ] }
-axum-server = { version = "0.8", features = ["tls-rustls"] }
-hyper-util = { version = "0.1", features = ["tokio", "server-auto"] }
-socket2 = "0.6"
+axum-server = { version = "0.9.2", features = ["tls-rustls"] }
 # match axum-extra -> cookies
 cookie = "0.18.1"
 time = { version = "0.3", default-features = false }
