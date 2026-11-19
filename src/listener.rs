@@ -4,15 +4,12 @@
 //! change, NAT timeout) keeps a file descriptor open forever, and the Edge eventually stops
 //! accepting connections once it reaches the open file limit.
 
-use std::{future::Ready, io, time::Duration};
+use std::time::Duration;
 
-use axum_server::accept::{Accept, DefaultAcceptor};
-use hyper_util::{
-    rt::{TokioExecutor, TokioTimer},
-    server::conn::auto::Builder,
+use axum_server::{
+    Address, Server,
+    accept::{TcpConfigAcceptor, TcpKeepaliveConfig, TcpSocketConfig},
 };
-use socket2::{SockRef, TcpKeepalive};
-use tokio::net::TcpStream;
 
 const HTTP1_HEADER_READ_TIMEOUT: Duration = Duration::from_secs(30);
 const HTTP2_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(20);
@@ -38,39 +35,30 @@ impl Default for ConnectionTimeouts {
     }
 }
 
-/// hyper silently ignores all of its timeouts unless a timer is set, and axum-server sets none.
-pub(crate) fn configure_http_builder(
-    builder: &mut Builder<TokioExecutor>,
+/// axum-server installs a timer but turns hyper's header-read timeout off and sends no
+/// HTTP/2 keepalive pings, so both have to be set explicitly.
+pub(crate) fn configure_timeouts<A: Address, Acc>(
+    server: &mut Server<A, Acc>,
     timeouts: ConnectionTimeouts,
 ) {
+    let builder = server.http_builder();
     builder
         .http1()
-        .timer(TokioTimer::new())
         .header_read_timeout(timeouts.http1_header_read);
     builder
         .http2()
-        .timer(TokioTimer::new())
         .keep_alive_interval(timeouts.http2_keepalive_interval)
         .keep_alive_timeout(timeouts.http2_keepalive_timeout);
 }
 
-/// Enables TCP keepalive on every accepted socket, so dead peers are detected on connections
-/// that hyper's timers no longer cover, such as upgraded WebSocket connections.
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct KeepaliveAcceptor;
-
-impl<S> Accept<TcpStream, S> for KeepaliveAcceptor {
-    type Stream = TcpStream;
-    type Service = S;
-    type Future = Ready<io::Result<(TcpStream, S)>>;
-
-    fn accept(&self, stream: TcpStream, service: S) -> Self::Future {
-        let keepalive = TcpKeepalive::new()
-            .with_time(TCP_KEEPALIVE_TIME)
-            .with_interval(TCP_KEEPALIVE_INTERVAL);
-        if let Err(err) = SockRef::from(&stream).set_tcp_keepalive(&keepalive) {
-            warn!("Failed to enable TCP keepalive on an accepted connection: {err}");
-        }
-        DefaultAcceptor.accept(stream, service)
-    }
+/// TCP keepalive detects dead peers on connections that hyper's timers no longer cover, such
+/// as upgraded WebSocket connections.
+pub(crate) fn keepalive_acceptor() -> TcpConfigAcceptor {
+    TcpConfigAcceptor::new(
+        TcpSocketConfig::new().keepalive(
+            TcpKeepaliveConfig::new()
+                .time(TCP_KEEPALIVE_TIME)
+                .interval(TCP_KEEPALIVE_INTERVAL),
+        ),
+    )
 }

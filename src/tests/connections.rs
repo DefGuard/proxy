@@ -12,7 +12,7 @@ use tokio::{
     time::timeout,
 };
 
-use crate::listener::{ConnectionTimeouts, KeepaliveAcceptor, configure_http_builder};
+use crate::listener::{ConnectionTimeouts, configure_timeouts, keepalive_acceptor};
 
 const TEST_TIMEOUT: Duration = Duration::from_secs(1);
 const CLOSE_DEADLINE: Duration = Duration::from_secs(5);
@@ -24,10 +24,10 @@ async fn spawn_server() -> (SocketAddr, Handle<SocketAddr>) {
     let handle = Handle::new();
     let mut server = axum_server::from_tcp(listener)
         .unwrap()
-        .acceptor(KeepaliveAcceptor)
+        .acceptor(keepalive_acceptor())
         .handle(handle.clone());
-    configure_http_builder(
-        server.http_builder(),
+    configure_timeouts(
+        &mut server,
         ConnectionTimeouts {
             http1_header_read: TEST_TIMEOUT,
             http2_keepalive_interval: TEST_TIMEOUT,
@@ -83,7 +83,7 @@ async fn test_accepted_connections_have_tcp_keepalive() {
     let (stream, _) = listener.accept().await.unwrap();
     assert!(!SockRef::from(&stream).keepalive().unwrap());
 
-    let (stream, ()) = KeepaliveAcceptor.accept(stream, ()).await.unwrap();
+    let (stream, ()) = keepalive_acceptor().accept(stream, ()).await.unwrap();
 
     assert!(SockRef::from(&stream).keepalive().unwrap());
 }

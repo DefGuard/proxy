@@ -52,7 +52,7 @@ use crate::{
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
     handlers::{desktop_client_mfa, enrollment, mfa_config, mfa_flow, password_reset, polling},
-    listener::{ConnectionTimeouts, KeepaliveAcceptor, configure_http_builder},
+    listener::{ConnectionTimeouts, configure_timeouts, keepalive_acceptor},
     setup::ProxySetupServer,
 };
 
@@ -791,9 +791,9 @@ pub async fn run_server(
                     let tls_config = build_tls_config(&cert_pem, &key_pem).await?;
                     info!("API web server is listening on https://{https_addr}");
                     let mut server = axum_server::bind(https_addr)
-                        .acceptor(RustlsAcceptor::new(tls_config).acceptor(KeepaliveAcceptor))
+                        .acceptor(RustlsAcceptor::new(tls_config).acceptor(keepalive_acceptor()))
                         .handle(handle_clone);
-                    configure_http_builder(server.http_builder(), ConnectionTimeouts::default());
+                    configure_timeouts(&mut server, ConnectionTimeouts::default());
                     server
                         .serve(app_service)
                         .await
@@ -801,9 +801,9 @@ pub async fn run_server(
                 } else {
                     info!("API web server is listening on http://{http_addr}");
                     let mut server = axum_server::bind(http_addr)
-                        .acceptor(KeepaliveAcceptor)
+                        .acceptor(keepalive_acceptor())
                         .handle(handle_clone);
-                    configure_http_builder(server.http_builder(), ConnectionTimeouts::default());
+                    configure_timeouts(&mut server, ConnectionTimeouts::default());
                     server
                         .serve(app_service)
                         .await
