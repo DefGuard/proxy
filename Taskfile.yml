@@ -1,0 +1,113 @@
+version: "3"
+
+tasks:
+  default:
+    desc: Show available tasks
+    silent: true
+    cmds:
+      - "{{.TASK_EXE}} --list"
+
+  dev:
+    desc: "Run proxy backend and web dev server (http://localhost:3002) in parallel (task dev -- <PROXY ARGS>)"
+    deps:
+      - task: dev-proxy
+      - task: dev-web
+
+  dev-proxy:
+    desc: "Run proxy backend (task dev-proxy -- <ARGS>)"
+    cmds:
+      - cargo run -- {{.CLI_ARGS}}
+
+  dev-web:
+    desc: Run web dev server
+    dir: web
+    deps: [web-install]
+    cmds:
+      - pnpm dev
+
+  build:
+    desc: Build web assets and release binary (assets are embedded in the binary)
+    cmds:
+      - task: build-web
+      - cargo build --locked --release
+
+  build-web:
+    desc: Build web assets
+    dir: web
+    deps: [web-install]
+    cmds:
+      - pnpm build
+
+  fix:
+    desc: Apply automatic formatting and lint fixes (Rust + web)
+    cmds:
+      - cargo clippy --all-targets --all-features --fix --allow-dirty --allow-staged
+      - cargo --locked fmt --all
+      - task: fix-web
+
+  fix-web:
+    desc: Apply automatic formatting and lint fixes to web
+    dir: web
+    deps: [web-install]
+    cmds:
+      - pnpm fix
+
+  lint:
+    desc: Run every lint check CI gates on (mirrors test.yml and lint-web.yml)
+    cmds:
+      - task: lint-rust
+      - task: lint-web
+
+  lint-rust:
+    desc: Rust lint checks
+    cmds:
+      - cargo --locked fmt --all -- --check
+      - cargo clippy --all-targets --all-features -- -D warnings
+
+  lint-web:
+    desc: Web lint checks
+    dir: web
+    deps: [web-install]
+    cmds:
+      - pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/paraglide
+      - pnpm lint
+
+  audit:
+    desc: Audit dependencies with cargo deny, Trivy and pnpm audit
+    cmds:
+      - cargo deny check --hide-inclusion-graph
+      - >-
+        TRIVY_SHOW_SUPPRESSED=1 TRIVY_IGNOREFILE=./.trivyignore.yaml
+        trivy fs --exit-code 1 --ignore-unfixed --severity CRITICAL,HIGH,MEDIUM --scanners vuln .
+      - task: audit-web
+
+  audit-web:
+    desc: Audit web dependencies with pnpm audit
+    dir: web
+    cmds:
+      - pnpm audit --prod
+
+  web-install:
+    internal: true
+    dir: web
+    sources:
+      - package.json
+      - pnpm-lock.yaml
+    generates:
+      - node_modules/.modules.yaml
+    cmds:
+      - pnpm install --frozen-lockfile
+
+  move-tag:
+    desc: "Move tag to current commit (task move-tag -- <TAG>)"
+    vars:
+      TAG: "{{.TAG | default .CLI_ARGS}}"
+    preconditions:
+      - sh: test -n "{{.TAG}}"
+        msg: "TAG is required: task move-tag -- <TAG>"
+    cmds:
+      - git tag --delete {{.TAG}}
+      - git push --delete origin {{.TAG}}
+      - git tag {{.TAG}}
+      - git push
+      - git push origin {{.TAG}}
