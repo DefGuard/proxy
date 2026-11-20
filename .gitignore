@@ -7,3 +7,6 @@
 .env
 .DS_Store
 certs
+
+# Task checksum cache
+.task/

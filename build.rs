@@ -41,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "MfaStepResult",
             "MfaStepStarted",
             "MfaFido2Challenge",
+            "DeviceConfig",
             "DeviceConfigResponse",
             "DevicePostureCheckRequest",
             "InstanceInfoResponse",
