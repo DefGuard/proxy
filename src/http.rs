@@ -121,7 +121,7 @@ where
             }
             Ok(ServerWaitOutcome::Shutdown)
         }
-        _ = tokio::time::sleep(restart_timeout) => {
+        () = tokio::time::sleep(restart_timeout) => {
             warn!("Server did not stop before the restart deadline");
             Ok(ServerWaitOutcome::TimedOut)
         }
@@ -723,7 +723,7 @@ pub async fn run_server(
             loop {
                 tokio::select! {
                     _ = rate_limit_shutdown_rx.changed() => break,
-                    _ = tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD) => {
+                    () = tokio::time::sleep(RATE_LIMITER_CLEANUP_PERIOD) => {
                         debug!(
                             "Cleaning-up rate limiter storage, current size: {}",
                             governor_limiter.len()
@@ -811,57 +811,51 @@ pub async fn run_server(
                     break;
                 }
                 result = receive_https_cert_update(&mut https_cert_rx) => {
-                    match result {
-                        Some(certs) => {
-                            info!("Received new HTTPS certificates, restarting web server with TLS");
-                            handle.graceful_shutdown(Some(Duration::from_secs(30)));
-                            if matches!(
-                                wait_for_server_or_shutdown(
-                                    &mut server,
-                                    &mut http_shutdown_rx,
-                                    Duration::from_secs(31),
-                                ).await?,
-                                ServerWaitOutcome::Shutdown
-                            ) {
-                                return Ok(());
-                            }
-                            current_tls = Some(certs);
-                        }
-                        None => {
-                            error!("HTTPS certificate channel closed unexpectedly");
-                            handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
-                            if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
-                                warn!("HTTP server did not drain after certificate channel closed");
-                            }
+                    if let Some(certs) = result {
+                        info!("Received new HTTPS certificates, restarting web server with TLS");
+                        handle.graceful_shutdown(Some(Duration::from_secs(30)));
+                        if matches!(
+                            wait_for_server_or_shutdown(
+                                &mut server,
+                                &mut http_shutdown_rx,
+                                Duration::from_secs(31),
+                            ).await?,
+                            ServerWaitOutcome::Shutdown
+                        ) {
                             return Ok(());
                         }
+                        current_tls = Some(certs);
+                    } else {
+                        error!("HTTPS certificate channel closed unexpectedly");
+                        handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
+                        if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                            warn!("HTTP server did not drain after certificate channel closed");
+                        }
+                        return Ok(());
                     }
                 }
                 result = receive_https_cert_update(&mut clear_https_rx) => {
-                    match result {
-                        Some(()) => {
-                            info!("Received ClearHttpsCerts, restarting web server without TLS");
-                            handle.graceful_shutdown(Some(Duration::from_secs(30)));
-                            if matches!(
-                                wait_for_server_or_shutdown(
-                                    &mut server,
-                                    &mut http_shutdown_rx,
-                                    Duration::from_secs(31),
-                                ).await?,
-                                ServerWaitOutcome::Shutdown
-                            ) {
-                                return Ok(());
-                            }
-                            current_tls = None;
-                        }
-                        None => {
-                            error!("ClearHttpsCerts channel closed unexpectedly");
-                            handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
-                            if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
-                                warn!("HTTP server did not drain after certificate channel closed");
-                            }
+                    if let Some(()) = result {
+                        info!("Received ClearHttpsCerts, restarting web server without TLS");
+                        handle.graceful_shutdown(Some(Duration::from_secs(30)));
+                        if matches!(
+                            wait_for_server_or_shutdown(
+                                &mut server,
+                                &mut http_shutdown_rx,
+                                Duration::from_secs(31),
+                            ).await?,
+                            ServerWaitOutcome::Shutdown
+                        ) {
                             return Ok(());
                         }
+                        current_tls = None;
+                    } else {
+                        error!("ClearHttpsCerts channel closed unexpectedly");
+                        handle.graceful_shutdown(Some(SERVER_SHUTDOWN_GRACE_PERIOD));
+                        if !wait_for_server(&mut server, SERVER_SHUTDOWN_FORCE_TIMEOUT).await? {
+                            warn!("HTTP server did not drain after certificate channel closed");
+                        }
+                        return Ok(());
                     }
                 }
                 // An ACME task needs port 80: gracefully stop the current HTTP server,
@@ -1008,10 +1002,10 @@ mod tests {
         });
 
         tokio::select! {
-            _ = request_started.notified() => {},
+            () = request_started.notified() => {},
             result = &mut server => panic!("HTTP server stopped before the request started: {result:?}"),
             _ = &mut update => panic!("update arrived before the test sent one"),
-            _ = tokio::time::sleep(Duration::from_secs(3)) => panic!("HTTP request did not start"),
+            () = tokio::time::sleep(Duration::from_secs(3)) => panic!("HTTP request did not start"),
         }
         assert!(!request.is_finished(), "handler should still be waiting");
 

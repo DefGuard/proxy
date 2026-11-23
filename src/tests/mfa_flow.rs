@@ -48,9 +48,9 @@ async fn test_start_dispatches_to_mfa_flow_start() {
     let expected = serde_json::to_value(&response).unwrap();
     let app = app_with_fake_core(move |payload| match payload {
         core_request::Payload::MfaFlowStart(request) => {
-            assert!(request.location_id == 7);
-            assert!(request.pubkey == "device-public-key");
-            assert!(request.selected_methods == vec![MfaMethod::Totp as i32]);
+            assert_eq!(request.location_id, 7);
+            assert_eq!(request.pubkey, "device-public-key");
+            assert_eq!(request.selected_methods, vec![MfaMethod::Totp as i32]);
             core_response::Payload::MfaFlowStart(response.clone())
         }
         _ => panic!("unexpected Core request"),
@@ -66,7 +66,7 @@ async fn test_start_dispatches_to_mfa_flow_start() {
     let (status, body) = post_json(&app, "/api/v1/mfa-flow/start", &request).await;
 
     assert_eq!(status, StatusCode::OK);
-    assert!(body == expected);
+    assert_eq!(body, expected);
 }
 
 #[tokio::test]
@@ -101,8 +101,8 @@ async fn test_step_start_dispatches_to_mfa_flow_step_start() {
     let expected = serde_json::to_value(&response).unwrap();
     let app = app_with_fake_core(move |payload| match payload {
         core_request::Payload::MfaFlowStepStart(request) => {
-            assert!(request.token == "flow-token");
-            assert!(request.method == MfaMethod::Email as i32);
+            assert_eq!(request.token, "flow-token");
+            assert_eq!(request.method, MfaMethod::Email as i32);
             core_response::Payload::MfaFlowStepStart(response.clone())
         }
         _ => panic!("unexpected Core request"),
@@ -115,7 +115,7 @@ async fn test_step_start_dispatches_to_mfa_flow_step_start() {
     let (status, body) = post_json(&app, "/api/v1/mfa-flow/step-start", &request).await;
 
     assert_eq!(status, StatusCode::OK);
-    assert!(body == expected);
+    assert_eq!(body, expected);
 }
 
 #[tokio::test]
@@ -137,8 +137,8 @@ async fn test_step_finish_dispatches_and_preserves_all_result_arms() {
         let expected = serde_json::to_value(&response).unwrap();
         let app = app_with_fake_core(move |payload| match payload {
             core_request::Payload::MfaFlowStepFinish(request) => {
-                assert!(request.token == "flow-token");
-                assert!(request.step_attempt_id == "attempt-id");
+                assert_eq!(request.token, "flow-token");
+                assert_eq!(request.step_attempt_id, "attempt-id");
                 assert!(matches!(
                     request.submission,
                     Some(mfa_flow_step_finish_request::Submission::Code(_))
@@ -160,7 +160,7 @@ async fn test_step_finish_dispatches_and_preserves_all_result_arms() {
         let (status, body) = post_json(&app, "/api/v1/mfa-flow/step-finish", &request).await;
 
         assert_eq!(status, StatusCode::OK);
-        assert!(body == expected);
+        assert_eq!(body, expected);
     }
 }
 
@@ -168,8 +168,8 @@ async fn test_step_finish_dispatches_and_preserves_all_result_arms() {
 async fn test_approve_dispatches_and_returns_empty_json() {
     let app = app_with_fake_core(|payload| match payload {
         core_request::Payload::MfaFlowApprove(request) => {
-            assert!(request.token == "flow-token");
-            assert!(request.step_attempt_id == "attempt-id");
+            assert_eq!(request.token, "flow-token");
+            assert_eq!(request.step_attempt_id, "attempt-id");
             assert!(matches!(request.proof, Some(MfaMobileApprovalProof { .. })));
             core_response::Payload::Empty(())
         }
@@ -187,7 +187,7 @@ async fn test_approve_dispatches_and_returns_empty_json() {
     let (status, body) = post_json(&app, "/api/v1/mfa-flow/approve", &request).await;
 
     assert_eq!(status, StatusCode::OK);
-    assert!(body == json!({}));
+    assert_eq!(body, json!({}));
 }
 
 #[tokio::test]
@@ -218,8 +218,8 @@ async fn test_remote_dispatches_to_mfa_flow_remote() {
     let request_id = request.id;
     match request.payload {
         Some(core_request::Payload::MfaFlowRemote(request)) => {
-            assert!(request.token == "flow-token");
-            assert!(request.step_attempt_id == "attempt-id");
+            assert_eq!(request.token, "flow-token");
+            assert_eq!(request.step_attempt_id, "attempt-id");
         }
         _ => panic!("unexpected Core request"),
     }
@@ -270,7 +270,7 @@ async fn test_legacy_http_routes_keep_their_response_shapes() {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body == json!({"token": "legacy-token", "challenge": null}));
+    assert_eq!(body, json!({"token": "legacy-token", "challenge": null}));
 
     let finish_request = ClientMfaFinishRequest {
         token: "legacy-token".to_string(),
@@ -279,11 +279,11 @@ async fn test_legacy_http_routes_keep_their_response_shapes() {
     };
     let (status, body) = post_json(&app, "/api/v1/client-mfa/finish", &finish_request).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body == json!({"preshared_key": "legacy-psk", "token": null}));
+    assert_eq!(body, json!({"preshared_key": "legacy-psk", "token": null}));
 
     let (status, body) = post_json(&app, "/api/v1/client-mfa/finish-remote", &finish_request).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body == json!({}));
+    assert_eq!(body, json!({}));
 }
 
 #[tokio::test]
@@ -295,7 +295,7 @@ async fn test_legacy_step_start_is_an_unknown_route() {
         post_json(&app, "/api/v1/client-mfa/unknown", &json!({})).await;
 
     assert_eq!(step_status, unknown_status);
-    assert!(step_body == unknown_body);
+    assert_eq!(step_body, unknown_body);
 }
 
 #[tokio::test]
