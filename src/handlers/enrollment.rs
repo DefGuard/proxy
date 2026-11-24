@@ -2,7 +2,9 @@ use axum::{Json, Router, extract::State, routing::post};
 use axum_extra::extract::PrivateCookieJar;
 use time::OffsetDateTime;
 
-use super::register_mfa::router as register_mfa_router;
+use super::{
+    attestation::router as attestation_router, register_mfa::router as register_mfa_router,
+};
 use crate::{
     error::ApiError,
     handlers::{get_core_response, mobile_client::register_mobile_auth},
@@ -19,6 +21,7 @@ use crate::{
 pub(crate) fn router() -> Router<AppState> {
     Router::new()
         .nest("/register-mfa", register_mfa_router())
+        .nest("/attestation", attestation_router())
         .route("/start", post(start_enrollment_process))
         .route("/activate_user", post(activate_user))
         .route("/create_device", post(create_device))

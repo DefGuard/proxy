@@ -61,6 +61,7 @@ async fn test_start_dispatches_to_mfa_flow_start() {
         pubkey: "device-public-key".to_string(),
         posture_data: None,
         selected_methods: vec![MfaMethod::Totp as i32],
+        possession_challenge_solution: None,
     };
     let (status, body) = post_json(&app, "/api/v1/mfa-flow/start", &request).await;
 
@@ -84,6 +85,7 @@ async fn test_start_maps_posture_rejection_to_forbidden() {
         pubkey: "device-public-key".to_string(),
         posture_data: None,
         selected_methods: vec![MfaMethod::Totp as i32],
+        possession_challenge_solution: None,
     };
     let (status, body) = post_json(&app, "/api/v1/mfa-flow/start", &request).await;
 
