@@ -1,6 +1,6 @@
 [package]
 name = "defguard-proxy"
-version = "2.2.2"
+version = "2.2.1"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/DefGuard/proxy"
