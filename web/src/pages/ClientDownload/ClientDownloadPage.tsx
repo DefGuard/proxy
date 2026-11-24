@@ -6,7 +6,7 @@ import {
   useNavigate,
   useRouterState,
 } from '@tanstack/react-router';
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { m } from '../../paraglide/messages';
 import { Page } from '../../shared/components/Page/Page';
 import { PageNavigation } from '../../shared/components/PageNavigation/PageNavigation';
@@ -31,11 +31,6 @@ import laptopIcon from './assets/laptop.png';
 import linuxIcon from './assets/linux.png';
 import desktopIcon from './assets/pc-tower.png';
 
-const AppleHelpModal = lazy(async () => ({
-  default: (await import('../../shared/components/AppleHelpModal/AppleHelpModal'))
-    .AppleHelpModal,
-}));
-
 export const ClientDownloadPage = () => {
   const { data: pageData } = useQuery(getClientArtifactsQueryOptions);
   const { enrollmentState } = useLoaderData({
@@ -46,24 +41,40 @@ export const ClientDownloadPage = () => {
   const navigate = useNavigate();
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
+
+  const windowsMenu = useMemo(
+    (): MenuItemsGroup[] => [
+      {
+        items: [
+          {
+            icon: 'windows',
+            text: 'Windows 11 (x64)',
+            onClick: () => openClientLink(pageData?.windows_amd64),
+          },
+          {
+            icon: 'windows',
+            text: 'Windows 11 (ARM)',
+            onClick: () => openClientLink(pageData?.windows_arm64),
+          },
+        ],
+      },
+    ],
+    [pageData],
+  );
 
   const appleMenu = useMemo(
     (): MenuItemsGroup[] => [
       {
-        header: {
-          text: m.client_download_apple_help_header(),
-          onHelp: () => {
-            setAppleHelpModalOpen(true);
-          },
-        },
         items: [
           {
-            text: 'Intel',
-            onClick: () => openClientLink(pageData?.macos_amd64),
+            icon: 'app-store',
+            text: 'App Store',
+            onClick: () => openClientLink(externalLink.client.desktop.macos.appStore),
           },
           {
-            text: 'ARM',
+            icon: 'apple',
+            text: 'Universal DMG',
+            // The update service returns the universal DMG for both macOS keys.
             onClick: () => openClientLink(pageData?.macos_arm64),
           },
         ],
@@ -77,42 +88,42 @@ export const ClientDownloadPage = () => {
       {
         items: [
           {
-            icon: 'ubuntu',
-            text: 'Ubuntu 24.04 ARM',
-            onClick: () => openClientLink(pageData?.deb_arm64),
-          },
-          {
-            icon: 'ubuntu',
-            text: 'Ubuntu 24.04 AMD64',
+            icon: 'debian',
+            text: 'Debian 13 (x86)',
             onClick: () => openClientLink(pageData?.deb_amd64),
           },
+          {
+            icon: 'debian',
+            text: 'Debian 13 (ARM)',
+            onClick: () => openClientLink(pageData?.deb_arm64),
+          },
         ],
       },
       {
         items: [
           {
             icon: 'debian',
-            text: 'Ubuntu 22.04 / Debian 12&13 ARM',
-            onClick: () => openClientLink(pageData?.deb_legacy_arm64),
-          },
-          {
-            icon: 'debian',
-            text: 'Ubuntu 22.04 / Debian 12&13 AMD64',
+            text: 'Debian 12 | Ubuntu 22 (x86)',
             onClick: () => openClientLink(pageData?.deb_legacy_amd64),
           },
+          {
+            icon: 'debian',
+            text: 'Debian 12 | Ubuntu 22 (ARM)',
+            onClick: () => openClientLink(pageData?.deb_legacy_arm64),
+          },
         ],
       },
       {
         items: [
           {
             icon: 'linux',
-            text: 'RPM ARM',
-            onClick: () => openClientLink(pageData?.rpm_arm64),
+            text: 'Fedora 40 (x86)',
+            onClick: () => openClientLink(pageData?.rpm_amd64),
           },
           {
             icon: 'linux',
-            text: 'RPM AMD64',
-            onClick: () => openClientLink(pageData?.rpm_amd64),
+            text: 'Fedora 40 (ARM)',
+            onClick: () => openClientLink(pageData?.rpm_arm64),
           },
         ],
       },
@@ -150,7 +161,7 @@ export const ClientDownloadPage = () => {
           })}
           buttonText={m.client_download_for({ platform: 'Windows' })}
           buttonIconKind="windows"
-          directLink={pageData?.windows_amd64}
+          menuItems={windowsMenu}
           icon={desktopIcon}
         />
         <Platform
@@ -211,14 +222,6 @@ export const ClientDownloadPage = () => {
           text={m.client_download_mobile_warning()}
         />
       )}
-      <Suspense fallback={null}>
-        <AppleHelpModal
-          isOpen={appleHelpModalOpen}
-          onClose={() => {
-            setAppleHelpModalOpen(false);
-          }}
-        />
-      </Suspense>
       <Modal
         title={m.client_download_modal_title()}
         size="small"

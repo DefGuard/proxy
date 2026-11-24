@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLoaderData } from '@tanstack/react-router';
 import { capitalCase } from 'change-case';
 import { QRCodeCanvas } from 'qrcode.react';
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { m } from '../../../paraglide/messages';
 import { ContactFooter } from '../../../shared/components/ContactFooter/ContactFooter';
 import { ContainerWithIcon } from '../../../shared/components/ContainerWithIcon/ContainerWithIcon';
@@ -16,18 +16,12 @@ import { CopyField } from '../../../shared/defguard-ui/components/CopyField/Copy
 import { Divider } from '../../../shared/defguard-ui/components/Divider/Divider';
 import { Fold } from '../../../shared/defguard-ui/components/Fold/Fold';
 import { Icon } from '../../../shared/defguard-ui/components/Icon';
-import { IconButton } from '../../../shared/defguard-ui/components/IconButton/IconButton';
 import { IconButtonMenu } from '../../../shared/defguard-ui/components/IconButtonMenu/IconButtonMenu';
 import type { MenuItemsGroup } from '../../../shared/defguard-ui/components/Menu/types';
 import { SizedBox } from '../../../shared/defguard-ui/components/SizedBox/SizedBox';
 import { ThemeSpacing } from '../../../shared/defguard-ui/types';
 import { getClientArtifactsQueryOptions } from '../../../shared/query/queryOptions';
 import { openClientLink } from '../../../shared/utils/openVirtualLink';
-
-const AppleHelpModal = lazy(async () => ({
-  default: (await import('../../../shared/components/AppleHelpModal/AppleHelpModal'))
-    .AppleHelpModal,
-}));
 
 export const ConfigureClientPage = () => {
   const pageData = useLoaderData({
@@ -36,24 +30,45 @@ export const ConfigureClientPage = () => {
 
   const { data: clientLinks } = useQuery(getClientArtifactsQueryOptions);
 
-  const [appleHelpModalOpen, setAppleHelpModalOpen] = useState(false);
+  const windowsMenu = useMemo(
+    (): MenuItemsGroup[] => [
+      {
+        header: {
+          text: `${capitalCase(m.misc_for())} Windows`,
+        },
+        items: [
+          {
+            icon: 'windows',
+            text: 'Windows 11 (x64)',
+            onClick: () => openClientLink(clientLinks?.windows_amd64),
+          },
+          {
+            icon: 'windows',
+            text: 'Windows 11 (ARM)',
+            onClick: () => openClientLink(clientLinks?.windows_arm64),
+          },
+        ],
+      },
+    ],
+    [clientLinks],
+  );
 
   const appleMenu = useMemo(
     (): MenuItemsGroup[] => [
       {
         header: {
-          text: m.client_download_apple_help_header(),
-          onHelp: () => setAppleHelpModalOpen(true),
+          text: `${capitalCase(m.misc_for())} macOS`,
         },
         items: [
           {
-            icon: 'apple',
-            text: 'Intel',
-            onClick: () => openClientLink(clientLinks?.macos_amd64),
+            icon: 'app-store',
+            text: 'App Store',
+            onClick: () => openClientLink(externalLink.client.desktop.macos.appStore),
           },
           {
             icon: 'apple',
-            text: 'ARM',
+            text: 'Universal DMG',
+            // The update service returns the universal DMG for both macOS keys.
             onClick: () => openClientLink(clientLinks?.macos_arm64),
           },
         ],
@@ -70,42 +85,42 @@ export const ConfigureClientPage = () => {
         },
         items: [
           {
-            icon: 'ubuntu',
-            text: 'Ubuntu 24.04 ARM',
-            onClick: () => openClientLink(clientLinks?.deb_arm64),
-          },
-          {
-            icon: 'ubuntu',
-            text: 'Ubuntu 24.04 AMD64',
+            icon: 'debian',
+            text: 'Debian 13 (x86)',
             onClick: () => openClientLink(clientLinks?.deb_amd64),
           },
+          {
+            icon: 'debian',
+            text: 'Debian 13 (ARM)',
+            onClick: () => openClientLink(clientLinks?.deb_arm64),
+          },
         ],
       },
       {
         items: [
           {
             icon: 'debian',
-            text: 'Ubuntu 22.04 / Debian 12&13 ARM',
-            onClick: () => openClientLink(clientLinks?.deb_legacy_arm64),
-          },
-          {
-            icon: 'debian',
-            text: 'Ubuntu 22.04 / Debian 12&13 AMD64',
+            text: 'Debian 12 | Ubuntu 22 (x86)',
             onClick: () => openClientLink(clientLinks?.deb_legacy_amd64),
           },
+          {
+            icon: 'debian',
+            text: 'Debian 12 | Ubuntu 22 (ARM)',
+            onClick: () => openClientLink(clientLinks?.deb_legacy_arm64),
+          },
         ],
       },
       {
         items: [
           {
             icon: 'linux',
-            text: 'RPM ARM',
-            onClick: () => openClientLink(clientLinks?.rpm_arm64),
+            text: 'Fedora 40 (x86)',
+            onClick: () => openClientLink(clientLinks?.rpm_amd64),
           },
           {
             icon: 'linux',
-            text: 'RPM AMD64',
-            onClick: () => openClientLink(clientLinks?.rpm_amd64),
+            text: 'Fedora 40 (ARM)',
+            onClick: () => openClientLink(clientLinks?.rpm_arm64),
           },
         ],
       },
@@ -164,13 +179,7 @@ export const ConfigureClientPage = () => {
           </a>
           <div className="download">
             <p>{m.client_setup_download_label()}</p>
-            <a
-              href={clientLinks?.windows_amd64 ?? externalLink.defguard.download}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <IconButton icon="windows" />
-            </a>
+            <IconButtonMenu icon="windows" menuItems={windowsMenu} />
             <IconButtonMenu icon="apple" menuItems={appleMenu} />
             <IconButtonMenu icon="linux" menuItems={linuxMenu} />
           </div>
@@ -255,14 +264,6 @@ export const ConfigureClientPage = () => {
         <p className="finish">{m.client_setup_footer_extra()}</p>
         <ContactFooter email={pageData.enrollmentData.admin.email} />
       </footer>
-      <Suspense fallback={null}>
-        <AppleHelpModal
-          isOpen={appleHelpModalOpen}
-          onClose={() => {
-            setAppleHelpModalOpen(false);
-          }}
-        />
-      </Suspense>
     </Page>
   );
 };
