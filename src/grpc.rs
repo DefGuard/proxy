@@ -34,8 +34,8 @@ use crate::{
     http::{CORE_CLIENT_CERT_NAME, GRPC_CA_CERT_NAME, GRPC_CERT_NAME, GRPC_KEY_NAME},
     proto::{
         AcmeCertificate, AcmeChallenge, AcmeIssueEvent, AcmeLogs, AcmeProgress, AcmeStep,
-        CoreRequest, CoreResponse, DeviceInfo, PublicSettings, acme_issue_event, core_request,
-        core_response, proxy_server,
+        CoreRequest, CoreResponse, DeviceInfo, DeviceVerificationStatus, PublicSettings,
+        acme_issue_event, core_request, core_response, proxy_server,
     },
 };
 
@@ -64,6 +64,118 @@ fn resolve_response(results: &RwLock<ResultMap>, id: u64, payload: core_response
         return false;
     }
     true
+}
+
+/// Verification outcomes are pushed unsolicited with id 0, so they bypass the request map.
+fn route_response(
+    results: &RwLock<ResultMap>,
+    verification_waiters: &VerificationWaiters,
+    id: u64,
+    payload: core_response::Payload,
+) {
+    match payload {
+        core_response::Payload::DeviceVerificationResolved(status) => {
+            debug!(
+                "Received the outcome of device verification {} from Core",
+                status.session_id
+            );
+            verification_waiters.notify(status);
+        }
+        other => {
+            resolve_response(results, id, other);
+        }
+    }
+}
+
+// Pushes are rare and a waiter only needs the final one, so a small buffer is enough.
+const VERIFICATION_WAITER_CAPACITY: usize = 4;
+
+#[derive(Clone, Default)]
+pub(crate) struct VerificationWaiters {
+    senders: Arc<RwLock<HashMap<i64, broadcast::Sender<DeviceVerificationStatus>>>>,
+}
+
+impl VerificationWaiters {
+    /// Several clients may wait on the same session and share one sender.
+    pub(crate) fn subscribe(&self, session_id: i64) -> VerificationWaiter {
+        let rx = self
+            .senders
+            .write()
+            .expect("Failed to acquire lock on verification waiters when subscribing")
+            .entry(session_id)
+            .or_insert_with(|| broadcast::channel(VERIFICATION_WAITER_CAPACITY).0)
+            .subscribe();
+        VerificationWaiter {
+            session_id,
+            rx,
+            waiters: self.clone(),
+        }
+    }
+
+    /// Returns whether anyone on this Edge was waiting.
+    pub(crate) fn notify(&self, status: DeviceVerificationStatus) -> bool {
+        let session_id = status.session_id;
+        let senders = self
+            .senders
+            .read()
+            .expect("Failed to acquire lock on verification waiters when notifying");
+        if let Some(tx) = senders.get(&session_id) {
+            tx.send(status).is_ok()
+        } else {
+            // Core broadcasts to every Edge, the client may be waiting on another one.
+            debug!("No client waits on device verification {session_id} on this Edge");
+            false
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn is_waiting(&self, session_id: i64) -> bool {
+        self.senders
+            .read()
+            .expect("Failed to acquire lock on verification waiters")
+            .contains_key(&session_id)
+    }
+}
+
+pub(crate) struct VerificationWaiter {
+    session_id: i64,
+    rx: broadcast::Receiver<DeviceVerificationStatus>,
+    waiters: VerificationWaiters,
+}
+
+impl VerificationWaiter {
+    pub(crate) async fn recv(&mut self) -> DeviceVerificationStatus {
+        loop {
+            match self.rx.recv().await {
+                Ok(status) => return status,
+                Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                    debug!(
+                        "Skipped {skipped} statuses of device verification {}",
+                        self.session_id
+                    );
+                }
+                // The registry keeps the sender for as long as this receiver exists.
+                Err(broadcast::error::RecvError::Closed) => std::future::pending().await,
+            }
+        }
+    }
+}
+
+impl Drop for VerificationWaiter {
+    fn drop(&mut self) {
+        let mut senders = self
+            .waiters
+            .senders
+            .write()
+            .expect("Failed to acquire lock on verification waiters when unsubscribing");
+        // This receiver is still alive here, so it is the last one when the count is 1.
+        if senders
+            .get(&self.session_id)
+            .is_some_and(|tx| tx.receiver_count() <= 1)
+        {
+            senders.remove(&self.session_id);
+        }
+    }
 }
 
 fn remove_disconnected_client(
@@ -156,6 +268,9 @@ pub(crate) struct ProxyServer {
     pub(crate) core_version: Arc<Mutex<Option<Version>>>,
     /// Public settings received from Core and shared with HTTP handlers.
     pub(crate) public_settings: PublicSettingsState,
+    pub(crate) verification_waiters: VerificationWaiters,
+    /// Fires on every Core connection so waiters can re-ask for pushes missed meanwhile.
+    core_connected_tx: broadcast::Sender<()>,
     tls_config: Arc<Mutex<Option<TlsConfig>>>,
     cookie_key: Arc<RwLock<Option<Key>>>,
     cert_dir: PathBuf,
@@ -193,6 +308,8 @@ impl ProxyServer {
             connected: Arc::new(AtomicBool::new(false)),
             core_version: Arc::new(Mutex::new(None)),
             public_settings: PublicSettingsState::default(),
+            verification_waiters: VerificationWaiters::default(),
+            core_connected_tx: broadcast::channel(1).0,
             tls_config: Arc::new(Mutex::new(None)),
             cert_dir,
             reset_tx,
@@ -324,6 +441,10 @@ impl ProxyServer {
         }
     }
 
+    pub(crate) fn subscribe_core_connected(&self) -> broadcast::Receiver<()> {
+        self.core_connected_tx.subscribe()
+    }
+
     pub(crate) fn setup_completed(&self) -> bool {
         let lock = self
             .tls_config
@@ -355,6 +476,10 @@ impl ProxyServer {
             "Response #{id} did not reach a waiting receiver"
         );
     }
+
+    pub(crate) fn announce_test_core_connected(&self) {
+        let _ = self.core_connected_tx.send(());
+    }
 }
 
 impl Clone for ProxyServer {
@@ -366,6 +491,8 @@ impl Clone for ProxyServer {
             connected: Arc::clone(&self.connected),
             core_version: Arc::clone(&self.core_version),
             public_settings: self.public_settings.clone(),
+            verification_waiters: self.verification_waiters.clone(),
+            core_connected_tx: self.core_connected_tx.clone(),
             cookie_key: Arc::clone(&self.cookie_key),
             tls_config: Arc::clone(&self.tls_config),
             cert_dir: self.cert_dir.clone(),
@@ -420,9 +547,12 @@ impl proxy_server::Proxy for ProxyServer {
             )
             .insert(address, tx);
         self.connected.store(true, Ordering::Relaxed);
+        // pushes sent while Core was away are lost, so waiters ask again
+        let _ = self.core_connected_tx.send(());
 
         let clients = Arc::clone(&self.clients);
         let results = Arc::clone(&self.results);
+        let verification_waiters = self.verification_waiters.clone();
         let connected = Arc::clone(&self.connected);
         let cookie_key = Arc::clone(&self.cookie_key);
         let public_settings = self.public_settings.clone();
@@ -461,9 +591,12 @@ impl proxy_server::Proxy for ProxyServer {
                                         debug!("Received PublicSettings from Core");
                                         public_settings.apply(settings);
                                     }
-                                    other => {
-                                        resolve_response(&results, response.id, other);
-                                    }
+                                    other => route_response(
+                                        &results,
+                                        &verification_waiters,
+                                        response.id,
+                                        other,
+                                    ),
                                 }
                             }
                         }
@@ -851,6 +984,36 @@ mod tests {
             !resolve_response(&results, 7, enrollment_response(1)),
             "A resolved request must not stay in the map"
         );
+    }
+
+    /// No request uses id 0, so a verification push must reach the waiters, not the request map.
+    #[tokio::test]
+    async fn test_route_response_hands_verification_pushes_to_waiters() {
+        let results = RwLock::new(ResultMap::new());
+        let waiters = VerificationWaiters::default();
+        let mut waiter = waiters.subscribe(5);
+        let mut request = pending_request(&results, 1);
+        let pushed = DeviceVerificationStatus {
+            session_id: 5,
+            outcome: 2,
+            expires_at: 100,
+            resolved_at: Some(50),
+        };
+
+        route_response(
+            &results,
+            &waiters,
+            0,
+            Payload::DeviceVerificationResolved(pushed),
+        );
+        assert_eq!(waiter.recv().await, pushed);
+        assert!(request.try_recv().is_err());
+
+        route_response(&results, &waiters, 1, enrollment_response(1));
+        assert!(matches!(
+            request.try_recv().expect("Response never arrived"),
+            Payload::EnrollmentStart(_)
+        ));
     }
 
     #[test]

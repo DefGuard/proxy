@@ -771,6 +771,7 @@ dependencies = [
  "time",
  "tokio",
  "tokio-stream",
+ "tokio-tungstenite",
  "toml",
  "tonic",
  "tonic-prost",

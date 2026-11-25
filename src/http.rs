@@ -48,7 +48,7 @@ use crate::{
     LogsReceiver, VERSION,
     assets::{index, web_asset},
     config::EnvConfig,
-    enterprise::handlers::{desktop_client_posture, openid_login},
+    enterprise::handlers::{desktop_client_posture, device_verification, openid_login},
     error::ApiError,
     grpc::{ProxyServer, TlsConfig},
     handlers::{desktop_client_mfa, enrollment, mfa_config, mfa_flow, password_reset, polling},
@@ -494,6 +494,7 @@ pub(crate) fn api_router() -> Router<AppState> {
             .nest("/mfa-config", mfa_config::router())
             .nest("/openid", openid_login::router())
             .nest("/posture", desktop_client_posture::router())
+            .nest("/client/verification", device_verification::router())
             .route("/poll", post(polling::info))
             .route("/health", get(healthcheck))
             .route("/health-grpc", get(healthcheckgrpc))
