@@ -266,7 +266,7 @@ async fn test_core_errors_reach_the_client_with_their_codes() {
                 CoreErrorCode::LicenseRequired,
             ),
             StatusCode::PAYMENT_REQUIRED,
-            Value::Null,
+            json!("license_required"),
         ),
     ] {
         let app = app_with_fake_core(move |_| error.clone());
