@@ -80,6 +80,17 @@ fn code_name(code: CoreErrorCode) -> String {
         .to_ascii_lowercase()
 }
 
+impl ApiError {
+    pub(crate) fn status_and_body(self) -> (StatusCode, serde_json::Value) {
+        let code = match &self {
+            Self::WithCode(_, code) => Some(code_name(*code)),
+            _ => None,
+        };
+        let (status, error_message) = self.status_and_message();
+        (status, json!({"error": error_message, "code": code}))
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         if matches!(self, Self::OidcNotCompleted(_)) {
@@ -87,13 +98,9 @@ impl IntoResponse for ApiError {
         } else {
             error!("{self}");
         }
-        let code = match &self {
-            Self::WithCode(_, code) => Some(code_name(*code)),
-            _ => None,
-        };
-        let (status, error_message) = self.status_and_message();
+        let (status, body) = self.status_and_body();
 
-        (status, Json(json!({"error": error_message, "code": code}))).into_response()
+        (status, Json(body)).into_response()
     }
 }
 

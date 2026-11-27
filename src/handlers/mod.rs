@@ -134,7 +134,8 @@ pub(crate) async fn get_core_response(
                     "Tried to get response from Core related to an enterprise feature but the \
                     enterprise is not enabled, ignoring it."
                 );
-                return Err(ApiError::EnterpriseNotEnabled);
+                // keeps Core's code, the websocket has no 402 status to carry the license error
+                return Err(core_error.into());
             }
             if is_oidc_not_completed(&core_error) {
                 debug!("OIDC authentication still pending: {}", core_error.message);
